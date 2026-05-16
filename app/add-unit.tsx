@@ -116,7 +116,7 @@ export default function AddUnitScreen() {
         <FormSelect label="نوع الوحدة" value={form.type} options={typeOptions} onSelect={set('type')} required placeholder="اختر النوع..." error={errors.type} />
         <FormInput label="رقم الطابق" value={form.floor} onChangeText={set('floor')} placeholder="مثال: 2" keyboardType="number-pad" required icon="layers-outline" error={errors.floor} />
         <FormInput label="المساحة (م²)" value={form.area} onChangeText={set('area')} placeholder="مثال: 120" keyboardType="decimal-pad" required icon="resize-outline" error={errors.area} />
-        <FormInput label="الإيجار الشهري (﷼)" value={form.monthlyRent} onChangeText={set('monthlyRent')} placeholder="مثال: 5000" keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
+        <FormInput label="الإيجار الشهري (ر.س)" value={form.monthlyRent} onChangeText={set('monthlyRent')} placeholder="مثال: 5000" keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
         <FormInput label="الوصف (اختياري)" value={form.description} onChangeText={set('description')} placeholder="وصف الوحدة..." multiline numberOfLines={3} icon="document-text-outline" />
 
         {/* Features */}

@@ -1,16 +1,21 @@
 import React from 'react';
+import { StyleProp, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 interface Props {
   size?: number;
   color?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
-// Official Saudi Riyal symbol from SAMA (sama.gov.sa)
-export function RiyalSymbol({ size = 16, color = '#1B4F72' }: Props) {
-  const height = size * (1256.39 / 1124.14);
+export default function SARSymbol({ size = 16, color = '#231f20', style }: Props) {
   return (
-    <Svg width={size} height={height} viewBox="0 0 1124.14 1256.39">
+    <Svg
+      viewBox="0 0 1124.14 1256.39"
+      width={size}
+      height={size * (1256.39 / 1124.14)}
+      style={style}
+    >
       <Path
         d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"
         fill={color}

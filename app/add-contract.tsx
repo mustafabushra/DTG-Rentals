@@ -86,7 +86,7 @@ export default function AddContractScreen() {
         <FormSelect label="المستأجر" value={form.tenantId} options={tenantOptions} onSelect={set('tenantId')} required placeholder="اختر المستأجر..." error={errors.tenantId} />
         <FormDatePicker label="تاريخ البداية" value={form.startDate} onChange={set('startDate')} required error={errors.startDate} />
         <FormDatePicker label="تاريخ النهاية" value={form.endDate} onChange={set('endDate')} required error={errors.endDate} minDate={form.startDate} />
-        <FormInput label="القيمة السنوية (﷼)" value={form.annualValue} onChangeText={set('annualValue')} placeholder="مثال: 60000" keyboardType="number-pad" required icon="cash-outline" error={errors.annualValue} />
+        <FormInput label="القيمة السنوية (ر.س)" value={form.annualValue} onChangeText={set('annualValue')} placeholder="مثال: 60000" keyboardType="number-pad" required icon="cash-outline" error={errors.annualValue} />
         <FormSelect label="عدد الأقساط" value={form.installmentsCount} options={installmentOptions} onSelect={set('installmentsCount')} required placeholder="اختر عدد الأقساط..." error={errors.installmentsCount} />
         <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} placeholder="أي ملاحظات إضافية..." multiline numberOfLines={3} icon="document-text-outline" />
       </ScrollView></FormContainer>

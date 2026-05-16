@@ -728,8 +728,8 @@ export const getUnitTypeLabel = (type: UnitType): string => {
 };
 
 export const formatCurrency = (amount: number | null | undefined): string => {
-  if (amount == null || isNaN(amount as number)) return '0 ﷼';
-  return `${amount.toLocaleString('en-US')} ﷼`;
+  if (amount == null || isNaN(amount as number)) return '0';
+  return amount.toLocaleString('en-US');
 };
 
 const ARABIC_MONTHS_LONG = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',

@@ -75,7 +75,7 @@ export const NotificationService = {
       .map(p => NotificationService.create({
         type:        'payment_due',
         title:       'دفعة متأخرة',
-        body:        `دفعة بقيمة ${p.amount.toLocaleString('en-US')} ﷼ متأخرة منذ ${p.dueDate}`,
+        body:        `دفعة بقيمة ${p.amount.toLocaleString('en-US')} ر.س متأخرة منذ ${p.dueDate}`,
         entityType:  'payment',
         entityId:    p.id,
       }));

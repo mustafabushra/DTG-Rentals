@@ -15,7 +15,7 @@ import { useAppTheme } from '../hooks/useAppTheme';
 type Tab = 'modules' | 'permissions' | 'general';
 
 const CURRENCY_OPTIONS = [
-  { value: 'SAR', label: 'ريال سعودي', symbol: '﷼' },
+  { value: 'SAR', label: 'ريال سعودي', symbol: 'ر.س' },
   { value: 'AED', label: 'درهم إماراتي', symbol: 'د.إ' },
   { value: 'USD', label: 'دولار أمريكي', symbol: '$' },
   { value: 'EUR', label: 'يورو', symbol: '€' },

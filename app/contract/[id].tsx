@@ -11,7 +11,8 @@ import { useDelete } from '../../hooks/useDelete';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { AttachmentPanel } from '../../components/features/AttachmentPanel';
-import { formatCurrency, formatDate } from '../../data/mockData';
+import { formatDate } from '../../data/mockData';
+import { CurrencyText } from '../../components/ui/CurrencyText';
 import { isAdminRole } from '../../utils/roleUtils';
 import { useAppTheme } from '../../hooks/useAppTheme';
 
@@ -269,15 +270,18 @@ export default function ContractDetailScreen() {
         {/* KPI Row */}
         <View style={[styles.kpiRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {[
-            { label: 'القيمة السنوية', value: formatCurrency(contract.annualValue), color: colors.primary },
-            { label: 'المدة', value: `${stats.months} شهر`, color: colors.text },
-            { label: 'الأقساط المدفوعة', value: `${stats.paid}/${contract.installmentsCount}`, color: colors.success },
-            { label: 'المتبقي', value: formatCurrency(stats.remaining), color: stats.remaining > 0 ? colors.warning : colors.success },
+            { label: 'القيمة السنوية', amount: contract.annualValue, color: colors.primary },
+            { label: 'المدة', text: `${stats.months} شهر`, color: colors.text },
+            { label: 'الأقساط المدفوعة', text: `${stats.paid}/${contract.installmentsCount}`, color: colors.success },
+            { label: 'المتبقي', amount: stats.remaining, color: stats.remaining > 0 ? colors.warning : colors.success },
           ].map((kpi, i) => (
             <React.Fragment key={kpi.label}>
               {i > 0 && <View style={[styles.div, { backgroundColor: colors.border }]} />}
               <View style={styles.kpi}>
-                <Text style={[styles.kpiVal, { color: kpi.color }]} numberOfLines={1}>{kpi.value}</Text>
+                {'amount' in kpi
+                  ? <CurrencyText amount={kpi.amount} style={[styles.kpiVal, { color: kpi.color }]} />
+                  : <Text style={[styles.kpiVal, { color: kpi.color }]} numberOfLines={1}>{kpi.text}</Text>
+                }
                 <Text style={[styles.kpiLbl, { color: colors.textMuted }]}>{kpi.label}</Text>
               </View>
             </React.Fragment>
@@ -301,7 +305,7 @@ export default function ContractDetailScreen() {
               <View style={styles.installmentRight}>
                 <StatusBadge status={p.status} size="sm" />
                 <View>
-                  <Text style={[styles.installmentAmount, { color: colors.text }]}>{formatCurrency(p.amount)}</Text>
+                  <CurrencyText amount={p.amount} style={[styles.installmentAmount, { color: colors.text }]} />
                   <Text style={[styles.installmentDate, { color: colors.textMuted }]}>
                     {p.paidDate ? `مدفوع: ${formatDate(p.paidDate)}` : `استحقاق: ${formatDate(p.dueDate)}`}
                   </Text>

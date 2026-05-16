@@ -11,7 +11,8 @@ import { SearchBar } from '../components/ui/SearchBar';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ListSkeleton } from '../components/ui/Skeleton';
 import { StatusBadge } from '../components/ui/StatusBadge';
-import { formatCurrency, formatDate } from '../data/mockData';
+import { formatDate } from '../data/mockData';
+import { CurrencyText } from '../components/ui/CurrencyText';
 import type { PaymentStatus } from '../data/mockData';
 import { useAppTheme } from '../hooks/useAppTheme';
 
@@ -89,9 +90,7 @@ function LedgerRowItem({ row, colors }: { row: LedgerRow; colors: any }) {
         </View>
       </View>
       <View style={styles.rowRight}>
-        <Text style={[styles.rowAmount, { color: statusColor }]}>
-          {formatCurrency(row.amount)}
-        </Text>
+        <CurrencyText amount={row.amount} style={[styles.rowAmount, { color: statusColor }]} />
         <Text style={[styles.statusLabel, { color: statusColor }]}>
           {STATUS_LABELS[row.status]}
         </Text>
@@ -149,22 +148,22 @@ function TenantLedgerCard({ ledger, colors }: { ledger: TenantLedger; colors: an
       {/* Financial Summary */}
       <View style={[styles.financialSummary, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
         <View style={styles.finItem}>
-          <Text style={[styles.finValue, { color: colors.success }]}>{formatCurrency(ledger.paid)}</Text>
+          <CurrencyText amount={ledger.paid} style={[styles.finValue, { color: colors.success }]} />
           <Text style={[styles.finLabel, { color: colors.textMuted }]}>محصّل</Text>
         </View>
         <View style={[styles.finDiv, { backgroundColor: colors.border }]} />
         <View style={styles.finItem}>
-          <Text style={[styles.finValue, { color: colors.warning }]}>{formatCurrency(ledger.pending)}</Text>
+          <CurrencyText amount={ledger.pending} style={[styles.finValue, { color: colors.warning }]} />
           <Text style={[styles.finLabel, { color: colors.textMuted }]}>معلق</Text>
         </View>
         <View style={[styles.finDiv, { backgroundColor: colors.border }]} />
         <View style={styles.finItem}>
-          <Text style={[styles.finValue, { color: colors.danger }]}>{formatCurrency(ledger.overdue)}</Text>
+          <CurrencyText amount={ledger.overdue} style={[styles.finValue, { color: colors.danger }]} />
           <Text style={[styles.finLabel, { color: colors.textMuted }]}>متأخر</Text>
         </View>
         <View style={[styles.finDiv, { backgroundColor: colors.border }]} />
         <View style={styles.finItem}>
-          <Text style={[styles.finValue, { color: colors.text }]}>{formatCurrency(ledger.totalValue)}</Text>
+          <CurrencyText amount={ledger.totalValue} style={[styles.finValue, { color: colors.text }]} />
           <Text style={[styles.finLabel, { color: colors.textMuted }]}>الإجمالي</Text>
         </View>
       </View>
@@ -407,7 +406,7 @@ export default function LedgerScreen() {
         ].map((item, i, arr) => (
           <React.Fragment key={item.label}>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryValue, { color: item.color }]}>{formatCurrency(item.value)}</Text>
+              <CurrencyText amount={item.value} style={[styles.summaryValue, { color: item.color }]} />
               <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{item.label}</Text>
             </View>
             {i < arr.length - 1 && <View style={[styles.summaryDiv, { backgroundColor: colors.border }]} />}

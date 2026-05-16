@@ -12,7 +12,8 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { AttachmentPanel } from '../../components/features/AttachmentPanel';
 import { ConfirmModal } from '../../components/ui/Modal';
-import { formatCurrency, formatDate } from '../../data/mockData';
+import { formatDate } from '../../data/mockData';
+import { CurrencyText } from '../../components/ui/CurrencyText';
 import { useAppTheme } from '../../hooks/useAppTheme';
 
 const methodLabels: Record<string, string> = {
@@ -49,7 +50,7 @@ function buildReceiptHTML(p: {
   notes?: string;
   logoUrl: string;
 }) {
-  const amountFormatted = formatCurrency(p.amount);
+  const amountFormatted = p.amount?.toLocaleString('en-US') ?? '0';
   const paidDateFmt     = formatDate(p.paidDate);
   const dueDateFmt      = formatDate(p.dueDate);
   const methodLabel     = methodLabels[p.method] ?? p.method;
@@ -315,7 +316,7 @@ export default function PaymentDetailScreen() {
             <Ionicons name="receipt-outline" size={40} color={colors.primary} />
             <Text style={[styles.receiptNumber, { color: colors.textSecondary }]}>{payment.receiptNumber ?? '—'}</Text>
           </View>
-          <Text style={[styles.amount, { color: amountColor }]}>{formatCurrency(payment.amount)}</Text>
+          <CurrencyText amount={payment.amount} style={[styles.amount, { color: amountColor }]} />
           <StatusBadge status={payment.status} />
           <View style={[styles.installBadge, { backgroundColor: colors.accent }]}>
             <Text style={[styles.installText, { color: colors.primary }]}>
@@ -339,7 +340,7 @@ export default function PaymentDetailScreen() {
             </View>
             <View style={[styles.progressDiv, { backgroundColor: colors.border }]} />
             <View style={styles.progressStat}>
-              <Text style={[styles.progressVal, { color: colors.primary }]}>{formatCurrency(paidTotal)}</Text>
+              <CurrencyText amount={paidTotal} style={[styles.progressVal, { color: colors.primary }]} />
               <Text style={[styles.progressLbl, { color: colors.textMuted }]}>محصّل</Text>
             </View>
           </View>

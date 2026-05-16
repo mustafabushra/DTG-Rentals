@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
 import { useApp } from '../context/AppProvider';
 import { AppHeader } from '../components/ui/AppHeader';
-import { formatCurrency } from '../data/mockData';
+import { CurrencyText } from '../components/ui/CurrencyText';
 import { useAppTheme } from '../hooks/useAppTheme';
 
 type Period = '1m' | '3m' | '6m' | '1y';
@@ -168,16 +168,19 @@ export default function FinancialReportsScreen() {
         {/* KPI Row — 4 cols desktop, 2 cols mobile */}
         <View style={[styles.kpiGrid, isDesktop && styles.kpiGridDesktop]}>
           {[
-            { label: 'الإيرادات المتوقعة', value: formatCurrency(stats.totalRevenue), color: colors.primary, icon: 'trending-up-outline' },
-            { label: 'المحصّلة', value: formatCurrency(stats.collected), color: colors.success, icon: 'checkmark-circle-outline' },
-            { label: 'المتأخرة', value: formatCurrency(stats.overdue), color: colors.danger, icon: 'alert-circle-outline' },
-            { label: 'نسبة التحصيل', value: `${stats.collectionRate}%`, color: colors.secondary, icon: 'pie-chart-outline' },
+            { label: 'الإيرادات المتوقعة', amount: stats.totalRevenue, color: colors.primary, icon: 'trending-up-outline' },
+            { label: 'المحصّلة', amount: stats.collected, color: colors.success, icon: 'checkmark-circle-outline' },
+            { label: 'المتأخرة', amount: stats.overdue, color: colors.danger, icon: 'alert-circle-outline' },
+            { label: 'نسبة التحصيل', text: `${stats.collectionRate}%`, color: colors.secondary, icon: 'pie-chart-outline' },
           ].map(kpi => (
             <View key={kpi.label} style={[styles.kpiCard, isDesktop && styles.kpiCardDesktop, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.kpiIcon, { backgroundColor: `${kpi.color}20` }]}>
                 <Ionicons name={kpi.icon as any} size={18} color={kpi.color} />
               </View>
-              <Text style={[styles.kpiVal, { color: kpi.color }]}>{kpi.value}</Text>
+              {'amount' in kpi
+                ? <CurrencyText amount={kpi.amount} style={[styles.kpiVal, { color: kpi.color }]} />
+                : <Text style={[styles.kpiVal, { color: kpi.color }]}>{kpi.text}</Text>
+              }
               <Text style={[styles.kpiLbl, { color: colors.textMuted }]}>{kpi.label}</Text>
             </View>
           ))}
@@ -234,7 +237,7 @@ export default function FinancialReportsScreen() {
                     </View>
                     {stats.byProperty.map((p, i) => (
                       <View key={p.name} style={[styles.tableRow, i < stats.byProperty.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-                        <Text style={[styles.tdValue, { color: colors.success }]}>{formatCurrency(p.revenue)}</Text>
+                        <CurrencyText amount={p.revenue} style={[styles.tdValue, { color: colors.success }]} />
                         <Text style={[styles.tdName, { color: colors.text }]} numberOfLines={1}>{p.name}</Text>
                       </View>
                     ))}
@@ -266,8 +269,8 @@ export default function FinancialReportsScreen() {
                     </View>
                   </View>
                   <View style={styles.ownerAmounts}>
-                    <Text style={[styles.ownerRevenue, { color: colors.primary }]}>{formatCurrency(o.revenue)}</Text>
-                    <Text style={[styles.ownerCollected, { color: colors.success }]}>محصّل: {formatCurrency(o.collected)}</Text>
+                    <CurrencyText amount={o.revenue} style={[styles.ownerRevenue, { color: colors.primary }]} />
+                    <CurrencyText amount={o.collected} style={[styles.ownerCollected, { color: colors.success }]} />
                     <Text style={[styles.ownerRate, { color: rate >= 80 ? colors.success : rate >= 50 ? colors.warning : colors.danger }]}>{rate}%</Text>
                   </View>
                 </View>
@@ -281,7 +284,7 @@ export default function FinancialReportsScreen() {
           <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.overdueSummary}>
               <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
-              <Text style={[styles.overdueTotal, { color: colors.danger }]}>{formatCurrency(stats.overdue)}</Text>
+              <CurrencyText amount={stats.overdue} style={[styles.overdueTotal, { color: colors.danger }]} />
               <Text style={[styles.overdueSub, { color: colors.textMuted }]}>{stats.overdueList.length} دفعة متأخرة</Text>
             </View>
             {stats.overdueList.length === 0 ? (
@@ -296,7 +299,7 @@ export default function FinancialReportsScreen() {
                   <Text style={[styles.overdueLocation, { color: colors.textMuted }]}>{o.propertyName} — وحدة {o.unitNum}</Text>
                   <Text style={[styles.overdueDate, { color: colors.danger }]}>استحقاق: {o.dueDate}</Text>
                 </View>
-                <Text style={[styles.overdueAmount, { color: colors.danger }]}>{formatCurrency(o.amount)}</Text>
+                <CurrencyText amount={o.amount} style={[styles.overdueAmount, { color: colors.danger }]} />
               </View>
             ))}
           </View>
