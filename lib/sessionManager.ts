@@ -4,7 +4,7 @@
  * idle timeout for security (sensitive financial data).
  */
 import { AppState, AppStateStatus, Platform } from 'react-native';
-import { auth } from './firebase';
+import { getFirebaseAuth } from './firebase';
 import { secureStorage } from './secureStorage';
 import { logger } from './logger';
 
@@ -36,13 +36,13 @@ export function initSessionManager(onExpired: () => void) {
     if (state === 'active') {
       resetIdleTimer();
       // Verify Firebase token is still valid on resume
-      auth?.currentUser?.getIdToken(true).catch(() => {
+      getFirebaseAuth()?.currentUser?.getIdToken(true).catch(() => {
         if (!active) return;
         logger.warn('SessionManager', 'Token refresh failed on resume');
         onExpired();
       });
     } else if (state === 'background' || state === 'inactive') {
-      const uid = auth?.currentUser?.uid;
+      const uid = getFirebaseAuth()?.currentUser?.uid;
       if (uid) secureStorage.set(SESSION_KEY, uid).catch(() => {});
     }
   });
@@ -57,7 +57,7 @@ export function initSessionManager(onExpired: () => void) {
 }
 
 export function touchSession() {
-  if (auth?.currentUser) resetIdleTimer();
+  if (getFirebaseAuth()?.currentUser) resetIdleTimer();
 }
 
 // ── Firebase error code → Arabic message ────────────────────────────────────

@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { initializeAuth, getAuth, browserLocalPersistence, Auth } from 'firebase/auth';
+import { initializeAuth, getAuth as fbGetAuth, browserLocalPersistence, Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { Platform } from 'react-native';
@@ -13,34 +13,34 @@ const firebaseConfig = {
   appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID!,
 };
 
-// During `expo export` static rendering runs in Node.js — Firebase Auth cannot
-// initialize there (no DOM, no persistence). Skip auth in that context.
-const isSSR = typeof window === 'undefined';
-
 const app = getApps().find(a => a.name === '[DEFAULT]') ?? initializeApp(firebaseConfig);
 
-function createAuth(): Auth | null {
-  if (isSSR) return null;
-  if (getApps().length > 1) return getAuth(app);
+let _auth: Auth | null = null;
+
+// Returns Auth lazily — safe to call during SSR (returns null) and in browser (returns real instance).
+export function getFirebaseAuth(): Auth | null {
+  if (typeof window === 'undefined') return null;
+  if (_auth) return _auth;
   try {
-    if (Platform.OS === 'web') {
-      return initializeAuth(app, { persistence: browserLocalPersistence });
-    }
-    return getAuth(app);
+    _auth = Platform.OS === 'web'
+      ? initializeAuth(app, { persistence: browserLocalPersistence })
+      : fbGetAuth(app);
   } catch {
-    return getAuth(app);
+    _auth = fbGetAuth(app);
   }
+  return _auth;
 }
 
-export const auth    = createAuth();
+// Eagerly resolved at module load — null during SSR build, real Auth in browser.
+export const auth    = getFirebaseAuth();
 export const db      = getFirestore(app);
 export const storage = getStorage(app);
 export default app;
 
 export function getSecondaryAuth(): Auth | null {
-  if (isSSR) return null;
+  if (typeof window === 'undefined') return null;
   const SECONDARY = 'secondary-user-creation';
   const existing  = getApps().find(a => a.name === SECONDARY);
   const secondApp = existing ?? initializeApp(firebaseConfig, SECONDARY);
-  return getAuth(secondApp);
+  return fbGetAuth(secondApp);
 }
