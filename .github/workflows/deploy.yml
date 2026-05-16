@@ -61,7 +61,7 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
-          projectId: dtg-rentals-staging-5304a
+          projectId: dtg-rentals-staging
           channelId: staging
           target: staging
 
