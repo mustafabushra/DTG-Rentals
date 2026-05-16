@@ -89,7 +89,9 @@ export const GENERAL_FILTERS: FilterOption[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function FilterBar({ options, value, onChange, containerStyle }: FilterBarProps) {
-  const { colors } = useAppTheme();
+  const { colors, scheme } = useAppTheme();
+  // في الـ dark mode الخلفية النشطة ذهبية فاتحة → نص داكن. في light mode الخلفية داكنة → نص أبيض
+  const activeTextColor = scheme === 'dark' ? '#0F1923' : '#FFFFFF';
 
   return (
     <ScrollView
@@ -114,7 +116,7 @@ export function FilterBar({ options, value, onChange, containerStyle }: FilterBa
             activeOpacity={0.8}
           >
             <Text
-              style={[styles.pillText, { color: isActive ? '#FFF' : colors.textSecondary }]}
+              style={[styles.pillText, { color: isActive ? activeTextColor : colors.textSecondary }]}
               numberOfLines={1}
             >
               {opt.label}
