@@ -9,14 +9,14 @@
           "dtg-rentals"
         ],
         "staging": [
-          "dtg-rentals-staging"
+          "dtg-rentals-staging-5304a"
         ]
       }
     },
-    "dtg-rentals-staging": {
+    "dtg-rentals-staging-5304a": {
       "hosting": {
         "staging": [
-          "dtg-rentals-staging"
+          "dtg-rentals-staging-5304a"
         ]
       }
     }
