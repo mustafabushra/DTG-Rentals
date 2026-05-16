@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
@@ -11,22 +11,20 @@ import {
   ModuleFlags, RolePermissions, DEFAULT_SYSTEM_SETTINGS, DEFAULT_PERMISSIONS,
 } from '../constants/SystemDefaults';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { CURRENCIES, detectCurrencyFromLocation, getCurrency } from '../utils/currency';
 
 type Tab = 'modules' | 'permissions' | 'general';
 
-const CURRENCY_OPTIONS = [
-  { value: 'SAR', label: 'ريال سعودي', symbol: 'ر.س' },
-  { value: 'AED', label: 'درهم إماراتي', symbol: 'د.إ' },
-  { value: 'USD', label: 'دولار أمريكي', symbol: '$' },
-  { value: 'EUR', label: 'يورو', symbol: '€' },
-];
+const CURRENCY_OPTIONS = CURRENCIES.map(c => ({ value: c.code, label: c.label, symbol: c.symbol }));
 
 export default function SystemSettingsScreen() {
   const { colors } = useAppTheme();
-  const { systemSettings, updateSystemSettings, isAdmin } = useApp();
+  const { systemSettings, updateSystemSettings, isAdmin, contracts, units, properties, updateContract, updateProperty } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('modules');
   const [saving, setSaving] = useState(false);
   const [savedKey, setSavedKey] = useState<string | null>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateResult, setMigrateResult] = useState<{ updated: number; preview: { id: string; name: string; currency: string }[] } | null>(null);
 
   if (!isAdmin) {
     return (
@@ -80,6 +78,69 @@ export default function SystemSettingsScreen() {
     setSaving(false);
     showSaved('reset');
   }, [updateSystemSettings]);
+
+  // ── منطق ترحيل العملة ─────────────────────────────────────────────────────
+  const migrationPreview = useMemo(() => {
+    return contracts
+      .filter(c => c.status === 'active')
+      .map(c => {
+        const unit = units.find(u => u.id === c.unitId);
+        const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
+        const detectedCurrency = property
+          ? detectCurrencyFromLocation(property.location)
+          : (systemSettings.currency ?? 'SAR');
+        const currentCurrency = c.currency ?? property?.currency ?? systemSettings.currency ?? 'SAR';
+        const willChange = currentCurrency !== detectedCurrency;
+        return {
+          contractId:   c.id,
+          contractNum:  c.contractNumber,
+          propertyName: property?.name ?? '—',
+          location:     property?.location ?? '—',
+          propertyId:   property?.id,
+          currentCurrency,
+          detectedCurrency,
+          willChange,
+        };
+      })
+      .filter(r => r.willChange);
+  }, [contracts, units, properties, systemSettings.currency]);
+
+  const handleAutoMigrate = useCallback(() => {
+    if (migrationPreview.length === 0) {
+      Alert.alert('لا توجد تغييرات', 'جميع العقود النشطة لديها عملة صحيحة بالفعل.');
+      return;
+    }
+    Alert.alert(
+      'تأكيد الترحيل التلقائي',
+      `سيتم تحديث عملة ${migrationPreview.length} عقد بناءً على موقع العقار. هل تريد المتابعة؟`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'تطبيق',
+          style: 'default',
+          onPress: async () => {
+            setMigrating(true);
+            // تحديث العقود
+            for (const row of migrationPreview) {
+              updateContract(row.contractId, { currency: row.detectedCurrency });
+            }
+            // تحديث العقارات أيضاً
+            const propertyIds = [...new Set(migrationPreview.map(r => r.propertyId).filter(Boolean))];
+            for (const pid of propertyIds) {
+              if (!pid) continue;
+              const prop = properties.find(p => p.id === pid);
+              if (prop) {
+                const detected = detectCurrencyFromLocation(prop.location);
+                updateProperty(pid, { currency: detected });
+              }
+            }
+            setMigrating(false);
+            Alert.alert('تم الترحيل', `تم تحديث ${migrationPreview.length} عقد بنجاح.`);
+          },
+        },
+      ]
+    );
+  }, [migrationPreview, updateContract, updateProperty, properties]);
 
   const modules = systemSettings.modules;
   const permissions = systemSettings.permissions;
@@ -355,6 +416,97 @@ export default function SystemSettingsScreen() {
               })}
             </View>
 
+            {/* ── ترحيل عملة العقود ── */}
+            <Text style={[styles.sectionTitle, { color: colors.textMuted, backgroundColor: colors.surface }]}>
+              ترحيل عملة العقود
+            </Text>
+            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {/* Header row */}
+              <View style={[styles.migrateHeader, { borderBottomColor: colors.border }]}>
+                <View style={[styles.moduleIcon, {
+                  backgroundColor: migrationPreview.length > 0 ? `${colors.warning}18` : `${colors.success}18`,
+                }]}>
+                  <Ionicons
+                    name={migrationPreview.length > 0 ? 'swap-horizontal-outline' : 'checkmark-circle-outline'}
+                    size={20}
+                    color={migrationPreview.length > 0 ? colors.warning : colors.success}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.moduleLabel, { color: colors.text }]}>تحديث تلقائي حسب موقع العقار</Text>
+                  <Text style={[styles.moduleDesc, { color: colors.textMuted }]}>
+                    {migrationPreview.length > 0
+                      ? `${migrationPreview.length} عقد نشط يحتاج تحديث العملة`
+                      : 'جميع العقود النشطة لديها عملة صحيحة'}
+                  </Text>
+                </View>
+                {migrationPreview.length > 0 && (
+                  <View style={[styles.migrateBadge, { backgroundColor: colors.warning }]}>
+                    <Text style={styles.migrateBadgeText}>{migrationPreview.length}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Preview list */}
+              {migrationPreview.length > 0 && (
+                <View style={styles.previewList}>
+                  {migrationPreview.map((row, i) => (
+                    <View
+                      key={row.contractId}
+                      style={[
+                        styles.previewRow,
+                        { borderBottomColor: colors.border },
+                        i < migrationPreview.length - 1 && styles.rowBorder,
+                      ]}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.previewContract, { color: colors.text }]}>{row.contractNum}</Text>
+                        <Text style={[styles.previewProperty, { color: colors.textMuted }]} numberOfLines={1}>
+                          {row.propertyName}
+                        </Text>
+                      </View>
+                      <View style={styles.previewCurrencies}>
+                        <Text style={[styles.currencyChip, { backgroundColor: `${colors.danger}18`, color: colors.danger }]}>
+                          {row.currentCurrency}
+                        </Text>
+                        <Ionicons name="arrow-back-outline" size={12} color={colors.textMuted} />
+                        <Text style={[styles.currencyChip, { backgroundColor: `${colors.success}18`, color: colors.success }]}>
+                          {row.detectedCurrency}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Action button */}
+              <TouchableOpacity
+                style={[
+                  styles.migrateBtn,
+                  {
+                    backgroundColor: migrationPreview.length > 0
+                      ? (migrating ? colors.border : colors.warning)
+                      : `${colors.success}18`,
+                    borderColor: migrationPreview.length > 0 ? colors.warning : colors.success,
+                  },
+                ]}
+                onPress={handleAutoMigrate}
+                disabled={migrating}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={migrating ? 'hourglass-outline' : migrationPreview.length > 0 ? 'flash-outline' : 'checkmark-circle-outline'}
+                  size={16}
+                  color={migrationPreview.length > 0 ? '#FFF' : colors.success}
+                />
+                <Text style={[styles.migrateBtnText, {
+                  color: migrationPreview.length > 0 ? '#FFF' : colors.success,
+                }]}>
+                  {migrating ? 'جارٍ الترحيل...' : migrationPreview.length > 0 ? 'تطبيق التحديث التلقائي' : 'لا توجد تغييرات مطلوبة'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* System info card */}
             <Text style={[styles.sectionTitle, { color: colors.textMuted, backgroundColor: colors.surface }]}>
               معلومات النظام
@@ -488,6 +640,36 @@ const styles = StyleSheet.create({
   isolationText: { fontSize: Theme.fontSize.xs, flex: 1, textAlign: 'right' as const },
   isolationDivider: { height: 1, marginVertical: 8 },
   isolationHint: { fontSize: Theme.fontSize.xs, textAlign: 'right' as const, fontStyle: 'italic' as const },
+
+  // Migration
+  migrateHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: Theme.spacing.md, paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  migrateBadge: {
+    minWidth: 24, height: 24, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6,
+  },
+  migrateBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  previewList: { paddingHorizontal: Theme.spacing.md },
+  previewRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, gap: 8,
+  },
+  previewContract: { fontSize: Theme.fontSize.sm, fontWeight: '600', textAlign: 'right' },
+  previewProperty: { fontSize: Theme.fontSize.xs, marginTop: 1, textAlign: 'right' },
+  previewCurrencies: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  currencyChip: {
+    fontSize: 10, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 6, overflow: 'hidden',
+  },
+  migrateBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    margin: Theme.spacing.md, paddingVertical: 13,
+    borderRadius: Theme.radius.lg, borderWidth: 1,
+  },
+  migrateBtnText: { fontSize: Theme.fontSize.base, fontWeight: '600' },
 
   resetBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,

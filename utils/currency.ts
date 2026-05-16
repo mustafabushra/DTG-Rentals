@@ -41,3 +41,21 @@ export const CURRENCY_OPTIONS = CURRENCIES.map(c => ({
   value: c.code,
   label: `${c.label} (${c.symbol})`,
 }));
+
+/** كشف العملة تلقائياً من نص الموقع/العنوان */
+export function detectCurrencyFromLocation(location?: string | null): CurrencyCode {
+  if (!location) return 'SAR';
+  const t = location.toLowerCase();
+
+  if (/دبي|أبوظبي|ابوظبي|الشارقة|شارقة|عجمان|الفجيرة|رأس الخيمة|أم القيوين|إمارات|امارات|uae|dubai|abu dhabi|sharjah/.test(t)) return 'AED';
+  if (/قاهرة|إسكندرية|اسكندرية|مصر|egypt|cairo|alexandria|الجيزة|جيزة|أسوان|اسوان/.test(t)) return 'EGP';
+  if (/كويت|kuwait/.test(t)) return 'KWD';
+  if (/بحرين|bahrain|المنامة|منامة/.test(t)) return 'BHD';
+  if (/قطر|الدوحة|دوحة|qatar|doha/.test(t)) return 'QAR';
+  if (/عُمان|عمان|مسقط|oman|muscat/.test(t)) return 'OMR';
+  if (/لندن|london|uk|britain|بريطانيا/.test(t)) return 'GBP';
+  if (/أمريكا|امريكا|نيويورك|usa|united states/.test(t)) return 'USD';
+  if (/أوروبا|اوروبا|فرنسا|ألمانيا|europe|paris|berlin/.test(t)) return 'EUR';
+
+  return 'SAR';
+}
