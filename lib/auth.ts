@@ -34,6 +34,7 @@ export async function registerUser(name: string, email: string, password: string
     throw new Error(`تجاوزت الحد المسموح. حاول بعد ${formatRetryAfter(limit.retryAfterMs)}`);
   }
 
+  if (!auth) throw new Error('Auth not available');
   try {
     const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     await updateProfile(credential.user, { displayName: cleanName });
@@ -69,6 +70,7 @@ export async function loginUser(email: string, password: string) {
     throw new Error(`تم تجاوز عدد المحاولات. حاول بعد ${formatRetryAfter(limit.retryAfterMs)}`);
   }
 
+  if (!auth) throw new Error('Auth not available');
   try {
     const credential = await signInWithEmailAndPassword(auth, cleanEmail, password);
     recordSuccess('login', cleanEmail);
@@ -81,6 +83,7 @@ export async function loginUser(email: string, password: string) {
 
 // ─── تسجيل الخروج ────────────────────────────────────────────────────────────
 export async function logoutUser() {
+  if (!auth) return;
   await signOut(auth);
 }
 
@@ -103,6 +106,7 @@ export async function resetPassword(email: string) {
     throw new Error(`حاول بعد ${formatRetryAfter(limit.retryAfterMs)}`);
   }
 
+  if (!auth) throw new Error('Auth not available');
   try {
     await sendPasswordResetEmail(auth, cleanEmail);
     recordSuccess('passwordReset', cleanEmail);
@@ -114,6 +118,7 @@ export async function resetPassword(email: string) {
 
 // ─── تغيير كلمة المرور ───────────────────────────────────────────────────────
 export async function changePassword(currentPassword: string, newPassword: string) {
+  if (!auth) throw new Error('Auth not available');
   const user = auth.currentUser;
   if (!user || !user.email) throw new Error('no-user');
 
@@ -144,7 +149,7 @@ export async function updateUserProfile(uid: string, data: {
   if (data.theme !== undefined) clean.theme = data.theme;
   if (data.notificationPrefs !== undefined) clean.notificationPrefs = data.notificationPrefs;
 
-  const user = auth.currentUser;
+  const user = auth?.currentUser ?? null;
   if (user && clean.name) await updateProfile(user, { displayName: clean.name });
 
   const { setDoc } = await import('firebase/firestore');
@@ -153,5 +158,6 @@ export async function updateUserProfile(uid: string, data: {
 
 // ─── مراقبة حالة الدخول ──────────────────────────────────────────────────────
 export function onAuthChange(callback: (user: User | null) => void) {
+  if (!auth) return () => {};
   return onAuthStateChanged(auth, callback);
 }

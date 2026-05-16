@@ -36,13 +36,13 @@ export function initSessionManager(onExpired: () => void) {
     if (state === 'active') {
       resetIdleTimer();
       // Verify Firebase token is still valid on resume
-      auth.currentUser?.getIdToken(true).catch(() => {
+      auth?.currentUser?.getIdToken(true).catch(() => {
         if (!active) return;
         logger.warn('SessionManager', 'Token refresh failed on resume');
         onExpired();
       });
     } else if (state === 'background' || state === 'inactive') {
-      const uid = auth.currentUser?.uid;
+      const uid = auth?.currentUser?.uid;
       if (uid) secureStorage.set(SESSION_KEY, uid).catch(() => {});
     }
   });
@@ -57,7 +57,7 @@ export function initSessionManager(onExpired: () => void) {
 }
 
 export function touchSession() {
-  if (auth.currentUser) resetIdleTimer();
+  if (auth?.currentUser) resetIdleTimer();
 }
 
 // ── Firebase error code → Arabic message ────────────────────────────────────
