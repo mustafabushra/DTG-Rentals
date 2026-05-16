@@ -96,7 +96,7 @@ export default function TenantsScreen() {
                 <View style={styles.info}>
                   <View style={styles.nameRow}>
                     <StatusBadge status={isActive ? 'active' : 'former'} size="sm" />
-                    <Text style={[styles.name, { color: colors.text }]}>{tenant.name}</Text>
+                    <Text style={[styles.name, { color: colors.text }]} numberOfLines={2} ellipsizeMode="tail">{tenant.name}</Text>
                   </View>
                   <View style={styles.row}>
                     <Ionicons name="call-outline" size={13} color={colors.textSecondary} />

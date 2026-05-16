@@ -12,8 +12,8 @@
  *   • Identical spacing, font, padding across all modules
  *   • Stateless: receives state, dispatches changes up
  */
-import React from 'react';
-import { ScrollView, TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { ScrollView, TouchableOpacity, Text, StyleSheet, ViewStyle, Platform } from 'react-native';
 import { lightColors, darkColors, spacing, fontSize, fontWeight, radius } from '../../constants/DesignTokens';
 import { useAppTheme } from '../../hooks/useAppTheme';
 export interface FilterOption {
@@ -90,11 +90,20 @@ export const GENERAL_FILTERS: FilterOption[] = [
 
 export function FilterBar({ options, value, onChange, containerStyle }: FilterBarProps) {
   const { colors, scheme } = useAppTheme();
+  const scrollRef = useRef<ScrollView>(null);
   // في الـ dark mode الخلفية النشطة ذهبية فاتحة → نص داكن. في light mode الخلفية داكنة → نص أبيض
   const activeTextColor = scheme === 'dark' ? '#0F1923' : '#FFFFFF';
 
+  // على web RTL يبدأ الـ scroll من اليسار (الـ end) — نعيده لليمين (الـ start) بعد mount
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 0);
+    }
+  }, []);
+
   return (
     <ScrollView
+      ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
       style={styles.scroll}

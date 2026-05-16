@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert, Clipboard } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../../constants/Theme';
@@ -73,10 +73,11 @@ export default function TenantDetailScreen() {
             <TouchableOpacity
               style={styles.contactItem}
               onPress={() => tenant.email && Linking.openURL(`mailto:${tenant.email}`).catch(() => Alert.alert('خطأ', 'تعذّر فتح تطبيق البريد'))}
+              onLongPress={() => { if (tenant.email) { Clipboard.setString(tenant.email); Alert.alert('تم النسخ', tenant.email); } }}
               disabled={!tenant.email}
             >
               <Ionicons name="mail-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.contactValue, { color: colors.text }]} numberOfLines={1}>{tenant.email || '—'}</Text>
+              <Text style={[styles.contactValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{tenant.email || '—'}</Text>
               <Text style={[styles.contactLabel, { color: colors.textMuted }]}>البريد</Text>
             </TouchableOpacity>
           </View>
