@@ -1,0 +1,51 @@
+{
+  "name": "DTG Rentals",
+  "short_name": "DTG",
+  "description": "نظام إدارة العقارات والإيجارات",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "theme_color": "#021C36",
+  "background_color": "#021C36",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["business", "finance", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/assets/assets/images/icon.39a1b62defb82f9452ac85736b10ac99.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/assets/images/icon.39a1b62defb82f9452ac85736b10ac99.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "العقارات",
+      "short_name": "عقارات",
+      "url": "/properties",
+      "icons": [{ "src": "/assets/assets/images/icon.39a1b62defb82f9452ac85736b10ac99.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "العقود",
+      "short_name": "عقود",
+      "url": "/contracts",
+      "icons": [{ "src": "/assets/assets/images/icon.39a1b62defb82f9452ac85736b10ac99.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "الدفعات",
+      "short_name": "دفعات",
+      "url": "/payments",
+      "icons": [{ "src": "/assets/assets/images/icon.39a1b62defb82f9452ac85736b10ac99.png", "sizes": "96x96" }]
+    }
+  ],
+  "screenshots": []
+}

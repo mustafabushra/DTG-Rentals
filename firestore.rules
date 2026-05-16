@@ -1,0 +1,172 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Super admin — bypasses all rules ─────────────────────────────────────
+    function isSuperAdmin() {
+      return request.auth != null &&
+             request.auth.uid == 'z70x4OkpfZcOuYjCbihlOmYx5MB2';
+    }
+
+    // ── Helper functions ──────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userRole() {
+      return getUserData().role;
+    }
+
+    function isActive() {
+      return getUserData().status in ['active', 'pending'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && isActive() &&
+             userRole() in ['admin', 'مدير عام', 'مدير النظام'];
+    }
+
+    function canWrite() {
+      return isSignedIn() && isActive() &&
+             userRole() in ['admin', 'مدير عام', 'مدير النظام', 'manager', 'مدير'];
+    }
+
+    function canRead() {
+      return isSignedIn() && isActive();
+    }
+
+    function isOwnerRole() {
+      return isSignedIn() && isActive() &&
+             userRole() in ['owner', 'مالك'];
+    }
+
+    function ownerLinkedId() {
+      return getUserData().ownerId;
+    }
+
+    function isSameOrg(orgId) {
+      return getUserData().orgId == orgId;
+    }
+
+    function validString(val, maxLen) {
+      return val is string && val.size() > 0 && val.size() <= maxLen;
+    }
+
+    function validOptionalString(val, maxLen) {
+      return val == null || (val is string && val.size() <= maxLen);
+    }
+
+    function validPositiveInt(val, maxVal) {
+      return val is int && val > 0 && val <= maxVal;
+    }
+
+    // ── User profiles ─────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read:   if isSuperAdmin() || (isSignedIn() && (request.auth.uid == uid || isAdmin()));
+      allow create: if isSuperAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow update: if isSuperAdmin() || (isSignedIn() &&
+                       (request.auth.uid == uid || isAdmin()) &&
+                       !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['role', 'orgId', 'status']) || isAdmin());
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Org data (shared) ─────────────────────────────────────────────────────
+    match /orgs/{orgId}/{collection}/{docId} {
+
+      allow read: if isSuperAdmin() || (canRead() && isSameOrg(orgId));
+
+      allow create: if isSuperAdmin() || (isSameOrg(orgId) && (
+        canWrite() ||
+        (isOwnerRole() && collection == 'attachments' &&
+         request.resource.data.ownerContext == ownerLinkedId())
+      ) && validateDoc(collection, request.resource.data));
+
+      allow update: if isSuperAdmin() || (canWrite() && isSameOrg(orgId) &&
+                       validateDoc(collection, request.resource.data));
+
+      allow delete: if isSuperAdmin() || (isSameOrg(orgId) && (
+        isAdmin() ||
+        (isOwnerRole() && collection == 'attachments' &&
+         resource.data.ownerContext == ownerLinkedId())
+      ));
+    }
+
+    // ── سجل الإجراءات ────────────────────────────────────────────────────────
+    match /orgs/{orgId}/auditLogs/{logId} {
+      allow read:         if isSuperAdmin() || (isAdmin() && isSameOrg(orgId));
+      allow create:       if isSuperAdmin() || (canRead() && isSameOrg(orgId));
+      allow update,delete: if isSuperAdmin();
+    }
+
+    // ── managedUsers sub-collection ───────────────────────────────────────────
+    match /orgs/{orgId}/managedUsers/{uid} {
+      allow read:  if isSuperAdmin() || (canRead()  && isSameOrg(orgId));
+      allow write: if isSuperAdmin() || (isAdmin()  && isSameOrg(orgId));
+    }
+
+    // ── Per-document validation ───────────────────────────────────────────────
+    function validateDoc(col, data) {
+      return col == 'properties'  ? validateProperty(data)
+           : col == 'owners'      ? validateOwner(data)
+           : col == 'tenants'     ? validateTenant(data)
+           : col == 'contracts'   ? validateContract(data)
+           : col == 'units'       ? validateUnit(data)
+           : col == 'payments'    ? validatePayment(data)
+           : col == 'maintenance' ? validateMaintenance(data)
+           : true; // allow other collections without strict validation
+    }
+
+    function validateProperty(data) {
+      return validString(data.name, 200) &&
+             validOptionalString(data.location, 500) &&
+             validOptionalString(data.description, 1000);
+    }
+
+    function validateOwner(data) {
+      return validString(data.name, 200) &&
+             validString(data.phone, 20) &&
+             validOptionalString(data.email, 254) &&
+             validOptionalString(data.nationalId, 50) &&
+             validOptionalString(data.iban, 50);
+    }
+
+    function validateTenant(data) {
+      return validString(data.name, 200) &&
+             validString(data.phone, 20) &&
+             validOptionalString(data.email, 254) &&
+             validOptionalString(data.nationalId, 50) &&
+             validOptionalString(data.nationality, 50);
+    }
+
+    function validateContract(data) {
+      return validString(data.tenantId, 100) &&
+             validString(data.unitId, 100) &&
+             validString(data.startDate, 20) &&
+             validString(data.endDate, 20) &&
+             data.annualValue is number && data.annualValue > 0;
+    }
+
+    function validateUnit(data) {
+      return validString(data.propertyId, 100) &&
+             validString(data.number, 50);
+    }
+
+    function validatePayment(data) {
+      return validString(data.contractId, 100) &&
+             data.amount is number && data.amount > 0 &&
+             data.status in ['pending','paid','overdue','cancelled'];
+    }
+
+    function validateMaintenance(data) {
+      return validString(data.propertyId, 100) &&
+             validString(data.title, 200) &&
+             validOptionalString(data.priority, 50);
+    }
+  }
+}

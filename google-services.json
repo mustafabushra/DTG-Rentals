@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "644083087896",
+    "project_id": "dtg-rentals",
+    "storage_bucket": "dtg-rentals.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:644083087896:android:04cc279c91ad91b0b0616d",
+        "android_client_info": {
+          "package_name": "com.dtg.rentals"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsFqVcfqPeRgHXrLTT_V4z0XrR0pGR2qo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

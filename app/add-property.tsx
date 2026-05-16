@@ -1,0 +1,109 @@
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Theme } from '../constants/Theme';
+import { useApp } from '../context/AppProvider';
+import { FormInput } from '../components/forms/FormInput';
+import { FormSelect } from '../components/forms/FormSelect';
+import { Property, PropertyType } from '../data/mockData';
+import { FormContainer } from '../components/ui/FormContainer';
+import { sanitizeText, sanitizeDescription, sanitizeNumber } from '../utils/sanitize';
+import { validateRequired, validatePositiveNumber } from '../utils/validation';
+import { useAppTheme } from '../hooks/useAppTheme';
+
+export default function AddPropertyScreen() {
+  const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
+  const { owners, addProperty } = useApp();
+
+  const [form, setForm] = useState({
+    name: '', type: '' as PropertyType | '', location: '', floors: '', ownerId: '', description: '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    const r1 = validateRequired(form.name, 'اسم العقار');
+    if (!r1.valid) e.name = r1.error!;
+    if (!form.type) e.type = 'نوع العقار مطلوب';
+    const r2 = validateRequired(form.location, 'الموقع');
+    if (!r2.valid) e.location = r2.error!;
+    const r3 = validatePositiveNumber(form.floors, 'عدد الطوابق');
+    if (!r3.valid) e.floors = r3.error!;
+    if (!form.ownerId) e.ownerId = 'المالك مطلوب';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSave = () => {
+    if (!validate()) return;
+    const property: Property = {
+      id: `p${Date.now()}`,
+      name:        sanitizeText(form.name),
+      type:        form.type as PropertyType,
+      location:    sanitizeText(form.location),
+      floors:      Number(sanitizeNumber(form.floors)),
+      totalUnits:  0,
+      ownerId:     form.ownerId,
+      status:      'active',
+      description: sanitizeDescription(form.description),
+      createdAt:   new Date().toISOString().split('T')[0],
+    };
+    addProperty(property);
+    router.back();
+  };
+
+  const ownerOptions = owners.map(o => ({ label: o.name, value: o.id }));
+  const typeOptions = [
+    { label: 'شقة', value: 'apartment' },
+    { label: 'فيلا', value: 'villa' },
+    { label: 'مبنى', value: 'building' },
+    { label: 'برج', value: 'tower' },
+    { label: 'مكتب', value: 'office' },
+    { label: 'محل', value: 'shop' },
+  ];
+
+  const set = (key: string) => (val: string) => {
+    setForm(f => ({ ...f, [key]: val }));
+    if (errors[key]) setErrors(e => { const n = { ...e }; delete n[key]; return n; });
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.primary }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="close" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>إضافة عقار جديد</Text>
+        <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
+          <Text style={styles.saveText}>حفظ</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FormContainer><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <FormInput label="اسم العقار" value={form.name} onChangeText={set('name')} placeholder="مثال: برج الرياض السكني" required icon="business-outline" error={errors.name} />
+        <FormSelect label="نوع العقار" value={form.type} options={typeOptions} onSelect={set('type')} required error={errors.type} />
+        <FormInput label="الموقع" value={form.location} onChangeText={set('location')} placeholder="مثال: الرياض - حي العليا" required icon="location-outline" error={errors.location} />
+        <FormInput label="عدد الطوابق" value={form.floors} onChangeText={set('floors')} placeholder="مثال: 8" keyboardType="number-pad" required icon="layers-outline" error={errors.floors} />
+        <FormSelect label="المالك" value={form.ownerId} options={ownerOptions} onSelect={set('ownerId')} required placeholder="اختر المالك..." error={errors.ownerId} />
+        <FormInput label="الوصف (اختياري)" value={form.description} onChangeText={set('description')} placeholder="وصف موجز للعقار..." multiline numberOfLines={3} icon="document-text-outline" />
+      </ScrollView></FormContainer>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingBottom: 14, paddingHorizontal: Theme.spacing.base,
+  },
+  headerTitle: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
+  backBtn: { padding: 4 },
+  saveBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: Theme.radius.full },
+  saveText: { color: '#FFF', fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
+  content: { padding: Theme.spacing.base, gap: Theme.spacing.lg, paddingBottom: 48 },
+});

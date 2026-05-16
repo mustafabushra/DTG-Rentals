@@ -1,0 +1,25 @@
+{
+  "projects": {
+    "default": "dtg-rentals"
+  },
+  "targets": {
+    "dtg-rentals": {
+      "hosting": {
+        "production": [
+          "dtg-rentals"
+        ],
+        "staging": [
+          "dtg-rentals-staging"
+        ]
+      }
+    },
+    "dtg-rentals-staging": {
+      "hosting": {
+        "staging": [
+          "dtg-rentals-staging"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
