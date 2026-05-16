@@ -21,6 +21,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [errors, setErrors]     = useState<Record<string, string>>({});
   const [loading, setLoading]   = useState(false);
+  const [authError, setAuthError] = useState('');
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -38,6 +39,7 @@ export default function LoginScreen() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    setAuthError('');
     setLoading(true);
     try {
       if (mode === 'login') {
@@ -47,14 +49,16 @@ export default function LoginScreen() {
       }
       // Navigation handled by onAuthChange in _layout.tsx
     } catch (err: any) {
-      const msg = err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password'
+      const msg = err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential'
         ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
         : err?.code === 'auth/email-already-in-use'
         ? 'البريد الإلكتروني مستخدم بالفعل'
         : err?.code === 'auth/too-many-requests'
         ? 'محاولات كثيرة، حاول لاحقاً'
-        : 'حدث خطأ، حاول مجدداً';
-      Alert.alert('خطأ', msg);
+        : err?.message === 'Auth not available'
+        ? 'خطأ في الاتصال، أعد تحميل الصفحة'
+        : `حدث خطأ: ${err?.code ?? err?.message ?? 'غير معروف'}`;
+      setAuthError(msg);
     } finally {
       setLoading(false);
     }
@@ -142,6 +146,12 @@ export default function LoginScreen() {
               error={errors.password}
             />
 
+            {authError ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{authError}</Text>
+              </View>
+            ) : null}
+
             <TouchableOpacity
               style={[styles.submitBtn, { backgroundColor: '#C3AF76' }, loading && { opacity: 0.7 }]}
               onPress={handleSubmit}
@@ -218,4 +228,6 @@ const styles = StyleSheet.create({
   submitBtnText: { color: '#021C36', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
   forgotBtn: { alignItems: 'center' },
   forgotText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },
+  errorBox: { backgroundColor: '#FDEDEC', borderRadius: Theme.radius.md, padding: 12 },
+  errorText: { color: '#C0392B', fontSize: Theme.fontSize.sm, textAlign: 'center' },
 });
