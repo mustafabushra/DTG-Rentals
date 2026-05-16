@@ -42,7 +42,7 @@ export function UnitCard({ unit, onDelete }: UnitCardProps) {
       <Text style={[styles.property, { color: colors.textSecondary }]}>{property?.name}</Text>
 
       <View style={styles.row}>
-        <CurrencyText amount={unit.monthlyRent} color={colors.success} size={14} />
+        <CurrencyText amount={unit.monthlyRent} color={colors.success} size={14} currency={property?.currency} />
         <View style={styles.typeRow}>
           <Ionicons name="resize-outline" size={13} color={colors.textMuted} />
           <Text style={[styles.area, { color: colors.textMuted }]}>{unit.area ? `${unit.area} م²` : '— م²'}</Text>

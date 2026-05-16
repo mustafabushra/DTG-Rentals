@@ -37,6 +37,7 @@ export interface Property {
   status: PropertyStatus;
   description: string;
   image?: string;
+  currency?: string;   // e.g. 'SAR' | 'AED' | 'EGP' — عملة العقار
   createdAt: string;
 }
 
@@ -78,6 +79,7 @@ export interface Contract {
   annualValue: number;
   installmentsCount: number;
   status: ContractStatus;
+  currency?: string;   // e.g. 'SAR' | 'AED' | 'EGP' — عملة العقد (الأولوية على عملة العقار)
   notes?: string;
   createdAt: string;
   cancelledAt?: string;

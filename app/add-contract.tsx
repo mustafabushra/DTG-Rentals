@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -11,17 +11,24 @@ import { FormDatePicker } from '../components/forms/FormDatePicker';
 import { Contract } from '../data/mockData';
 import { FormContainer } from '../components/ui/FormContainer';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { CURRENCY_OPTIONS, getCurrency } from '../utils/currency';
 
 export default function AddContractScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { units, tenants, addContract } = useApp();
+  const { units, tenants, properties, addContract, systemSettings } = useApp();
 
   const [form, setForm] = useState({
     unitId: '', tenantId: '', startDate: '', endDate: '',
-    annualValue: '', installmentsCount: '', notes: '',
+    annualValue: '', installmentsCount: '', notes: '', currency: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // عند اختيار الوحدة → نرث عملة العقار تلقائياً
+  const selectedUnit = units.find(u => u.id === form.unitId);
+  const selectedProperty = selectedUnit ? properties.find(p => p.id === selectedUnit.propertyId) : null;
+  const effectiveCurrency = form.currency || selectedProperty?.currency || systemSettings?.currency || 'SAR';
+  const currencyMeta = getCurrency(effectiveCurrency);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -39,17 +46,18 @@ export default function AddContractScreen() {
   const handleSave = () => {
     if (!validate()) return;
     const contract: Contract = {
-      id: `c${Date.now()}`,
-      contractNumber: `CNT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
-      unitId: form.unitId,
-      tenantId: form.tenantId,
-      startDate: form.startDate,
-      endDate: form.endDate,
-      annualValue: Number(form.annualValue),
-      installmentsCount: Number(form.installmentsCount),
-      status: 'active',
-      notes: form.notes.trim() || undefined,
-      createdAt: new Date().toISOString().split('T')[0],
+      id:               `c${Date.now()}`,
+      contractNumber:   `CNT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+      unitId:           form.unitId,
+      tenantId:         form.tenantId,
+      startDate:        form.startDate,
+      endDate:          form.endDate,
+      annualValue:      Number(form.annualValue),
+      installmentsCount:Number(form.installmentsCount),
+      status:           'active',
+      currency:         effectiveCurrency,
+      notes:            form.notes.trim() || undefined,
+      createdAt:        new Date().toISOString().split('T')[0],
     };
     addContract(contract);
     router.back();
@@ -81,15 +89,34 @@ export default function AddContractScreen() {
         </TouchableOpacity>
       </View>
 
-      <FormContainer><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <FormSelect label="الوحدة" value={form.unitId} options={unitOptions} onSelect={set('unitId')} required placeholder="اختر الوحدة الشاغرة..." error={errors.unitId} />
-        <FormSelect label="المستأجر" value={form.tenantId} options={tenantOptions} onSelect={set('tenantId')} required placeholder="اختر المستأجر..." error={errors.tenantId} />
-        <FormDatePicker label="تاريخ البداية" value={form.startDate} onChange={set('startDate')} required error={errors.startDate} />
-        <FormDatePicker label="تاريخ النهاية" value={form.endDate} onChange={set('endDate')} required error={errors.endDate} minDate={form.startDate} />
-        <FormInput label="القيمة السنوية (ر.س)" value={form.annualValue} onChangeText={set('annualValue')} placeholder="مثال: 60000" keyboardType="number-pad" required icon="cash-outline" error={errors.annualValue} />
-        <FormSelect label="عدد الأقساط" value={form.installmentsCount} options={installmentOptions} onSelect={set('installmentsCount')} required placeholder="اختر عدد الأقساط..." error={errors.installmentsCount} />
-        <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} placeholder="أي ملاحظات إضافية..." multiline numberOfLines={3} icon="document-text-outline" />
-      </ScrollView></FormContainer>
+      <FormContainer>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <FormSelect label="الوحدة" value={form.unitId} options={unitOptions} onSelect={set('unitId')} required placeholder="اختر الوحدة الشاغرة..." error={errors.unitId} />
+          <FormSelect label="المستأجر" value={form.tenantId} options={tenantOptions} onSelect={set('tenantId')} required placeholder="اختر المستأجر..." error={errors.tenantId} />
+          <FormDatePicker label="تاريخ البداية" value={form.startDate} onChange={set('startDate')} required error={errors.startDate} />
+          <FormDatePicker label="تاريخ النهاية" value={form.endDate} onChange={set('endDate')} required error={errors.endDate} minDate={form.startDate} />
+          {/* العملة — تُورَث من العقار، قابلة للتغيير */}
+          <FormSelect
+            label={`عملة العقد ${selectedProperty ? `(مورَّثة من العقار: ${currencyMeta.label})` : ''}`}
+            value={effectiveCurrency}
+            options={CURRENCY_OPTIONS}
+            onSelect={set('currency')}
+            required
+          />
+          <FormInput
+            label={`القيمة السنوية (${currencyMeta.symbol})`}
+            value={form.annualValue}
+            onChangeText={set('annualValue')}
+            placeholder="مثال: 60000"
+            keyboardType="number-pad"
+            required
+            icon="cash-outline"
+            error={errors.annualValue}
+          />
+          <FormSelect label="عدد الأقساط" value={form.installmentsCount} options={installmentOptions} onSelect={set('installmentsCount')} required placeholder="اختر عدد الأقساط..." error={errors.installmentsCount} />
+          <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} placeholder="أي ملاحظات إضافية..." multiline numberOfLines={3} icon="document-text-outline" />
+        </ScrollView>
+      </FormContainer>
     </View>
   );
 }

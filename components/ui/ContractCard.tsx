@@ -36,7 +36,7 @@ export function ContractCard({ contract, onDelete }: ContractCardProps) {
       </View>
 
       <View style={styles.row}>
-        <CurrencyText amount={contract.annualValue} color={colors.success} size={15} />
+        <CurrencyText amount={contract.annualValue} color={colors.success} size={15} currency={contract.currency} />
         <View style={styles.tenantRow}>
           <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
           <Text style={[styles.name, { color: colors.text }]}>{tenant?.name || '—'}</Text>
