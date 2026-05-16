@@ -83,6 +83,9 @@ function StackContent() {
       <Stack.Screen name="backup" options={{ headerShown: false }} />
       <Stack.Screen name="ledger" options={{ headerShown: false }} />
       <Stack.Screen name="system-settings" options={{ headerShown: false }} />
+      <Stack.Screen name="dashboard"   options={{ headerShown: false }} />
+      <Stack.Screen name="reports"     options={{ headerShown: false }} />
+      <Stack.Screen name="action-log"  options={{ headerShown: false }} />
     </Stack>
   );
 

@@ -729,7 +729,7 @@ export const getUnitTypeLabel = (type: UnitType): string => {
 
 export const formatCurrency = (amount: number | null | undefined): string => {
   if (amount == null || isNaN(amount as number)) return '0';
-  return amount.toLocaleString('en-US');
+  return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
 const ARABIC_MONTHS_LONG = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',

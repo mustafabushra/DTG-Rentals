@@ -12,9 +12,9 @@ interface Props {
 
 export function CurrencyText({ amount, style, color, size = 14 }: Props) {
   const { colors } = useAppTheme();
-  const safeAmount = amount == null || isNaN(amount as number) ? 0 : amount;
+  const safeAmount = typeof amount === 'number' && !isNaN(amount) ? amount : (typeof amount === 'string' ? amount : 0);
   const formatted = typeof safeAmount === 'number'
-    ? safeAmount.toLocaleString('en-US')
+    ? Math.round(safeAmount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
     : safeAmount;
 
   // استخراج اللون من style إن وُجد، وإلا color prop، وإلا لون الثيم

@@ -40,7 +40,7 @@ export default function FinancialReportsScreen() {
       }, 0);
     const collected = periodPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
     const overdue = periodPayments.filter(p => p.status === 'overdue').reduce((s, p) => s + p.amount, 0);
-    const collectionRate = totalRevenue > 0 ? Math.round((collected / totalRevenue) * 100) : 0;
+    const collectionRate = totalRevenue > 0 ? Math.min(100, Math.round((collected / totalRevenue) * 100)) : 0;
 
     // Monthly bar data (last N months)
     const barData: { month: string; value: number }[] = [];

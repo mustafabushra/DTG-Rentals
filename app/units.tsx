@@ -33,9 +33,10 @@ export default function UnitsScreen() {
   }, [units, search, filter]);
 
   const counts = useMemo(() => ({
-    rented: units.filter(u => u.status === 'rented').length,
-    vacant: units.filter(u => u.status === 'vacant').length,
+    rented:      units.filter(u => u.status === 'rented').length,
+    vacant:      units.filter(u => u.status === 'vacant').length,
     maintenance: units.filter(u => u.status === 'maintenance').length,
+    reserved:    units.filter(u => u.status === 'reserved').length,
   }), [units]);
 
   if (dataLoading) return <ListSkeleton count={5} />;
@@ -55,6 +56,8 @@ export default function UnitsScreen() {
         <View style={styles.stat}><Text style={[styles.sv, { color: colors.secondary }]}>{counts.vacant}</Text><Text style={[styles.sl, { color: colors.textMuted }]}>شاغرة</Text></View>
         <View style={[styles.sd, { backgroundColor: colors.border }]} />
         <View style={styles.stat}><Text style={[styles.sv, { color: colors.warning }]}>{counts.maintenance}</Text><Text style={[styles.sl, { color: colors.textMuted }]}>صيانة</Text></View>
+        <View style={[styles.sd, { backgroundColor: colors.border }]} />
+        <View style={styles.stat}><Text style={[styles.sv, { color: colors.primary }]}>{counts.reserved}</Text><Text style={[styles.sl, { color: colors.textMuted }]}>محجوزة</Text></View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
