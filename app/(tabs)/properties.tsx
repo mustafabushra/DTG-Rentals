@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     fontWeight: Theme.fontWeight.bold,
   },
   addBtn: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 44, height: 44, borderRadius: 22,
     justifyContent: 'center', alignItems: 'center',
   },
   countBadge: {

@@ -519,6 +519,8 @@ export default function CalendarScreen() {
                 <Ionicons name="time-outline" size={16} color={colors.primary} />
               </View>
             </View>
+            <View style={styles.alertsScrollWrap}>
+              <View style={[styles.alertsFade, { backgroundColor: colors.card }]} pointerEvents="none" />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
               {upcomingAlerts.map(ev => {
                 const cfg  = EVENT_CFG[ev.type];
@@ -554,6 +556,7 @@ export default function CalendarScreen() {
                 );
               })}
             </ScrollView>
+            </View>
           </View>
         )}
 
@@ -750,7 +753,12 @@ const styles = StyleSheet.create({
   alertsHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   alertsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   alertsTitle:    { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, textAlign: 'right' },
-  alertsSeeAll:   { fontSize: fontSize.xs },
+  alertsSeeAll:      { fontSize: fontSize.xs },
+  alertsScrollWrap:  { position: 'relative' },
+  alertsFade: {
+    position: 'absolute', left: 0, top: 0, bottom: 0, width: 32,
+    zIndex: 1, opacity: 0.85,
+  },
   alertChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 10, paddingVertical: 7,
