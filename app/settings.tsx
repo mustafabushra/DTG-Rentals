@@ -472,8 +472,8 @@ const styles = StyleSheet.create({
   themeOptions: { flexDirection: 'row', gap: 6 },
   themeChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: Theme.radius.full, borderWidth: 1.5,
+    paddingHorizontal: 14, paddingVertical: 12,
+    minHeight: 44, borderRadius: Theme.radius.full, borderWidth: 1.5,
   },
   themeChipText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
 

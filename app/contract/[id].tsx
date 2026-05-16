@@ -417,7 +417,8 @@ const styles = StyleSheet.create({
   terminateBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginTop: 4,
-    paddingHorizontal: 16, paddingVertical: 8,
+    paddingHorizontal: 16, paddingVertical: 12,
+    minHeight: 44,
     borderRadius: Theme.radius.full,
     backgroundColor: '#C0392B',
   },
