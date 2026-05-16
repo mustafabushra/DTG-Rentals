@@ -15,6 +15,7 @@ import { formatDate } from '../../data/mockData';
 import { CurrencyText } from '../../components/ui/CurrencyText';
 import { isAdminRole } from '../../utils/roleUtils';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { CURRENCIES, getCurrency } from '../../utils/currency';
 
 const statusColors: Record<string, string> = {
   active:     '#27AE60',
@@ -35,13 +36,14 @@ const statusBg: Record<string, string> = {
 export default function ContractDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
-  const { contracts, payments, tenants, units, properties, currentUser, terminateContract, canWrite, canDelete } = useApp();
+  const { contracts, payments, tenants, units, properties, currentUser, terminateContract, updateContract, canWrite, canDelete } = useApp();
 
   // ── Terminate modal state ──────────────────────────────────────────────────
-  const [showConfirm,  setShowConfirm]  = useState(false);
-  const [showSend,     setShowSend]     = useState(false);
-  const [reason,       setReason]       = useState('');
-  const [termResult,   setTermResult]   = useState<{ tenantName: string; tenantPhone: string; tenantEmail: string; terminationDate: string; reason: string } | null>(null);
+  const [showConfirm,       setShowConfirm]       = useState(false);
+  const [showSend,          setShowSend]          = useState(false);
+  const [reason,            setReason]            = useState('');
+  const [termResult,        setTermResult]        = useState<{ tenantName: string; tenantPhone: string; tenantEmail: string; terminationDate: string; reason: string } | null>(null);
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
 
   const isAdmin = isAdminRole(currentUser.role);
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
@@ -218,15 +220,32 @@ export default function ContractDetailScreen() {
           <Text style={[styles.bannerSub, { color: statusColors[contract.status] ?? '#718096' }]}>
             {formatDate(contract.startDate)} — {formatDate(contract.endDate)}
           </Text>
-          {/* Terminate button — admin only, active contracts only */}
-          {isAdmin && contract.status === 'active' && (
-            <TouchableOpacity
-              style={styles.terminateBtn}
-              onPress={() => setShowConfirm(true)}
-            >
-              <Ionicons name="close-circle-outline" size={16} color="#FFF" />
-              <Text style={styles.terminateBtnText}>إنهاء العقد</Text>
-            </TouchableOpacity>
+          {/* Action buttons row */}
+          {(isAdmin || canWrite) && (contract.status === 'active' || contract.status === 'pending') && (
+            <View style={styles.bannerActions}>
+              {/* Currency button */}
+              {canWrite && (
+                <TouchableOpacity
+                  style={styles.currencyBtn}
+                  onPress={() => setShowCurrencyModal(true)}
+                >
+                  <Ionicons name="swap-horizontal-outline" size={15} color="#FFF" />
+                  <Text style={styles.currencyBtnText}>
+                    {getCurrency(contract.currency).code}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {/* Terminate button — admin only, active contracts only */}
+              {isAdmin && contract.status === 'active' && (
+                <TouchableOpacity
+                  style={styles.terminateBtn}
+                  onPress={() => setShowConfirm(true)}
+                >
+                  <Ionicons name="close-circle-outline" size={16} color="#FFF" />
+                  <Text style={styles.terminateBtnText}>إنهاء العقد</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
           {/* Termination info badge */}
           {contract.status === 'terminated' && contract.cancelledAt && (
@@ -351,6 +370,57 @@ export default function ContractDetailScreen() {
         )}
       </ScrollView>
 
+      {/* ── Currency picker modal ── */}
+      <RNModal visible={showCurrencyModal} transparent animationType="slide" onRequestClose={() => setShowCurrencyModal(false)}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowCurrencyModal(false)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.currencySheet, { backgroundColor: colors.card }]}>
+            {/* Header */}
+            <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+              <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>تغيير عملة العقد</Text>
+              <View style={{ width: 22 }} />
+            </View>
+            {/* Currency list */}
+            <ScrollView>
+              {CURRENCIES.map((c, i) => {
+                const selected = (contract.currency ?? 'SAR') === c.code;
+                return (
+                  <TouchableOpacity
+                    key={c.code}
+                    style={[
+                      styles.currencyOption,
+                      { borderBottomColor: colors.border },
+                      i < CURRENCIES.length - 1 && { borderBottomWidth: 1 },
+                      selected && { backgroundColor: `${colors.primary}08` },
+                    ]}
+                    onPress={() => {
+                      updateContract(id!, { currency: c.code });
+                      setShowCurrencyModal(false);
+                    }}
+                  >
+                    <View style={[styles.currencyCodeBadge, {
+                      backgroundColor: selected ? `${colors.primary}18` : colors.surface,
+                      borderColor: selected ? colors.primary : colors.border,
+                    }]}>
+                      <Text style={[styles.currencyCodeText, { color: selected ? colors.primary : colors.textMuted }]}>
+                        {c.symbol}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.currencyOptionLabel, { color: selected ? colors.primary : colors.text }]}>{c.label}</Text>
+                      <Text style={[styles.currencyOptionCode, { color: colors.textMuted }]}>{c.code}</Text>
+                    </View>
+                    {selected && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </RNModal>
+
       <ConfirmModal
         visible={!!pending}
         onClose={cancelDelete}
@@ -412,6 +482,39 @@ const styles = StyleSheet.create({
   installmentMethod: { fontSize: Theme.fontSize.xs },
   emptyText: { textAlign: 'center', padding: 16, fontSize: Theme.fontSize.md },
   notes: { fontSize: Theme.fontSize.md, lineHeight: 22, paddingTop: 4, textAlign: 'right' },
+
+  bannerActions: { flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap' },
+
+  currencyBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 10, minHeight: 44,
+    borderRadius: Theme.radius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  currencyBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
+
+  // Currency sheet modal
+  currencySheet: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    borderTopLeftRadius: Theme.radius.xl, borderTopRightRadius: Theme.radius.xl,
+    maxHeight: '80%', paddingBottom: 32,
+  },
+  sheetHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Theme.spacing.md, paddingVertical: 16, borderBottomWidth: 1,
+  },
+  sheetTitle: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
+  currencyOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: Theme.spacing.md, paddingVertical: 14,
+  },
+  currencyCodeBadge: {
+    width: 46, height: 46, borderRadius: 23,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1,
+  },
+  currencyCodeText:   { fontSize: Theme.fontSize.base, fontWeight: '700' },
+  currencyOptionLabel:{ fontSize: Theme.fontSize.base, fontWeight: '600', textAlign: 'right' },
+  currencyOptionCode: { fontSize: Theme.fontSize.xs, marginTop: 1, textAlign: 'right' },
 
   // Terminate button (inside banner)
   terminateBtn: {
