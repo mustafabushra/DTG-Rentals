@@ -6,12 +6,132 @@
   "storage": {
     "rules": "storage.rules"
   },
-  "hosting": {
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  }
+  "hosting": [
+    {
+      "target": "production",
+      "public": "dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "rewrites": [
+        { "source": "/owner/**", "destination": "/index.html" },
+        { "source": "/property/**", "destination": "/index.html" },
+        { "source": "/tenant/**", "destination": "/index.html" },
+        { "source": "/contract/**", "destination": "/index.html" },
+        { "source": "/unit/**", "destination": "/index.html" },
+        { "source": "/payment/**", "destination": "/index.html" },
+        { "source": "/maintenance/**", "destination": "/index.html" },
+        { "source": "/edit-owner/**", "destination": "/index.html" },
+        { "source": "/edit-property/**", "destination": "/index.html" },
+        { "source": "/edit-tenant/**", "destination": "/index.html" },
+        { "source": "/edit-contract/**", "destination": "/index.html" },
+        { "source": "/edit-unit/**", "destination": "/index.html" },
+        { "source": "**", "destination": "/index.html" }
+      ],
+      "headers": [
+        {
+          "source": "/sw.js",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+            { "key": "Service-Worker-Allowed", "value": "/" }
+          ]
+        },
+        {
+          "source": "/manifest.json",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        },
+        {
+          "source": "**/*.@(js|css|woff2)",
+          "headers": [{ "key": "Cache-Control", "value": "max-age=31536000, immutable" }]
+        },
+        {
+          "source": "**/*.ttf",
+          "headers": [
+            { "key": "Content-Type", "value": "font/ttf" },
+            { "key": "Cache-Control", "value": "max-age=31536000, immutable" },
+            { "key": "Access-Control-Allow-Origin", "value": "*" }
+          ]
+        },
+        {
+          "source": "**/*.woff",
+          "headers": [
+            { "key": "Content-Type", "value": "font/woff" },
+            { "key": "Cache-Control", "value": "max-age=31536000, immutable" }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "X-Frame-Options", "value": "DENY" },
+            { "key": "X-XSS-Protection", "value": "1; mode=block" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "staging",
+      "public": "dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "rewrites": [
+        { "source": "/owner/**", "destination": "/index.html" },
+        { "source": "/property/**", "destination": "/index.html" },
+        { "source": "/tenant/**", "destination": "/index.html" },
+        { "source": "/contract/**", "destination": "/index.html" },
+        { "source": "/unit/**", "destination": "/index.html" },
+        { "source": "/payment/**", "destination": "/index.html" },
+        { "source": "/maintenance/**", "destination": "/index.html" },
+        { "source": "/edit-owner/**", "destination": "/index.html" },
+        { "source": "/edit-property/**", "destination": "/index.html" },
+        { "source": "/edit-tenant/**", "destination": "/index.html" },
+        { "source": "/edit-contract/**", "destination": "/index.html" },
+        { "source": "/edit-unit/**", "destination": "/index.html" },
+        { "source": "**", "destination": "/index.html" }
+      ],
+      "headers": [
+        {
+          "source": "/sw.js",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+            { "key": "Service-Worker-Allowed", "value": "/" }
+          ]
+        },
+        {
+          "source": "/manifest.json",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        },
+        {
+          "source": "**/*.@(js|css|woff2)",
+          "headers": [{ "key": "Cache-Control", "value": "max-age=31536000, immutable" }]
+        },
+        {
+          "source": "**/*.ttf",
+          "headers": [
+            { "key": "Content-Type", "value": "font/ttf" },
+            { "key": "Cache-Control", "value": "max-age=31536000, immutable" },
+            { "key": "Access-Control-Allow-Origin", "value": "*" }
+          ]
+        },
+        {
+          "source": "**/*.woff",
+          "headers": [
+            { "key": "Content-Type", "value": "font/woff" },
+            { "key": "Cache-Control", "value": "max-age=31536000, immutable" }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "X-Frame-Options", "value": "DENY" },
+            { "key": "X-XSS-Protection", "value": "1; mode=block" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+          ]
+        }
+      ]
+    }
+  ]
 }
