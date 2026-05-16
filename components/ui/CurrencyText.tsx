@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { RiyalSymbol } from './RiyalSymbol';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 interface Props {
   amount: number | string;
@@ -9,7 +10,9 @@ interface Props {
   size?: number;
 }
 
-export function CurrencyText({ amount, style, color = '#1B4F72', size = 14 }: Props) {
+export function CurrencyText({ amount, style, color, size = 14 }: Props) {
+  const { colors } = useAppTheme();
+  const resolvedColor = color ?? colors.text;
   const safeAmount = amount == null || isNaN(amount as number) ? 0 : amount;
   const formatted = typeof safeAmount === 'number'
     ? safeAmount.toLocaleString('en-US')
@@ -17,8 +20,8 @@ export function CurrencyText({ amount, style, color = '#1B4F72', size = 14 }: Pr
 
   return (
     <View style={styles.row}>
-      <Text style={[styles.text, { color, fontSize: size }, style]}>{formatted} </Text>
-      <RiyalSymbol size={size} color={color} />
+      <Text style={[styles.text, { color: resolvedColor, fontSize: size }, style]}>{formatted} </Text>
+      <RiyalSymbol size={size} color={resolvedColor} />
     </View>
   );
 }
