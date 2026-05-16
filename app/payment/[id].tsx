@@ -12,7 +12,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { AttachmentPanel } from '../../components/features/AttachmentPanel';
 import { ConfirmModal } from '../../components/ui/Modal';
-import { formatDate } from '../../data/mockData';
+import { formatDate, formatCurrency } from '../../data/mockData';
 import { CurrencyText } from '../../components/ui/CurrencyText';
 import { useAppTheme } from '../../hooks/useAppTheme';
 
