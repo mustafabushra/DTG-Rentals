@@ -45,7 +45,7 @@ export function UnitCard({ unit, onDelete }: UnitCardProps) {
         <CurrencyText amount={unit.monthlyRent} color={colors.success} size={14} />
         <View style={styles.typeRow}>
           <Ionicons name="resize-outline" size={13} color={colors.textMuted} />
-          <Text style={[styles.area, { color: colors.textMuted }]}>{unit.area} م²</Text>
+          <Text style={[styles.area, { color: colors.textMuted }]}>{unit.area ? `${unit.area} م²` : '— م²'}</Text>
         </View>
       </View>
 
@@ -53,7 +53,7 @@ export function UnitCard({ unit, onDelete }: UnitCardProps) {
         <Text style={[styles.type, { color: colors.textSecondary }]}>{getUnitTypeLabel(unit.type)}</Text>
         <View style={styles.floorRow}>
           <Ionicons name="layers-outline" size={12} color={colors.textMuted} />
-          <Text style={[styles.floor, { color: colors.textMuted }]}>الطابق {unit.floor}</Text>
+          <Text style={[styles.floor, { color: colors.textMuted }]}>{unit.floor ? `الطابق ${unit.floor}` : '—'}</Text>
         </View>
       </View>
     </TouchableOpacity>
