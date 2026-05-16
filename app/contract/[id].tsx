@@ -221,32 +221,35 @@ export default function ContractDetailScreen() {
             {formatDate(contract.startDate)} — {formatDate(contract.endDate)}
           </Text>
           {/* Action buttons row */}
-          {(isAdmin || canWrite) && (contract.status === 'active' || contract.status === 'pending') && (
-            <View style={styles.bannerActions}>
-              {/* Currency button */}
-              {canWrite && (
-                <TouchableOpacity
-                  style={styles.currencyBtn}
-                  onPress={() => setShowCurrencyModal(true)}
-                >
-                  <Ionicons name="swap-horizontal-outline" size={15} color="#FFF" />
-                  <Text style={styles.currencyBtnText}>
-                    {getCurrency(contract.currency).code}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {/* Terminate button — admin only, active contracts only */}
-              {isAdmin && contract.status === 'active' && (
-                <TouchableOpacity
-                  style={styles.terminateBtn}
-                  onPress={() => setShowConfirm(true)}
-                >
-                  <Ionicons name="close-circle-outline" size={16} color="#FFF" />
-                  <Text style={styles.terminateBtnText}>إنهاء العقد</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+          {(isAdmin || canWrite) && (contract.status === 'active' || contract.status === 'pending') && (() => {
+            const btnColor = statusColors[contract.status] ?? '#27AE60';
+            return (
+              <View style={styles.bannerActions}>
+                {/* Currency button */}
+                {canWrite && (
+                  <TouchableOpacity
+                    style={[styles.currencyBtn, { borderColor: btnColor, backgroundColor: `${btnColor}18` }]}
+                    onPress={() => setShowCurrencyModal(true)}
+                  >
+                    <Ionicons name="swap-horizontal-outline" size={15} color={btnColor} />
+                    <Text style={[styles.currencyBtnText, { color: btnColor }]}>
+                      {getCurrency(contract.currency).code}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {/* Terminate button — admin only, active contracts only */}
+                {isAdmin && contract.status === 'active' && (
+                  <TouchableOpacity
+                    style={styles.terminateBtn}
+                    onPress={() => setShowConfirm(true)}
+                  >
+                    <Ionicons name="close-circle-outline" size={16} color="#FFF" />
+                    <Text style={styles.terminateBtnText}>إنهاء العقد</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })()}
           {/* Termination info badge */}
           {contract.status === 'terminated' && contract.cancelledAt && (
             <View style={styles.terminatedBadge}>
@@ -488,10 +491,9 @@ const styles = StyleSheet.create({
   currencyBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 14, paddingVertical: 10, minHeight: 44,
-    borderRadius: Theme.radius.full,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: Theme.radius.full, borderWidth: 1.5,
   },
-  currencyBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
+  currencyBtnText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
 
   // Currency sheet modal
   currencySheet: {
