@@ -15,7 +15,7 @@ import { ListSkeleton } from '../components/ui/Skeleton';
 import { useApp } from '../context/AppProvider';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { CurrencyText } from '../components/ui/CurrencyText';
-import { resolvePaymentCurrency, countryLabel, type CurrencyCode } from '../utils/currency';
+import { resolvePaymentCurrency, countryLabel, formatAmount, type CurrencyCode } from '../utils/currency';
 
 type Filter = 'all' | PaymentStatus;
 
@@ -113,17 +113,23 @@ export default function PaymentsScreen() {
                 </View>
                 <View style={styles.countryStats}>
                   <View style={styles.countryStat}>
-                    <CurrencyText amount={s.paid} currency={s.code} style={[styles.countryStatVal, { color: colors.success }]} />
+                    <Text style={[styles.countryStatVal, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
+                      {formatAmount(s.paid, s.code)}
+                    </Text>
                     <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>محصّل</Text>
                   </View>
                   <View style={[styles.countryDiv, { backgroundColor: colors.border }]} />
                   <View style={styles.countryStat}>
-                    <CurrencyText amount={s.pending} currency={s.code} style={[styles.countryStatVal, { color: colors.warning }]} />
+                    <Text style={[styles.countryStatVal, { color: colors.warning }]} numberOfLines={1} adjustsFontSizeToFit>
+                      {formatAmount(s.pending, s.code)}
+                    </Text>
                     <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>معلق</Text>
                   </View>
                   <View style={[styles.countryDiv, { backgroundColor: colors.border }]} />
                   <View style={styles.countryStat}>
-                    <CurrencyText amount={s.overdue} currency={s.code} style={[styles.countryStatVal, { color: colors.danger }]} />
+                    <Text style={[styles.countryStatVal, { color: colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+                      {formatAmount(s.overdue, s.code)}
+                    </Text>
                     <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متأخر</Text>
                   </View>
                 </View>
