@@ -818,7 +818,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const newCount        = updatedContract.installmentsCount;
       const paidCount       = paidPayments.length;
       const remainingCount  = Math.max(newCount - paidCount, 1);
-      const remainingValue  = Math.max(updatedContract.annualValue - paidTotal, 0);
+      // إذا كان المدفوع أكبر من القيمة الجديدة (تصحيح خطأ إدخال)، نوزع القيمة الجديدة نسبياً
+      const remainingValue  = paidTotal < updatedContract.annualValue
+        ? updatedContract.annualValue - paidTotal
+        : Math.round((updatedContract.annualValue / newCount) * remainingCount);
       const startMs         = new Date(updatedContract.startDate).getTime();
       const endMs           = new Date(updatedContract.endDate).getTime();
       const spanMs          = endMs - startMs;

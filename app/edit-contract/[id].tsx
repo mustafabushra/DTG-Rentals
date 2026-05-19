@@ -67,15 +67,46 @@ export default function EditContractScreen() {
 
   const handleSave = () => {
     if (!validate()) return;
-    updateContract(id, {
-      startDate: form.startDate, endDate: form.endDate,
-      annualValue: Number(form.annualValue),
-      installmentsCount: Number(form.installmentsCount),
-      status: form.status as any,
-      notes: form.notes.trim() || undefined,
-      currency: form.currency,
-    });
-    router.back();
+    const newAnnualValue      = Number(form.annualValue);
+    const newInstallmentsCount = Number(form.installmentsCount);
+    const valueChanged   = newAnnualValue      !== contract.annualValue;
+    const countChanged   = newInstallmentsCount !== contract.installmentsCount;
+    const datesChanged   = form.startDate !== contract.startDate || form.endDate !== contract.endDate;
+    const financialChange = valueChanged || countChanged || datesChanged;
+
+    if (financialChange) {
+      Alert.alert(
+        'إعادة توليد الأقساط',
+        `سيتم حذف جميع الأقساط المعلقة وإنشاء ${newInstallmentsCount} أقساط جديدة بناءً على القيمة الجديدة. الأقساط المدفوعة لن تتأثر. هل تريد المتابعة؟`,
+        [
+          { text: 'إلغاء', style: 'cancel' },
+          {
+            text: 'تأكيد',
+            onPress: () => {
+              updateContract(id, {
+                startDate: form.startDate, endDate: form.endDate,
+                annualValue: newAnnualValue,
+                installmentsCount: newInstallmentsCount,
+                status: form.status as any,
+                notes: form.notes.trim() || undefined,
+                currency: form.currency,
+              });
+              router.back();
+            },
+          },
+        ]
+      );
+    } else {
+      updateContract(id, {
+        startDate: form.startDate, endDate: form.endDate,
+        annualValue: newAnnualValue,
+        installmentsCount: newInstallmentsCount,
+        status: form.status as any,
+        notes: form.notes.trim() || undefined,
+        currency: form.currency,
+      });
+      router.back();
+    }
   };
 
   const installmentOptions = ['1', '2', '4', '6', '12', '24'].map(v => ({
