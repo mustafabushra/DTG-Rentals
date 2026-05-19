@@ -65,13 +65,15 @@ export default function BulkImportPropertiesScreen() {
   const invalidRows = rows.filter(r => r.error);
 
   // ─── تنظيف وتحقق من صف ─────────────────────────────────────────────────────
-  const parseRow = (raw: Record<string, string>): RowData => {
-    const name       = sanitizeText(raw['اسم العقار'] ?? raw['name'] ?? '');
-    const typeRaw    = (raw['نوع العقار'] ?? raw['type'] ?? '').trim();
-    const location   = sanitizeText(raw['الموقع'] ?? raw['location'] ?? '');
-    const area       = (raw['المساحة (م²)'] ?? raw['المساحة'] ?? raw['area'] ?? '').trim();
-    const deedNumber = (raw['رقم الصك'] ?? raw['deed'] ?? '').trim();
-    const ownerName  = (raw['المالك'] ?? raw['owner'] ?? '').trim();
+  const str = (v: unknown): string => (v == null ? '' : String(v));
+
+  const parseRow = (raw: Record<string, unknown>): RowData => {
+    const name       = sanitizeText(str(raw['اسم العقار'] ?? raw['name']));
+    const typeRaw    = str(raw['نوع العقار'] ?? raw['type']).trim();
+    const location   = sanitizeText(str(raw['الموقع'] ?? raw['location']));
+    const area       = str(raw['المساحة (م²)'] ?? raw['المساحة'] ?? raw['area']).trim();
+    const deedNumber = str(raw['رقم الصك'] ?? raw['deed']).trim();
+    const ownerName  = str(raw['المالك'] ?? raw['owner']).trim();
 
     const type   = TYPE_MAP[typeRaw] ?? null;
     const owner  = owners.find(o => o.name.trim() === ownerName);
@@ -90,7 +92,7 @@ export default function BulkImportPropertiesScreen() {
   const parseBuffer = (buffer: ArrayBuffer, name: string) => {
     const wb  = read(buffer, { type: 'array' });
     const ws  = wb.Sheets[wb.SheetNames[0]];
-    const raw = utils.sheet_to_json<Record<string, string>>(ws, { defval: '' });
+    const raw = utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
     setFileName(name);
     setRows(raw.map(parseRow));
     setLoading(false);
