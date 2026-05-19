@@ -9,24 +9,47 @@ import { PaymentCard } from '../components/ui/PaymentCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { AppHeader } from '../components/ui/AppHeader';
 import { FilterBar, PAYMENT_FILTERS } from '../components/ui/FilterBar';
-import { formatCurrency, PaymentStatus } from '../data/mockData';
+import { PaymentStatus } from '../data/mockData';
 import { ConfirmModal } from '../components/ui/Modal';
 import { ListSkeleton } from '../components/ui/Skeleton';
 import { useApp } from '../context/AppProvider';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { CurrencyText } from '../components/ui/CurrencyText';
+import { resolvePaymentCurrency, type CurrencyCode } from '../utils/currency';
+
+const COUNTRY_LABELS: Partial<Record<CurrencyCode, string>> = {
+  SAR: 'السعودية', AED: 'الإمارات', EGP: 'مصر',
+  KWD: 'الكويت',  BHD: 'البحرين',  QAR: 'قطر',
+  OMR: 'عُمان',   GBP: 'بريطانيا', USD: 'أمريكا', EUR: 'أوروبا',
+};
 
 type Filter = 'all' | PaymentStatus;
 
 export default function PaymentsScreen() {
   const { colors } = useAppTheme();
-  const { payments, contracts, tenants, deletePayment, confirmPayment, dataLoading } = useApp();
+  const { payments, contracts, tenants, units, properties, deletePayment, confirmPayment, dataLoading } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const [filterCountry, setFilterCountry] = useState('');
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<string | null>(null);
 
+  const countryOptions = useMemo(() => {
+    const codes = Array.from(new Set(
+      payments.map(p => resolvePaymentCurrency(p, contracts, units, properties))
+    ));
+    return [
+      { label: 'كل الدول', value: '' },
+      ...codes.map(code => ({
+        label: COUNTRY_LABELS[code as CurrencyCode] ?? code,
+        value: code,
+      })),
+    ];
+  }, [payments, contracts, units, properties]);
+
   const filtered = useMemo(() => {
     return payments.filter(p => {
+      if (filterCountry && resolvePaymentCurrency(p, contracts, units, properties) !== filterCountry) return false;
       let matchSearch = true;
       if (search) {
         const contract = contracts.find(c => c.id === p.contractId);
@@ -41,13 +64,18 @@ export default function PaymentsScreen() {
       const matchFilter = filter === 'all' || p.status === filter;
       return matchSearch && matchFilter;
     });
-  }, [payments, contracts, tenants, search, filter]);
+  }, [payments, contracts, tenants, units, properties, search, filter, filterCountry]);
 
-  const totals = useMemo(() => ({
-    paid: payments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0),
-    pending: payments.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0),
-    overdue: payments.filter(p => p.status === 'overdue').reduce((s, p) => s + p.amount, 0),
-  }), [payments]);
+  const totals = useMemo(() => {
+    const base = filterCountry
+      ? payments.filter(p => resolvePaymentCurrency(p, contracts, units, properties) === filterCountry)
+      : payments;
+    return {
+      paid:    base.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0),
+      pending: base.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0),
+      overdue: base.filter(p => p.status === 'overdue').reduce((s, p) => s + p.amount, 0),
+    };
+  }, [payments, contracts, units, properties, filterCountry]);
 
   if (dataLoading) return <ListSkeleton count={5} />;
 
@@ -58,6 +86,29 @@ export default function PaymentsScreen() {
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث بالاسم أو الإيصال أو المبلغ..." />
 
       <FilterBar options={PAYMENT_FILTERS} value={filter} onChange={v => setFilter(v as Filter)} />
+
+      {/* Country filter chips */}
+      {countryOptions.length > 2 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countryBar}>
+          {countryOptions.map(opt => {
+            const active = filterCountry === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.countryChip, {
+                  backgroundColor: active ? colors.primary : colors.card,
+                  borderColor: active ? colors.primary : colors.border,
+                }]}
+                onPress={() => setFilterCountry(active && opt.value ? '' : opt.value)}
+                activeOpacity={0.8}
+              >
+                {opt.value && <Ionicons name="globe-outline" size={12} color={active ? '#FFF' : colors.textMuted} />}
+                <Text style={[styles.countryChipText, { color: active ? '#FFF' : colors.text }]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {/* Link to ledger */}
       <TouchableOpacity
@@ -73,17 +124,17 @@ export default function PaymentsScreen() {
       {/* Totals */}
       <View style={[styles.totalsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.total}>
-          <Text style={[styles.tv, { color: colors.success }]}>{formatCurrency(totals.paid)}</Text>
+          <CurrencyText amount={totals.paid} currency={filterCountry || undefined} style={[styles.tv, { color: colors.success }]} />
           <Text style={[styles.tl, { color: colors.textMuted }]}>محصّل</Text>
         </View>
         <View style={[styles.td, { backgroundColor: colors.border }]} />
         <View style={styles.total}>
-          <Text style={[styles.tv, { color: colors.warning }]}>{formatCurrency(totals.pending)}</Text>
+          <CurrencyText amount={totals.pending} currency={filterCountry || undefined} style={[styles.tv, { color: colors.warning }]} />
           <Text style={[styles.tl, { color: colors.textMuted }]}>معلق</Text>
         </View>
         <View style={[styles.td, { backgroundColor: colors.border }]} />
         <View style={styles.total}>
-          <Text style={[styles.tv, { color: colors.danger }]}>{formatCurrency(totals.overdue)}</Text>
+          <CurrencyText amount={totals.overdue} currency={filterCountry || undefined} style={[styles.tv, { color: colors.danger }]} />
           <Text style={[styles.tl, { color: colors.textMuted }]}>متأخر</Text>
         </View>
       </View>
@@ -147,4 +198,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   ledgerLinkText: { flex: 1, fontSize: Theme.fontSize.sm, fontWeight: '600' },
+  countryBar: {
+    paddingHorizontal: Theme.spacing.base,
+    paddingBottom: 8,
+    gap: 8,
+    flexDirection: 'row',
+  },
+  countryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Theme.radius.full,
+    borderWidth: 1,
+  },
+  countryChipText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
 });

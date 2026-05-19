@@ -15,7 +15,13 @@ import { formatDate } from '../data/mockData';
 import { CurrencyText } from '../components/ui/CurrencyText';
 import type { PaymentStatus } from '../data/mockData';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { resolvePaymentCurrency } from '../utils/currency';
+import { resolvePaymentCurrency, CURRENCIES, type CurrencyCode } from '../utils/currency';
+
+const COUNTRY_LABELS: Partial<Record<CurrencyCode, string>> = {
+  SAR: 'السعودية', AED: 'الإمارات', EGP: 'مصر',
+  KWD: 'الكويت',  BHD: 'البحرين',  QAR: 'قطر',
+  OMR: 'عُمان',   GBP: 'بريطانيا', USD: 'أمريكا', EUR: 'أوروبا',
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -239,6 +245,7 @@ export default function LedgerScreen() {
   const [filterTenant, setFilterTenant] = useState('');
   const [filterProperty, setFilterProperty] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterCountry, setFilterCountry] = useState('');
 
   // ── Build tenant ledger list ───────────────────────────────────────────────
   const ledgers = useMemo((): TenantLedger[] => {
@@ -321,12 +328,24 @@ export default function LedgerScreen() {
     { label: 'متأخر', value: 'overdue' },
   ];
 
+  const countryOptions = useMemo(() => {
+    const codes = Array.from(new Set(ledgers.map(l => l.currency)));
+    return [
+      { label: 'كل الدول', value: '' },
+      ...codes.map(code => ({
+        label: COUNTRY_LABELS[code as CurrencyCode] ?? code,
+        value: code,
+      })),
+    ];
+  }, [ledgers]);
+
   // ── Apply filters ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     return ledgers
       .filter(l => {
         if (filterTenant && l.tenantId !== filterTenant) return false;
         if (filterProperty && l.propertyId !== filterProperty) return false;
+        if (filterCountry && l.currency !== filterCountry) return false;
         if (search) {
           const q = search.toLowerCase();
           if (!l.tenantName.toLowerCase().includes(q) &&
@@ -354,7 +373,7 @@ export default function LedgerScreen() {
     total:   filtered.reduce((s, l) => s + l.totalValue, 0),
   }), [filtered]);
 
-  const hasActiveFilters = !!(filterTenant || filterProperty || filterStatus || search);
+  const hasActiveFilters = !!(filterTenant || filterProperty || filterStatus || filterCountry || search);
 
   if (dataLoading) return <ListSkeleton count={4} />;
 
@@ -395,10 +414,18 @@ export default function LedgerScreen() {
           colors={colors}
           baseZIndex={10}
         />
+        <FilterPill
+          label="الدولة"
+          value={filterCountry}
+          options={countryOptions}
+          onChange={setFilterCountry}
+          colors={colors}
+          baseZIndex={5}
+        />
         {hasActiveFilters && (
           <TouchableOpacity
             style={[styles.clearBtn, { borderColor: colors.danger }]}
-            onPress={() => { setFilterTenant(''); setFilterProperty(''); setFilterStatus(''); setSearch(''); }}
+            onPress={() => { setFilterTenant(''); setFilterProperty(''); setFilterStatus(''); setFilterCountry(''); setSearch(''); }}
           >
             <Ionicons name="close-circle-outline" size={14} color={colors.danger} />
             <Text style={[styles.clearText, { color: colors.danger }]}>مسح</Text>
@@ -416,7 +443,7 @@ export default function LedgerScreen() {
         ].map((item, i, arr) => (
           <React.Fragment key={item.label}>
             <View style={styles.summaryItem}>
-              <CurrencyText amount={item.value} style={[styles.summaryValue, { color: item.color }]} />
+              <CurrencyText amount={item.value} currency={filterCountry || undefined} style={[styles.summaryValue, { color: item.color }]} />
               <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{item.label}</Text>
             </View>
             {i < arr.length - 1 && <View style={[styles.summaryDiv, { backgroundColor: colors.border }]} />}
