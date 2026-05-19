@@ -12,6 +12,7 @@ import { AppHeader } from '../../components/ui/AppHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormContainer } from '../../components/ui/FormContainer';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { CURRENCY_OPTIONS, getCurrency } from '../../utils/currency';
 
 export default function EditContractScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,6 +29,7 @@ export default function EditContractScreen() {
     installmentsCount: contract?.installmentsCount?.toString() || '',
     status: contract?.status || 'active',
     notes: contract?.notes || '',
+    currency: contract?.currency || 'SAR',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -40,6 +42,7 @@ export default function EditContractScreen() {
         installmentsCount: contract.installmentsCount?.toString() || '',
         status: contract.status || 'active',
         notes: contract.notes || '',
+        currency: contract.currency || 'SAR',
       });
     }
   }, [contract?.id]);
@@ -70,6 +73,7 @@ export default function EditContractScreen() {
       installmentsCount: Number(form.installmentsCount),
       status: form.status as any,
       notes: form.notes.trim() || undefined,
+      currency: form.currency,
     });
     router.back();
   };
@@ -107,7 +111,14 @@ export default function EditContractScreen() {
 
         <FormDatePicker label="تاريخ البداية" value={form.startDate} onChange={set('startDate')} required error={errors.startDate} />
         <FormDatePicker label="تاريخ النهاية" value={form.endDate} onChange={set('endDate')} required error={errors.endDate} minDate={form.startDate} />
-        <FormInput label="القيمة السنوية (﷼)" value={form.annualValue} onChangeText={set('annualValue')} keyboardType="number-pad" required icon="cash-outline" error={errors.annualValue} />
+        <FormSelect
+          label="عملة العقد"
+          value={form.currency}
+          options={CURRENCY_OPTIONS}
+          onSelect={set('currency')}
+          required
+        />
+        <FormInput label={`القيمة السنوية (${getCurrency(form.currency).symbol})`} value={form.annualValue} onChangeText={set('annualValue')} keyboardType="number-pad" required icon="cash-outline" error={errors.annualValue} />
         <FormSelect label="عدد الأقساط" value={form.installmentsCount} options={installmentOptions} onSelect={set('installmentsCount')} required error={errors.installmentsCount} />
         <FormSelect label="حالة العقد" value={form.status} options={statusOptions} onSelect={set('status')} required />
         <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} multiline numberOfLines={3} icon="document-text-outline" />

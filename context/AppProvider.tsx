@@ -785,6 +785,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fs('units', contract.unitId, { status: 'vacant', currentTenantId: null, currentContractId: null }, 'update');
     }
 
+    // If only currency changed (no financial change), update all pending payments' currency
+    const currencyChanged = data.currency !== undefined && data.currency !== contract.currency;
+    if (currencyChanged && !(
+      (data.annualValue !== undefined && data.annualValue !== contract.annualValue) ||
+      (data.installmentsCount !== undefined && data.installmentsCount !== contract.installmentsCount) ||
+      (data.startDate !== undefined && data.startDate !== contract.startDate) ||
+      (data.endDate   !== undefined && data.endDate   !== contract.endDate)
+    )) {
+      const pendingIds = payments.filter(p => p.contractId === id && p.status !== 'paid').map(p => p.id);
+      setPayments(prev => prev.map(p =>
+        p.contractId === id && p.status !== 'paid' ? { ...p, currency: data.currency } : p,
+      ));
+      pendingIds.forEach(pid => fs('payments', pid, { currency: data.currency }, 'update'));
+    }
+
     // Regenerate pending installments if financial or date fields changed
     const financialChanged =
       (data.annualValue     !== undefined && data.annualValue     !== contract.annualValue)     ||
@@ -822,6 +837,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           dueDate: new Date(Math.min(dueMs, endMs)).toISOString().split('T')[0],
           status: 'pending',
           installmentNumber: installmentIndex + 1,
+          ...(updatedContract.currency ? { currency: updatedContract.currency } : {}),
         };
         fs('payments', p.id, p, 'set');
         return p;
