@@ -6,11 +6,37 @@ import { useApp } from '../context/AppProvider';
 import { AppHeader } from '../components/ui/AppHeader';
 import { CurrencyText } from '../components/ui/CurrencyText';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { CURRENCIES, getCurrency, type CurrencyCode } from '../utils/currency';
 
-type Period = '1m' | '3m' | '6m' | '1y';
+type Period     = '1m' | '3m' | '6m' | '1y';
+type ActiveTab  = 'overview' | 'owners' | 'overdue' | 'countries';
+type CountryFilter = 'all' | CurrencyCode;
 
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const BAR_MAX_H = 100;
+
+/** Returns the effective currency code for a contract (contract → property → SAR) */
+function contractCurrency(
+  contractId: string,
+  contracts: any[], units: any[], properties: any[],
+): CurrencyCode {
+  const c = contracts.find(x => x.id === contractId);
+  if (!c) return 'SAR';
+  if (c.currency) return c.currency as CurrencyCode;
+  const u = units.find(x => x.id === c.unitId);
+  const p = u ? properties.find(x => x.id === u.propertyId) : null;
+  return (p?.currency ?? 'SAR') as CurrencyCode;
+}
+
+/** Country label for a currency code */
+function countryLabel(code: CurrencyCode): string {
+  const labels: Partial<Record<CurrencyCode, string>> = {
+    SAR: 'السعودية', AED: 'الإمارات', EGP: 'مصر',
+    KWD: 'الكويت',  BHD: 'البحرين',  QAR: 'قطر',
+    OMR: 'عُمان',   USD: 'أمريكا',   GBP: 'بريطانيا', EUR: 'أوروبا',
+  };
+  return labels[code] ?? code;
+}
 
 export default function FinancialReportsScreen() {
   const { colors } = useAppTheme();
@@ -18,85 +44,158 @@ export default function FinancialReportsScreen() {
   const isMobile  = width < 768;
   const isDesktop = width >= 1024;
   const { payments, contracts, properties, units, owners, tenants } = useApp();
-  const [period, setPeriod] = useState<Period>('6m');
-  const [activeTab, setActiveTab] = useState<'overview' | 'owners' | 'overdue'>('overview');
+
+  const [period,        setPeriod]        = useState<Period>('6m');
+  const [activeTab,     setActiveTab]     = useState<ActiveTab>('overview');
+  const [countryFilter, setCountryFilter] = useState<CountryFilter>('all');
 
   const periodMonths: Record<Period, number> = { '1m': 1, '3m': 3, '6m': 6, '1y': 12 };
   const months = periodMonths[period];
 
-  const stats = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
-    const periodPayments = payments.filter(p => (p.paidDate && p.paidDate >= cutoff) || (p.dueDate >= cutoff && p.status !== 'paid'));
+  // ── Derive which currencies exist in the data ──────────────────────────────
+  const activeCurrencies = useMemo((): CurrencyCode[] => {
+    const seen = new Set<CurrencyCode>();
+    properties.forEach(p => seen.add((p.currency ?? 'SAR') as CurrencyCode));
+    contracts.forEach(c => {
+      if (c.currency) seen.add(c.currency as CurrencyCode);
+    });
+    return CURRENCIES.map(c => c.code).filter(code => seen.has(code));
+  }, [properties, contracts]);
 
+  // ── Filter helpers (apply countryFilter) ──────────────────────────────────
+  const filteredContracts = useMemo(() =>
+    countryFilter === 'all'
+      ? contracts
+      : contracts.filter(c => contractCurrency(c.id, contracts, units, properties) === countryFilter),
+  [contracts, units, properties, countryFilter]);
+
+  const filteredPayments = useMemo(() => {
+    if (countryFilter === 'all') return payments;
+    const cids = new Set(filteredContracts.map(c => c.id));
+    return payments.filter(p => cids.has(p.contractId));
+  }, [payments, filteredContracts, countryFilter]);
+
+  const filteredProperties = useMemo(() =>
+    countryFilter === 'all'
+      ? properties
+      : properties.filter(p => (p.currency ?? 'SAR') === countryFilter),
+  [properties, countryFilter]);
+
+  // ── Main stats ─────────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const now    = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
     const periodEnd = now.toISOString().split('T')[0];
-    const totalRevenue = contracts
+
+    const periodPayments = filteredPayments.filter(p =>
+      (p.paidDate && p.paidDate >= cutoff) || (p.dueDate >= cutoff && p.status !== 'paid'),
+    );
+
+    const totalRevenue = filteredContracts
       .filter(c => c.startDate <= periodEnd && c.endDate >= cutoff)
-      .reduce((s, c) => {
+      .reduce((s: number, c: any) => {
         const overlapStart = c.startDate > cutoff    ? c.startDate : cutoff;
         const overlapEnd   = c.endDate   < periodEnd ? c.endDate   : periodEnd;
         const overlapDays  = Math.ceil((new Date(overlapEnd).getTime() - new Date(overlapStart).getTime()) / 86400000) + 1;
         return s + Math.round(c.annualValue * (overlapDays / 365));
       }, 0);
-    const collected = periodPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
-    const overdue = periodPayments.filter(p => p.status === 'overdue').reduce((s, p) => s + p.amount, 0);
+
+    const collected      = periodPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
+    const overdue        = periodPayments.filter(p => p.status === 'overdue').reduce((s, p) => s + p.amount, 0);
     const collectionRate = totalRevenue > 0 ? Math.min(100, Math.round((collected / totalRevenue) * 100)) : 0;
 
-    // Monthly bar data (last N months)
+    // Monthly bar
     const barData: { month: string; value: number }[] = [];
     for (let i = months - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const monthPaid = payments.filter(p => p.paidDate?.startsWith(monthStr)).reduce((s, p) => s + p.amount, 0);
+      const monthPaid = filteredPayments
+        .filter(p => p.paidDate?.startsWith(monthStr))
+        .reduce((s, p) => s + p.amount, 0);
       barData.push({ month: MONTHS_AR[d.getMonth()], value: monthPaid });
     }
 
-    // Property distribution
-    const byProperty = properties.map(prop => {
-      const propUnits = units.filter(u => u.propertyId === prop.id);
-      const propContracts = contracts.filter(c => propUnits.find(u => u.id === c.unitId) && c.status === 'active');
-      const revenue = propContracts.reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0);
-      return { name: prop.name, revenue };
+    // By property
+    const byProperty = filteredProperties.map(prop => {
+      const propUnits     = units.filter(u => u.propertyId === prop.id);
+      const propContracts = filteredContracts.filter(c => propUnits.find(u => u.id === c.unitId) && c.status === 'active');
+      const revenue       = propContracts.reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0);
+      const currency      = (prop.currency ?? 'SAR') as CurrencyCode;
+      return { name: prop.name, revenue, currency };
     }).filter(p => p.revenue > 0).sort((a, b) => b.revenue - a.revenue);
 
-    // Owner distribution
+    // By owner
     const byOwner = owners.map(owner => {
-      const ownerProps = properties.filter(p => p.ownerId === owner.id);
-      const ownerUnits = units.filter(u => ownerProps.find(p => p.id === u.propertyId));
-      const ownerContracts = contracts.filter(c => ownerUnits.find(u => u.id === c.unitId));
-      const ownerRevenue = ownerContracts
-        .filter(c => c.status === 'active')
+      const ownerProps     = filteredProperties.filter(p => p.ownerId === owner.id);
+      const ownerUnits     = units.filter(u => ownerProps.find(p => p.id === u.propertyId));
+      const ownerContracts = filteredContracts.filter(c => ownerUnits.find(u => u.id === c.unitId));
+      const ownerRevenue   = ownerContracts.filter(c => c.status === 'active')
         .reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0);
-      const ownerCollected = payments
+      const ownerCollected = filteredPayments
         .filter(p => ownerContracts.find(c => c.id === p.contractId) && p.status === 'paid' && (p.paidDate ?? '') >= cutoff)
         .reduce((s, p) => s + p.amount, 0);
       return { name: owner.name, revenue: ownerRevenue, collected: ownerCollected, unitCount: ownerUnits.length };
     }).filter(o => o.unitCount > 0).sort((a, b) => b.revenue - a.revenue);
 
-    // Overdue breakdown
-    const overdueList = payments
+    // Overdue list
+    const overdueList = filteredPayments
       .filter(p => p.status === 'overdue')
       .map(p => {
-        const c = contracts.find(cc => cc.id === p.contractId);
-        const t = c ? tenants.find(tt => tt.id === c.tenantId) : null;
-        const u = c ? units.find(uu => uu.id === c.unitId) : null;
+        const c    = contracts.find(cc => cc.id === p.contractId);
+        const t    = c ? tenants.find(tt => tt.id === c.tenantId) : null;
+        const u    = c ? units.find(uu => uu.id === c.unitId) : null;
         const prop = u ? properties.find(pp => pp.id === u.propertyId) : null;
-        return { id: p.id, amount: p.amount, dueDate: p.dueDate, tenantName: t?.name ?? '—', propertyName: prop?.name ?? '—', unitNum: u?.number ?? '—' };
+        const cur  = contractCurrency(p.contractId, contracts, units, properties);
+        return {
+          id: p.id, amount: p.amount, dueDate: p.dueDate,
+          tenantName: t?.name ?? '—', propertyName: prop?.name ?? '—',
+          unitNum: u?.number ?? '—', currency: cur,
+        };
       }).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
     return { totalRevenue, collected, overdue, collectionRate, barData, byProperty, byOwner, overdueList };
-  }, [payments, contracts, properties, units, owners, tenants, months]);
+  }, [filteredPayments, filteredContracts, filteredProperties, units, owners, tenants, properties, contracts, months]);
+
+  // ── Per-country breakdown (for "الدول" tab) ────────────────────────────────
+  const byCountry = useMemo(() => {
+    const now    = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
+
+    return activeCurrencies.map(code => {
+      const cContracts = contracts.filter(c => contractCurrency(c.id, contracts, units, properties) === code);
+      const cPayments  = payments.filter(p => cContracts.find(c => c.id === p.contractId));
+      const cProps     = properties.filter(p => (p.currency ?? 'SAR') === code);
+
+      const revenue   = cContracts.filter(c => c.status === 'active')
+        .reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0);
+      const collected = cPayments.filter(p => p.status === 'paid' && (p.paidDate ?? '') >= cutoff)
+        .reduce((s, p) => s + p.amount, 0);
+      const overdue   = cPayments.filter(p => p.status === 'overdue')
+        .reduce((s, p) => s + p.amount, 0);
+      const rate      = revenue > 0 ? Math.min(100, Math.round((collected / revenue) * 100)) : 0;
+
+      return {
+        code,
+        country:   countryLabel(code),
+        meta:      getCurrency(code),
+        propCount: cProps.length,
+        unitCount: units.filter(u => cProps.find(p => p.id === u.propertyId)).length,
+        contractCount: cContracts.filter(c => c.status === 'active').length,
+        revenue, collected, overdue, rate,
+      };
+    }).filter(c => c.propCount > 0 || c.contractCount > 0)
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [activeCurrencies, contracts, payments, properties, units, months]);
 
   const maxBar = Math.max(...stats.barData.map(d => d.value), 1);
-  const periodOptions: { label: string; value: Period }[] = [
-    { label: 'شهر', value: '1m' }, { label: '3 أشهر', value: '3m' },
-    { label: '6 أشهر', value: '6m' }, { label: 'سنة', value: '1y' },
-  ];
 
+  // ── Export ─────────────────────────────────────────────────────────────────
   const handleExport = async () => {
+    const filterLabel = countryFilter === 'all' ? 'كل الدول' : `${countryLabel(countryFilter)} (${countryFilter})`;
     const lines = [
       `تقرير مالي — ${new Date().toLocaleDateString('ar-SA')}`,
       `الفترة: ${period === '1m' ? 'شهر' : period === '3m' ? '3 أشهر' : period === '6m' ? '6 أشهر' : 'سنة'}`,
+      `الدولة: ${filterLabel}`,
       '',
       `الإيرادات المتوقعة,${stats.totalRevenue}`,
       `المحصّلة,${stats.collected}`,
@@ -107,22 +206,26 @@ export default function FinancialReportsScreen() {
       ...stats.barData.map(d => `${d.month},${d.value}`),
       '',
       'إيرادات حسب العقار',
-      ...stats.byProperty.map(p => `${p.name},${p.revenue}`),
+      ...stats.byProperty.map(p => `${p.name},${p.revenue},${p.currency}`),
       '',
       'إيرادات حسب المالك',
       ...stats.byOwner.map(o => `${o.name},${o.revenue},${o.collected}`),
       '',
+      'ملخص حسب الدولة',
+      'الدولة,العملة,العقارات,الوحدات,العقود,الإيرادات,المحصّل,المتأخر,نسبة التحصيل',
+      ...byCountry.map(c => `${c.country},${c.code},${c.propCount},${c.unitCount},${c.contractCount},${c.revenue},${c.collected},${c.overdue},${c.rate}%`),
+      '',
       'الدفعات المتأخرة',
-      'المستأجر,العقار,الوحدة,المبلغ,تاريخ الاستحقاق',
-      ...stats.overdueList.map(o => `${o.tenantName},${o.propertyName},${o.unitNum},${o.amount},${o.dueDate}`),
+      'المستأجر,العقار,الوحدة,المبلغ,العملة,تاريخ الاستحقاق',
+      ...stats.overdueList.map(o => `${o.tenantName},${o.propertyName},${o.unitNum},${o.amount},${o.currency},${o.dueDate}`),
     ].join('\n');
 
     if (Platform.OS === 'web') {
-      const blob = new Blob([lines], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `financial_report_${new Date().toISOString().split('T')[0]}.csv`;
+      const blob = new Blob(['﻿' + lines], { type: 'text/csv;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `financial_report_${countryFilter}_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } else {
@@ -130,12 +233,89 @@ export default function FinancialReportsScreen() {
     }
   };
 
+  const periodOptions: { label: string; value: Period }[] = [
+    { label: 'شهر', value: '1m' }, { label: '3 أشهر', value: '3m' },
+    { label: '6 أشهر', value: '6m' }, { label: 'سنة', value: '1y' },
+  ];
+
+  const tabs: { key: ActiveTab; label: string }[] = [
+    { key: 'overview',   label: 'نظرة عامة' },
+    { key: 'owners',     label: 'الملاك' },
+    { key: 'overdue',    label: 'المتأخرات' },
+    { key: 'countries',  label: 'الدول' },
+  ];
+
+  const selectedMeta = countryFilter !== 'all' ? getCurrency(countryFilter) : null;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="التقارير المالية" rightAction={{ icon: 'share-outline', onPress: handleExport }} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Period Selector */}
+
+        {/* ── Country Filter ──────────────────────────────────────────────── */}
+        {activeCurrencies.length > 1 && (
+          <View style={styles.countrySection}>
+            <View style={styles.countryHeader}>
+              <Ionicons name="globe-outline" size={14} color={colors.textSecondary} />
+              <Text style={[styles.countryHeaderText, { color: colors.textSecondary }]}>تصفية حسب الدولة</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countryChips}>
+              {/* All */}
+              <TouchableOpacity
+                style={[
+                  styles.chip,
+                  { borderColor: countryFilter === 'all' ? colors.primary : colors.border,
+                    backgroundColor: countryFilter === 'all' ? colors.primary : colors.card },
+                ]}
+                onPress={() => setCountryFilter('all')}
+              >
+                <Text style={[styles.chipText, { color: countryFilter === 'all' ? '#FFF' : colors.textSecondary }]}>
+                  🌍 كل الدول
+                </Text>
+              </TouchableOpacity>
+
+              {activeCurrencies.map(code => {
+                const meta     = getCurrency(code);
+                const active   = countryFilter === code;
+                const countryN = countryLabel(code);
+                return (
+                  <TouchableOpacity
+                    key={code}
+                    style={[
+                      styles.chip,
+                      { borderColor: active ? colors.primary : colors.border,
+                        backgroundColor: active ? colors.primary : colors.card },
+                    ]}
+                    onPress={() => setCountryFilter(code)}
+                  >
+                    <Text style={[styles.chipText, { color: active ? '#FFF' : colors.textSecondary }]}>
+                      {countryN}
+                    </Text>
+                    <Text style={[styles.chipSub, { color: active ? 'rgba(255,255,255,0.8)' : colors.textMuted }]}>
+                      {meta.symbol}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Active filter banner */}
+            {selectedMeta && (
+              <View style={[styles.filterBanner, { backgroundColor: colors.primarySubtle, borderColor: colors.primary + '30' }]}>
+                <Ionicons name="funnel" size={13} color={colors.primary} />
+                <Text style={[styles.filterBannerText, { color: colors.primary }]}>
+                  يعرض بيانات {countryLabel(countryFilter as CurrencyCode)} فقط ({selectedMeta.symbol} {countryFilter})
+                </Text>
+                <TouchableOpacity onPress={() => setCountryFilter('all')}>
+                  <Ionicons name="close-circle" size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ── Period Selector ─────────────────────────────────────────────── */}
         <View style={[styles.periodRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {periodOptions.map(p => (
             <TouchableOpacity
@@ -148,37 +328,40 @@ export default function FinancialReportsScreen() {
           ))}
         </View>
 
-        {/* Tab Row — flex on desktop, each tab equal */}
-        <View style={[styles.tabRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {([
-            { key: 'overview', label: 'نظرة عامة' },
-            { key: 'owners',   label: 'الملاك' },
-            { key: 'overdue',  label: 'المتأخرات' },
-          ] as { key: typeof activeTab; label: string }[]).map(t => (
-            <TouchableOpacity
-              key={t.key}
-              style={[styles.tabBtn, activeTab === t.key && { backgroundColor: colors.primary }]}
-              onPress={() => setActiveTab(t.key)}
-            >
-              <Text style={[styles.tabText, { color: activeTab === t.key ? '#FFF' : colors.textSecondary }]}>{t.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* ── Tab Row ─────────────────────────────────────────────────────── */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll}>
+          <View style={[styles.tabRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {tabs.map(t => (
+              <TouchableOpacity
+                key={t.key}
+                style={[styles.tabBtn, activeTab === t.key && { backgroundColor: colors.primary }]}
+                onPress={() => setActiveTab(t.key)}
+              >
+                {t.key === 'countries' && activeCurrencies.length > 1 && (
+                  <View style={[styles.tabBadge, { backgroundColor: activeTab === t.key ? 'rgba(255,255,255,0.3)' : colors.primary }]}>
+                    <Text style={styles.tabBadgeText}>{activeCurrencies.length}</Text>
+                  </View>
+                )}
+                <Text style={[styles.tabText, { color: activeTab === t.key ? '#FFF' : colors.textSecondary }]}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
 
-        {/* KPI Row — 4 cols desktop, 2 cols mobile */}
+        {/* ── KPI Row ─────────────────────────────────────────────────────── */}
         <View style={[styles.kpiGrid, isDesktop && styles.kpiGridDesktop]}>
           {[
-            { label: 'الإيرادات المتوقعة', amount: stats.totalRevenue, color: colors.primary, icon: 'trending-up-outline' },
-            { label: 'المحصّلة', amount: stats.collected, color: colors.success, icon: 'checkmark-circle-outline' },
-            { label: 'المتأخرة', amount: stats.overdue, color: colors.danger, icon: 'alert-circle-outline' },
-            { label: 'نسبة التحصيل', text: `${stats.collectionRate}%`, color: colors.secondary, icon: 'pie-chart-outline' },
+            { label: 'الإيرادات المتوقعة', amount: stats.totalRevenue, color: colors.primary,  icon: 'trending-up-outline' },
+            { label: 'المحصّلة',           amount: stats.collected,    color: colors.success,  icon: 'checkmark-circle-outline' },
+            { label: 'المتأخرة',           amount: stats.overdue,      color: colors.danger,   icon: 'alert-circle-outline' },
+            { label: 'نسبة التحصيل',       text: `${stats.collectionRate}%`, color: colors.secondary, icon: 'pie-chart-outline' },
           ].map(kpi => (
             <View key={kpi.label} style={[styles.kpiCard, isDesktop && styles.kpiCardDesktop, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.kpiIcon, { backgroundColor: `${kpi.color}20` }]}>
                 <Ionicons name={kpi.icon as any} size={18} color={kpi.color} />
               </View>
               {'amount' in kpi
-                ? <CurrencyText amount={kpi.amount} style={[styles.kpiVal, { color: kpi.color }]} />
+                ? <CurrencyText amount={kpi.amount} currency={countryFilter !== 'all' ? countryFilter : undefined} style={[styles.kpiVal, { color: kpi.color }]} />
                 : <Text style={[styles.kpiVal, { color: kpi.color }]}>{kpi.text}</Text>
               }
               <Text style={[styles.kpiLbl, { color: colors.textMuted }]}>{kpi.label}</Text>
@@ -186,16 +369,18 @@ export default function FinancialReportsScreen() {
           ))}
         </View>
 
-        {/* ── OVERVIEW TAB ── */}
+        {/* ══ OVERVIEW TAB ══ */}
         {activeTab === 'overview' && (
-          <View style={[isDesktop && styles.overviewDesktop]}>
-            {/* Left column on desktop: collection rate + bar chart */}
+          <View style={isDesktop ? styles.overviewDesktop : undefined}>
             <View style={isDesktop ? styles.overviewLeft : undefined}>
-              {/* Collection Rate Bar */}
+              {/* Collection Rate */}
               <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>نسبة التحصيل</Text>
                 <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
-                  <View style={[styles.progressFill, { width: `${stats.collectionRate}%` as any, backgroundColor: stats.collectionRate >= 80 ? colors.success : stats.collectionRate >= 50 ? colors.warning : colors.danger }]} />
+                  <View style={[styles.progressFill, {
+                    width: `${stats.collectionRate}%` as any,
+                    backgroundColor: stats.collectionRate >= 80 ? colors.success : stats.collectionRate >= 50 ? colors.warning : colors.danger,
+                  }]} />
                 </View>
                 <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>{stats.collectionRate}% من الإيرادات المتوقعة تم تحصيلها</Text>
               </View>
@@ -223,7 +408,6 @@ export default function FinancialReportsScreen() {
               </View>
             </View>
 
-            {/* Right column on desktop: property table */}
             <View style={isDesktop ? styles.overviewRight : undefined}>
               <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>إيرادات حسب العقار</Text>
@@ -237,7 +421,7 @@ export default function FinancialReportsScreen() {
                     </View>
                     {stats.byProperty.map((p, i) => (
                       <View key={p.name} style={[styles.tableRow, i < stats.byProperty.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-                        <CurrencyText amount={p.revenue} style={[styles.tdValue, { color: colors.success }]} />
+                        <CurrencyText amount={p.revenue} currency={p.currency} style={[styles.tdValue, { color: colors.success }]} />
                         <Text style={[styles.tdName, { color: colors.text }]} numberOfLines={1}>{p.name}</Text>
                       </View>
                     ))}
@@ -248,7 +432,7 @@ export default function FinancialReportsScreen() {
           </View>
         )}
 
-        {/* ── OWNERS TAB ── */}
+        {/* ══ OWNERS TAB ══ */}
         {activeTab === 'owners' && (
           <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>ملخص الملاك</Text>
@@ -269,8 +453,8 @@ export default function FinancialReportsScreen() {
                     </View>
                   </View>
                   <View style={styles.ownerAmounts}>
-                    <CurrencyText amount={o.revenue} style={[styles.ownerRevenue, { color: colors.primary }]} />
-                    <CurrencyText amount={o.collected} style={[styles.ownerCollected, { color: colors.success }]} />
+                    <CurrencyText amount={o.revenue}   currency={countryFilter !== 'all' ? countryFilter : undefined} style={[styles.ownerRevenue,   { color: colors.primary }]} />
+                    <CurrencyText amount={o.collected} currency={countryFilter !== 'all' ? countryFilter : undefined} style={[styles.ownerCollected, { color: colors.success }]} />
                     <Text style={[styles.ownerRate, { color: rate >= 80 ? colors.success : rate >= 50 ? colors.warning : colors.danger }]}>{rate}%</Text>
                   </View>
                 </View>
@@ -279,12 +463,12 @@ export default function FinancialReportsScreen() {
           </View>
         )}
 
-        {/* ── OVERDUE TAB ── */}
+        {/* ══ OVERDUE TAB ══ */}
         {activeTab === 'overdue' && (
           <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.overdueSummary}>
               <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
-              <CurrencyText amount={stats.overdue} style={[styles.overdueTotal, { color: colors.danger }]} />
+              <CurrencyText amount={stats.overdue} currency={countryFilter !== 'all' ? countryFilter : undefined} style={[styles.overdueTotal, { color: colors.danger }]} />
               <Text style={[styles.overdueSub, { color: colors.textMuted }]}>{stats.overdueList.length} دفعة متأخرة</Text>
             </View>
             {stats.overdueList.length === 0 ? (
@@ -299,11 +483,95 @@ export default function FinancialReportsScreen() {
                   <Text style={[styles.overdueLocation, { color: colors.textMuted }]}>{o.propertyName} — وحدة {o.unitNum}</Text>
                   <Text style={[styles.overdueDate, { color: colors.danger }]}>استحقاق: {o.dueDate}</Text>
                 </View>
-                <CurrencyText amount={o.amount} style={[styles.overdueAmount, { color: colors.danger }]} />
+                <CurrencyText amount={o.amount} currency={o.currency} style={[styles.overdueAmount, { color: colors.danger }]} />
               </View>
             ))}
           </View>
         )}
+
+        {/* ══ COUNTRIES TAB ══ */}
+        {activeTab === 'countries' && (
+          <View>
+            {byCountry.length === 0 ? (
+              <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.noData, { color: colors.textMuted }]}>لا توجد بيانات متعددة الدول</Text>
+              </View>
+            ) : byCountry.map(c => (
+              <View key={c.code} style={[styles.countryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {/* Card Header */}
+                <View style={styles.countryCardHeader}>
+                  <View style={[styles.countryCodeBadge, { backgroundColor: colors.primarySubtle }]}>
+                    <Text style={[styles.countryCodeText, { color: colors.primary }]}>{c.code}</Text>
+                  </View>
+                  <View style={styles.countryCardTitle}>
+                    <Text style={[styles.countryName, { color: colors.text }]}>{c.country}</Text>
+                    <Text style={[styles.countrySub, { color: colors.textMuted }]}>
+                      {c.propCount} عقار · {c.unitCount} وحدة · {c.contractCount} عقد نشط
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.countryFilterBtn, { backgroundColor: colors.primarySubtle }]}
+                    onPress={() => { setCountryFilter(c.code); setActiveTab('overview'); }}
+                  >
+                    <Ionicons name="funnel-outline" size={13} color={colors.primary} />
+                    <Text style={[styles.countryFilterBtnText, { color: colors.primary }]}>تصفية</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Stats Row */}
+                <View style={[styles.countryStatsRow, { borderTopColor: colors.border }]}>
+                  <View style={styles.countryStat}>
+                    <CurrencyText amount={c.revenue} currency={c.code} style={[styles.countryStatVal, { color: colors.primary }]} />
+                    <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متوقع</Text>
+                  </View>
+                  <View style={[styles.countryDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.countryStat}>
+                    <CurrencyText amount={c.collected} currency={c.code} style={[styles.countryStatVal, { color: colors.success }]} />
+                    <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>محصّل</Text>
+                  </View>
+                  <View style={[styles.countryDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.countryStat}>
+                    <CurrencyText amount={c.overdue} currency={c.code} style={[styles.countryStatVal, { color: colors.danger }]} />
+                    <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متأخر</Text>
+                  </View>
+                  <View style={[styles.countryDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.countryStat}>
+                    <Text style={[styles.countryStatVal, { color: c.rate >= 80 ? colors.success : c.rate >= 50 ? colors.warning : colors.danger }]}>{c.rate}%</Text>
+                    <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>تحصيل</Text>
+                  </View>
+                </View>
+
+                {/* Collection Progress */}
+                <View style={[styles.progressBg, { backgroundColor: colors.border, marginTop: 8 }]}>
+                  <View style={[styles.progressFill, {
+                    width: `${Math.min(c.rate, 100)}%` as any,
+                    backgroundColor: c.rate >= 80 ? colors.success : c.rate >= 50 ? colors.warning : colors.danger,
+                  }]} />
+                </View>
+              </View>
+            ))}
+
+            {/* Summary across all countries */}
+            {byCountry.length > 1 && (
+              <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>ملخص الدول ({byCountry.length})</Text>
+                {byCountry.map((c, i) => (
+                  <View key={c.code} style={[styles.tableRow, i < byCountry.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                    <View style={styles.countryTableLeft}>
+                      <Text style={[styles.tdName, { color: colors.text }]}>{c.country}</Text>
+                      <Text style={[styles.countrySub, { color: colors.textMuted }]}>{c.meta.symbol}</Text>
+                    </View>
+                    <View style={styles.countryTableRight}>
+                      <CurrencyText amount={c.revenue} currency={c.code} style={[styles.tdValue, { color: colors.primary }]} />
+                      <Text style={[styles.ownerRate, { color: c.rate >= 80 ? colors.success : c.rate >= 50 ? colors.warning : colors.danger }]}>{c.rate}%</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
       </ScrollView>
     </View>
   );
@@ -311,74 +579,127 @@ export default function FinancialReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  // Country filter
+  countrySection: { paddingHorizontal: Theme.spacing.base, paddingTop: Theme.spacing.sm, gap: 8 },
+  countryHeader:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  countryHeaderText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
+  countryChips:   { flexDirection: 'row', gap: 8, paddingVertical: 4, paddingHorizontal: 2 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: Theme.radius.full, borderWidth: 1.5,
+  },
+  chipText:  { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  chipSub:   { fontSize: Theme.fontSize.xs },
+  filterBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: Theme.radius.md, borderWidth: 1,
+  },
+  filterBannerText: { flex: 1, fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
+
+  // Period / Tabs
   periodRow: {
     flexDirection: 'row', margin: Theme.spacing.base,
     borderRadius: Theme.radius.lg, borderWidth: 1, padding: 4, gap: 4,
   },
-  periodBtn: { flex: 1, paddingVertical: 8, borderRadius: Theme.radius.md, alignItems: 'center' },
+  periodBtn:  { flex: 1, paddingVertical: 8, borderRadius: Theme.radius.md, alignItems: 'center' },
   periodText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
-  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Theme.spacing.base, gap: Theme.spacing.sm, marginBottom: 4 },
+  tabScroll:  { marginHorizontal: Theme.spacing.base, marginBottom: 4 },
+  tabRow:     { flexDirection: 'row', borderRadius: Theme.radius.lg, borderWidth: 1, padding: 4, gap: 4 },
+  tabBtn:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Theme.radius.md, alignItems: 'center', flexDirection: 'row', gap: 4 },
+  tabText:    { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  tabBadge:   { width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  tabBadgeText: { fontSize: 9, color: '#FFF', fontWeight: '700' },
+
+  // KPIs
+  kpiGrid:        { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Theme.spacing.base, gap: Theme.spacing.sm, marginBottom: 4 },
   kpiGridDesktop: { flexWrap: 'nowrap' },
-  kpiCard: { width: '48%', flexGrow: 1, borderRadius: Theme.radius.lg, borderWidth: 1, padding: Theme.spacing.md, gap: 4, alignItems: 'flex-start' },
+  kpiCard:        { width: '48%', flexGrow: 1, borderRadius: Theme.radius.lg, borderWidth: 1, padding: Theme.spacing.md, gap: 4, alignItems: 'flex-start' },
   kpiCardDesktop: { width: undefined, flex: 1 },
-  kpiIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  kpiVal: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
-  kpiLbl: { fontSize: Theme.fontSize.xs, textAlign: 'right' },
+  kpiIcon:        { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  kpiVal:         { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
+  kpiLbl:         { fontSize: Theme.fontSize.xs, textAlign: 'right' },
+
+  // Shared section
   section: {
     marginHorizontal: Theme.spacing.base, marginBottom: Theme.spacing.sm,
     borderRadius: Theme.radius.lg, borderWidth: 1, padding: Theme.spacing.md,
   },
   sectionTitle: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, marginBottom: 12, textAlign: 'right' },
-  progressBg: { height: 12, borderRadius: 6, overflow: 'hidden', marginBottom: 8 },
-  progressFill: { height: '100%', borderRadius: 6 },
-  progressLabel: { fontSize: Theme.fontSize.sm, textAlign: 'right' },
+  progressBg:   { height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 8 },
+  progressFill: { height: '100%', borderRadius: 5 },
+  progressLabel:{ fontSize: Theme.fontSize.sm, textAlign: 'right' },
+
+  // Bar chart
   barChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 130 },
-  barItem: { flex: 1, alignItems: 'center', gap: 3 },
-  barWrap: { height: BAR_MAX_H, justifyContent: 'flex-end', width: '100%', alignItems: 'center' },
-  bar: { width: '80%', borderRadius: 4, minHeight: 4 },
+  barItem:  { flex: 1, alignItems: 'center', gap: 3 },
+  barWrap:  { height: BAR_MAX_H, justifyContent: 'flex-end', width: '100%', alignItems: 'center' },
+  bar:      { width: '80%', borderRadius: 4, minHeight: 4 },
   barValue: { fontSize: 9, textAlign: 'center' },
   barLabel: { fontSize: 9, textAlign: 'center' },
-  tableHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 8, borderBottomWidth: 1 },
-  thName: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
-  thLabel: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
-  tableRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
-  tdName: { fontSize: Theme.fontSize.base, flex: 1, textAlign: 'right' },
-  tdValue: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
-  noData: { textAlign: 'center', paddingVertical: 16 },
 
-  // Desktop overview 2-column layout
-  overviewDesktop: { flexDirection: 'row', alignItems: 'flex-start', gap: 0 },
+  // Table
+  tableHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 8, borderBottomWidth: 1 },
+  thName:  { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
+  thLabel: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
+  tableRow:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
+  tdName:  { fontSize: Theme.fontSize.base, flex: 1, textAlign: 'right' },
+  tdValue: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
+  noData:  { textAlign: 'center', paddingVertical: 16 },
+
+  // Desktop 2-col
+  overviewDesktop: { flexDirection: 'row', alignItems: 'flex-start' },
   overviewLeft:    { flex: 2 },
   overviewRight:   { flex: 1 },
 
-  tabRow: {
-    flexDirection: 'row', marginHorizontal: Theme.spacing.base, marginBottom: 4,
-    borderRadius: Theme.radius.lg, borderWidth: 1, padding: 4, gap: 4,
-  },
-  tabBtn: { flex: 1, paddingVertical: 8, borderRadius: Theme.radius.md, alignItems: 'center' },
-  tabText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
-
-  ownerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  ownerAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  ownerAvatarText: { fontSize: 16, fontWeight: '700' },
-  ownerInfo: { flex: 1, gap: 3 },
-  ownerName: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
-  ownerSub: { fontSize: Theme.fontSize.xs, textAlign: 'right' },
-  miniProgress: { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: 2 },
+  // Owners
+  ownerRow:         { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  ownerAvatar:      { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  ownerAvatarText:  { fontSize: 16, fontWeight: '700' },
+  ownerInfo:        { flex: 1, gap: 3 },
+  ownerName:        { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
+  ownerSub:         { fontSize: Theme.fontSize.xs, textAlign: 'right' },
+  miniProgress:     { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: 2 },
   miniProgressFill: { height: '100%', borderRadius: 3 },
-  ownerAmounts: { alignItems: 'flex-end', gap: 2 },
-  ownerRevenue: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
-  ownerCollected: { fontSize: Theme.fontSize.xs },
-  ownerRate: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
+  ownerAmounts:     { alignItems: 'flex-end', gap: 2 },
+  ownerRevenue:     { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
+  ownerCollected:   { fontSize: Theme.fontSize.xs },
+  ownerRate:        { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
 
+  // Overdue
   overdueSummary: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 12, marginBottom: 4 },
-  overdueTotal: { fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold },
-  overdueSub: { fontSize: Theme.fontSize.sm },
-  noOverdue: { alignItems: 'center', gap: 10, paddingVertical: 20 },
-  overdueRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  overdueInfo: { flex: 1, gap: 2 },
-  overdueTenant: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
-  overdueLocation: { fontSize: Theme.fontSize.xs, textAlign: 'right' },
-  overdueDate: { fontSize: Theme.fontSize.xs, textAlign: 'right' },
-  overdueAmount: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
+  overdueTotal:   { fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold },
+  overdueSub:     { fontSize: Theme.fontSize.sm },
+  noOverdue:      { alignItems: 'center', gap: 10, paddingVertical: 20 },
+  overdueRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  overdueInfo:    { flex: 1, gap: 2 },
+  overdueTenant:  { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
+  overdueLocation:{ fontSize: Theme.fontSize.xs, textAlign: 'right' },
+  overdueDate:    { fontSize: Theme.fontSize.xs, textAlign: 'right' },
+  overdueAmount:  { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
+
+  // Countries tab cards
+  countryCard: {
+    marginHorizontal: Theme.spacing.base, marginBottom: Theme.spacing.sm,
+    borderRadius: Theme.radius.xl, borderWidth: 1, padding: Theme.spacing.md,
+  },
+  countryCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  countryCodeBadge:  { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Theme.radius.md },
+  countryCodeText:   { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
+  countryCardTitle:  { flex: 1 },
+  countryName:       { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
+  countrySub:        { fontSize: Theme.fontSize.xs, textAlign: 'right' },
+  countryFilterBtn:  { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 5, borderRadius: Theme.radius.md },
+  countryFilterBtnText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
+
+  countryStatsRow:  { flexDirection: 'row', alignItems: 'center', paddingTop: 10, borderTopWidth: 1 },
+  countryStat:      { flex: 1, alignItems: 'center', gap: 2 },
+  countryStatVal:   { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
+  countryStatLbl:   { fontSize: 10 },
+  countryDivider:   { width: 1, height: 30 },
+
+  countryTableLeft:  { flex: 1, gap: 2 },
+  countryTableRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });
