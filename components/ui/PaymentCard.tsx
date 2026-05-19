@@ -56,7 +56,7 @@ export function PaymentCard({ payment, onDelete, onConfirm }: PaymentCardProps) 
       </View>
 
       <View style={styles.row}>
-        <CurrencyText amount={payment.amount} color={colors.success} size={16} />
+        <CurrencyText amount={payment.amount} currency={payment.currency} color={colors.success} size={16} />
         <Text style={[styles.tenant, { color: colors.textSecondary }]}>{tenant?.name || '—'}</Text>
       </View>
 

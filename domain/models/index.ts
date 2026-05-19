@@ -277,4 +277,5 @@ export interface Receipt {
   referenceNumber?: string;
   notes?: string;
   issuedBy: string;
+  currency?: string;
 }

@@ -90,7 +90,7 @@ export function ReceiptModal({ visible, onClose, receipt }: ReceiptModalProps) {
           {/* Amount Highlight */}
           <View style={[styles.amountBox, { backgroundColor: colors.successSubtle, borderColor: colors.success + '40' }]}>
             <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>المبلغ المدفوع</Text>
-            <CurrencyText amount={receipt.amount} color={colors.success} size={22} />
+            <CurrencyText amount={receipt.amount} currency={receipt.currency} color={colors.success} size={22} />
           </View>
         </View>
 

@@ -99,6 +99,7 @@ export interface Payment {
   installmentNumber: number;
   referenceNumber?: string;
   notes?: string;
+  currency?: string;  // inherited from contract at creation time
 }
 
 export interface Maintenance {

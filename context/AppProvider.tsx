@@ -751,6 +751,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dueDate: new Date(dueMs).toISOString().split('T')[0],
         status: 'pending',
         installmentNumber: i + 1,
+        ...(contract.currency ? { currency: contract.currency } : {}),
       };
       fs('payments', p.id, p, 'set');
       return p;

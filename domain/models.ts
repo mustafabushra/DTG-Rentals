@@ -292,4 +292,5 @@ export interface Receipt {
   referenceNumber?:  string;
   issuedDate:        string;
   issuedBy:          string;
+  currency?:         string;
 }

@@ -111,6 +111,7 @@ export const PaymentService = {
       referenceNumber:    installment.referenceNumber,
       notes:              installment.notes,
       issuedBy,
+      currency: contract.currency ?? property.currency,
     };
   },
 

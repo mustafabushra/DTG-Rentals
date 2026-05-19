@@ -10,7 +10,9 @@ import { FormSelect } from '../components/forms/FormSelect';
 import { FormDatePicker } from '../components/forms/FormDatePicker';
 import { Payment, formatCurrency } from '../data/mockData';
 import { FormContainer } from '../components/ui/FormContainer';
+import { CurrencyText } from '../components/ui/CurrencyText';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { getCurrency } from '../utils/currency';
 
 export default function RecordPaymentScreen() {
   const insets = useSafeAreaInsets();
@@ -36,10 +38,13 @@ export default function RecordPaymentScreen() {
     return payments.filter(p => p.contractId === form.contractId && p.status !== 'paid');
   }, [form.contractId, payments]);
 
-  const installmentOptions = pendingInstallments.map(p => ({
-    label: `القسط ${p.installmentNumber} — ${formatCurrency(p.amount)} (${p.dueDate})`,
-    value: p.id,
-  }));
+  const installmentOptions = pendingInstallments.map(p => {
+    const sym = getCurrency(p.currency).symbol;
+    return {
+      label: `القسط ${p.installmentNumber} — ${formatCurrency(p.amount)} ${sym} (${p.dueDate})`,
+      value: p.id,
+    };
+  });
 
   const selectedInstallment = pendingInstallments.find(p => p.id === form.installmentId);
 
@@ -119,7 +124,7 @@ export default function RecordPaymentScreen() {
         {selectedInstallment && (
           <View style={[styles.amountCard, { backgroundColor: colors.success + '15', borderColor: colors.success }]}>
             <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>المبلغ المستحق</Text>
-            <Text style={[styles.amountValue, { color: colors.success }]}>{formatCurrency(selectedInstallment.amount)}</Text>
+            <CurrencyText amount={selectedInstallment.amount} currency={selectedInstallment.currency} color={colors.success} size={32} />
           </View>
         )}
 

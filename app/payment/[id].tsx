@@ -316,7 +316,7 @@ export default function PaymentDetailScreen() {
             <Ionicons name="receipt-outline" size={40} color={colors.primary} />
             <Text style={[styles.receiptNumber, { color: colors.textSecondary }]}>{payment.receiptNumber ?? '—'}</Text>
           </View>
-          <CurrencyText amount={payment.amount} style={[styles.amount, { color: amountColor }]} />
+          <CurrencyText amount={payment.amount} currency={payment.currency} style={[styles.amount, { color: amountColor }]} />
           <StatusBadge status={payment.status} />
           <View style={[styles.installBadge, { backgroundColor: colors.accent }]}>
             <Text style={[styles.installText, { color: colors.primary }]}>
@@ -340,7 +340,7 @@ export default function PaymentDetailScreen() {
             </View>
             <View style={[styles.progressDiv, { backgroundColor: colors.border }]} />
             <View style={styles.progressStat}>
-              <CurrencyText amount={paidTotal} style={[styles.progressVal, { color: colors.primary }]} />
+              <CurrencyText amount={paidTotal} currency={payment.currency} style={[styles.progressVal, { color: colors.primary }]} />
               <Text style={[styles.progressLbl, { color: colors.textMuted }]}>محصّل</Text>
             </View>
           </View>
