@@ -2,7 +2,7 @@
 // DTG Rentals — Mock Data (Arabic)
 // ===========================
 
-export type PropertyType = 'apartment' | 'villa' | 'office' | 'shop' | 'building' | 'tower';
+export type PropertyType = 'apartment' | 'villa' | 'office' | 'shop' | 'building' | 'tower' | 'land';
 export type PropertyStatus = 'active' | 'inactive';
 export type UnitStatus = 'rented' | 'vacant' | 'maintenance' | 'reserved';
 export type UnitType = 'studio' | 'apartment_1' | 'apartment_2' | 'apartment_3' | 'apartment_4' | 'villa' | 'office' | 'shop';
@@ -38,6 +38,8 @@ export interface Property {
   description: string;
   image?: string;
   currency?: string;   // e.g. 'SAR' | 'AED' | 'EGP' — عملة العقار
+  deedNumber?: string; // رقم الصك (اختياري)
+  area?: number;       // المساحة بالمتر المربع (اختياري)
   createdAt: string;
 }
 
@@ -716,7 +718,7 @@ export const getMaintenanceByPropertyId = (propertyId: string) => mockMaintenanc
 
 export const getPropertyTypeLabel = (type: PropertyType): string => {
   const labels: Record<PropertyType, string> = {
-    apartment: 'شقة', villa: 'فيلا', office: 'مكتب', shop: 'محل', building: 'مبنى', tower: 'برج',
+    apartment: 'شقة', villa: 'فيلا', office: 'مكتب', shop: 'محل', building: 'مبنى', tower: 'برج', land: 'أرض',
   };
   return labels[type];
 };

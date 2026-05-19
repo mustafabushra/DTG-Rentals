@@ -94,7 +94,7 @@ export default function EditContractScreen() {
       form.endDate         !== contract.endDate;
 
     if (financialChange) {
-      setPendingData(data);
+      setPendingData({ ...data, _forceRegenerate: true });
       setShowConfirm(true);
     } else {
       doSave(data);

@@ -17,8 +17,11 @@ export default function FilterPropertiesScreen() {
   const types = [
     { label: 'شقة', value: 'apartment', icon: 'business-outline' },
     { label: 'فيلا', value: 'villa', icon: 'home-outline' },
+    { label: 'مبنى', value: 'building', icon: 'buildings-outline' },
+    { label: 'برج', value: 'tower', icon: 'arrow-up-outline' },
     { label: 'مكتب', value: 'office', icon: 'briefcase-outline' },
     { label: 'محل', value: 'shop', icon: 'storefront-outline' },
+    { label: 'أرض', value: 'land', icon: 'map-outline' },
   ];
 
   const toggleType = (t: string) => {
@@ -131,8 +134,8 @@ const styles = StyleSheet.create({
   resetText: { color: 'rgba(255,255,255,0.85)', fontSize: Theme.fontSize.md },
   content: { padding: Theme.spacing.base, gap: Theme.spacing.md, paddingBottom: 20 },
   sectionTitle: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
-  typeGrid: { flexDirection: 'row', gap: Theme.spacing.sm },
-  typeCard: { flex: 1, aspectRatio: 1, borderRadius: Theme.radius.lg, borderWidth: 1, justifyContent: 'center', alignItems: 'center', gap: 6 },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm },
+  typeCard: { width: '30%', aspectRatio: 1, borderRadius: Theme.radius.lg, borderWidth: 1, justifyContent: 'center', alignItems: 'center', gap: 6 },
   typeLabel: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
   radioGroup: { borderRadius: Theme.radius.lg, borderWidth: 1, overflow: 'hidden' },
   radioItem: { flexDirection: 'row', alignItems: 'center', padding: Theme.spacing.md, borderBottomWidth: 1, gap: 12 },
