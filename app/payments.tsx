@@ -230,6 +230,7 @@ const styles = StyleSheet.create({
   },
   ledgerLinkText: { flex: 1, fontSize: Theme.fontSize.sm, fontWeight: '600' },
   countryScroll: {
+    flexDirection: 'row',
     paddingHorizontal: Theme.spacing.base, paddingBottom: 8, gap: 8,
   },
   countryCard: {

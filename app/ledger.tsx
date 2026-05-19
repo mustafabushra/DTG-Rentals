@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   countText: { fontSize: Theme.fontSize.xs },
 
   // Country cards
-  countryScroll: { paddingHorizontal: Theme.spacing.base, paddingBottom: 8, gap: 8 },
+  countryScroll: { flexDirection: 'row', paddingHorizontal: Theme.spacing.base, paddingBottom: 8, gap: 8 },
   countryCard: { borderRadius: Theme.radius.lg, borderWidth: 1, padding: Theme.spacing.sm, minWidth: 180, gap: 8 },
   countryCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   countryName: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold, flex: 1 },
