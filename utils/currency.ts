@@ -42,6 +42,12 @@ export const CURRENCY_OPTIONS = CURRENCIES.map(c => ({
   label: `${c.label} (${c.symbol})`,
 }));
 
+/** قائمة الدول مع عملتها — للاختيار في نماذج العقود */
+export const COUNTRY_CURRENCY_OPTIONS = CURRENCIES.map(c => ({
+  value: c.code,
+  label: `${COUNTRY_LABELS[c.code] ?? c.label} — ${c.label} (${c.code})`,
+}));
+
 /**
  * Resolve effective currency for a payment:
  * payment.currency → contract.currency → property.currency → 'SAR'

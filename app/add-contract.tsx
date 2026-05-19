@@ -11,7 +11,7 @@ import { FormDatePicker } from '../components/forms/FormDatePicker';
 import { Contract } from '../data/mockData';
 import { FormContainer } from '../components/ui/FormContainer';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { CURRENCY_OPTIONS, getCurrency } from '../utils/currency';
+import { COUNTRY_CURRENCY_OPTIONS, getCurrency } from '../utils/currency';
 
 export default function AddContractScreen() {
   const insets = useSafeAreaInsets();
@@ -97,9 +97,9 @@ export default function AddContractScreen() {
           <FormDatePicker label="تاريخ النهاية" value={form.endDate} onChange={set('endDate')} required error={errors.endDate} minDate={form.startDate} />
           {/* العملة — تُورَث من العقار، قابلة للتغيير */}
           <FormSelect
-            label={`عملة العقد ${selectedProperty ? `(مورَّثة من العقار: ${currencyMeta.label})` : ''}`}
+            label={`دولة العقد${selectedProperty ? ` (مورَّثة من العقار)` : ''}`}
             value={effectiveCurrency}
-            options={CURRENCY_OPTIONS}
+            options={COUNTRY_CURRENCY_OPTIONS}
             onSelect={set('currency')}
             required
           />

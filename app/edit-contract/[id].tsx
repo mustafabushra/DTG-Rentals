@@ -12,7 +12,7 @@ import { AppHeader } from '../../components/ui/AppHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormContainer } from '../../components/ui/FormContainer';
 import { useAppTheme } from '../../hooks/useAppTheme';
-import { CURRENCY_OPTIONS, getCurrency } from '../../utils/currency';
+import { COUNTRY_CURRENCY_OPTIONS, getCurrency } from '../../utils/currency';
 
 export default function EditContractScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -112,9 +112,9 @@ export default function EditContractScreen() {
         <FormDatePicker label="تاريخ البداية" value={form.startDate} onChange={set('startDate')} required error={errors.startDate} />
         <FormDatePicker label="تاريخ النهاية" value={form.endDate} onChange={set('endDate')} required error={errors.endDate} minDate={form.startDate} />
         <FormSelect
-          label="عملة العقد"
+          label="دولة العقد"
           value={form.currency}
-          options={CURRENCY_OPTIONS}
+          options={COUNTRY_CURRENCY_OPTIONS}
           onSelect={set('currency')}
           required
         />
