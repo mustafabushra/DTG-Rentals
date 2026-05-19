@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { router } from 'expo-router';
 import { Theme } from '../constants/Theme';
@@ -14,23 +15,38 @@ import { ListSkeleton } from '../components/ui/Skeleton';
 import { useDelete } from '../hooks/useDelete';
 import { UnitStatus } from '../data/mockData';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { countryLabel } from '../utils/currency';
 
 type Filter = 'all' | UnitStatus;
 
 export default function UnitsScreen() {
   const { colors } = useAppTheme();
-  const { units, dataLoading } = useApp();
+  const { units, properties, dataLoading } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const [filterCountry, setFilterCountry] = useState('');
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
+
+  const unitCurrency = (u: typeof units[0]) =>
+    properties.find(p => p.id === u.propertyId)?.currency ?? 'SAR';
+
+  const countryOptions = useMemo(() => {
+    const codes = Array.from(new Set(units.map(unitCurrency)));
+    if (codes.length < 2) return [];
+    return [
+      { label: 'كل الدول', value: '' },
+      ...codes.map(code => ({ label: countryLabel(code), value: code })),
+    ];
+  }, [units, properties]);
 
   const filtered = useMemo(() => {
     return units.filter(u => {
+      if (filterCountry && unitCurrency(u) !== filterCountry) return false;
       const matchSearch = !search || (u.number ?? '').includes(search);
       const matchFilter = filter === 'all' || u.status === filter;
       return matchSearch && matchFilter;
     });
-  }, [units, search, filter]);
+  }, [units, properties, search, filter, filterCountry]);
 
   const counts = useMemo(() => ({
     rented:      units.filter(u => u.status === 'rented').length,
@@ -48,6 +64,29 @@ export default function UnitsScreen() {
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث برقم الوحدة..." />
 
       <FilterBar options={UNIT_FILTERS} value={filter} onChange={v => setFilter(v as Filter)} />
+
+      {/* Country filter chips */}
+      {countryOptions.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countryBar}>
+          {countryOptions.map(opt => {
+            const active = filterCountry === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.countryChip, {
+                  backgroundColor: active ? colors.primary : colors.card,
+                  borderColor: active ? colors.primary : colors.border,
+                }]}
+                onPress={() => setFilterCountry(active && opt.value ? '' : opt.value)}
+                activeOpacity={0.8}
+              >
+                {opt.value && <Ionicons name="globe-outline" size={12} color={active ? '#FFF' : colors.textMuted} />}
+                <Text style={[styles.countryChipText, { color: active ? '#FFF' : colors.text }]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {/* Stats */}
       <View style={[styles.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -104,4 +143,13 @@ const styles = StyleSheet.create({
   sv: { fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold },
   sl: { fontSize: Theme.fontSize.xs },
   sd: { width: 1, marginVertical: 4 },
+  countryBar: {
+    paddingHorizontal: Theme.spacing.base, paddingBottom: 8, gap: 8,
+  },
+  countryChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: Theme.radius.full, borderWidth: 1,
+  },
+  countryChipText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
 });

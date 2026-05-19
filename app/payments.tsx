@@ -15,15 +15,11 @@ import { ListSkeleton } from '../components/ui/Skeleton';
 import { useApp } from '../context/AppProvider';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { CurrencyText } from '../components/ui/CurrencyText';
-import { resolvePaymentCurrency, type CurrencyCode } from '../utils/currency';
-
-const COUNTRY_LABELS: Partial<Record<CurrencyCode, string>> = {
-  SAR: 'السعودية', AED: 'الإمارات', EGP: 'مصر',
-  KWD: 'الكويت',  BHD: 'البحرين',  QAR: 'قطر',
-  OMR: 'عُمان',   GBP: 'بريطانيا', USD: 'أمريكا', EUR: 'أوروبا',
-};
+import { resolvePaymentCurrency, countryLabel, type CurrencyCode } from '../utils/currency';
 
 type Filter = 'all' | PaymentStatus;
+
+interface CountryStat { code: string; paid: number; pending: number; overdue: number; }
 
 export default function PaymentsScreen() {
   const { colors } = useAppTheme();
@@ -34,35 +30,42 @@ export default function PaymentsScreen() {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<string | null>(null);
 
-  const countryOptions = useMemo(() => {
-    const codes = Array.from(new Set(
-      payments.map(p => resolvePaymentCurrency(p, contracts, units, properties))
-    ));
-    return [
-      { label: 'كل الدول', value: '' },
-      ...codes.map(code => ({
-        label: COUNTRY_LABELS[code as CurrencyCode] ?? code,
-        value: code,
-      })),
-    ];
+  // ── Country stats (all payments, no status filter) ─────────────────────────
+  const countryStats = useMemo((): CountryStat[] => {
+    const map = new Map<string, CountryStat>();
+    payments.forEach(p => {
+      const code = resolvePaymentCurrency(p, contracts, units, properties);
+      if (!map.has(code)) map.set(code, { code, paid: 0, pending: 0, overdue: 0 });
+      const s = map.get(code)!;
+      if (p.status === 'paid')    s.paid    += p.amount;
+      if (p.status === 'pending') s.pending += p.amount;
+      if (p.status === 'overdue') s.overdue += p.amount;
+    });
+    return Array.from(map.values());
   }, [payments, contracts, units, properties]);
+
+  const countryOptions = useMemo(() => [
+    { label: 'كل الدول', value: '' },
+    ...countryStats.map(s => ({ label: countryLabel(s.code), value: s.code })),
+  ], [countryStats]);
 
   const filtered = useMemo(() => {
     return payments.filter(p => {
       if (filterCountry && resolvePaymentCurrency(p, contracts, units, properties) !== filterCountry) return false;
-      let matchSearch = true;
+      const matchFilter = filter === 'all' || p.status === filter;
+      if (!matchFilter) return false;
       if (search) {
         const contract = contracts.find(c => c.id === p.contractId);
         const tenant   = contract ? tenants.find(t => t.id === contract.tenantId) : null;
-        matchSearch =
+        return (
           (p.receiptNumber ?? '').includes(search) ||
           (tenant?.name ?? '').includes(search) ||
           String(p.amount).includes(search) ||
           p.dueDate.includes(search) ||
-          (contract?.contractNumber ?? '').includes(search);
+          (contract?.contractNumber ?? '').includes(search)
+        );
       }
-      const matchFilter = filter === 'all' || p.status === filter;
-      return matchSearch && matchFilter;
+      return true;
     });
   }, [payments, contracts, tenants, units, properties, search, filter, filterCountry]);
 
@@ -87,23 +90,44 @@ export default function PaymentsScreen() {
 
       <FilterBar options={PAYMENT_FILTERS} value={filter} onChange={v => setFilter(v as Filter)} />
 
-      {/* Country filter chips */}
-      {countryOptions.length > 2 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countryBar}>
-          {countryOptions.map(opt => {
-            const active = filterCountry === opt.value;
+      {/* Country breakdown cards */}
+      {countryStats.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countryScroll}>
+          {countryStats.map(s => {
+            const active = filterCountry === s.code;
             return (
               <TouchableOpacity
-                key={opt.value}
-                style={[styles.countryChip, {
-                  backgroundColor: active ? colors.primary : colors.card,
+                key={s.code}
+                style={[styles.countryCard, {
+                  backgroundColor: active ? colors.primary + '10' : colors.card,
                   borderColor: active ? colors.primary : colors.border,
                 }]}
-                onPress={() => setFilterCountry(active && opt.value ? '' : opt.value)}
+                onPress={() => setFilterCountry(active ? '' : s.code)}
                 activeOpacity={0.8}
               >
-                {opt.value && <Ionicons name="globe-outline" size={12} color={active ? '#FFF' : colors.textMuted} />}
-                <Text style={[styles.countryChipText, { color: active ? '#FFF' : colors.text }]}>{opt.label}</Text>
+                <View style={styles.countryCardHeader}>
+                  <Ionicons name="globe-outline" size={13} color={active ? colors.primary : colors.textMuted} />
+                  <Text style={[styles.countryName, { color: active ? colors.primary : colors.text }]}>
+                    {countryLabel(s.code)}
+                  </Text>
+                  <Text style={[styles.countryCode, { color: colors.textMuted }]}>{s.code}</Text>
+                </View>
+                <View style={styles.countryStats}>
+                  <View style={styles.countryStat}>
+                    <CurrencyText amount={s.paid} currency={s.code} style={[styles.countryStatVal, { color: colors.success }]} />
+                    <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>محصّل</Text>
+                  </View>
+                  <View style={[styles.countryDiv, { backgroundColor: colors.border }]} />
+                  <View style={styles.countryStat}>
+                    <CurrencyText amount={s.pending} currency={s.code} style={[styles.countryStatVal, { color: colors.warning }]} />
+                    <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>معلق</Text>
+                  </View>
+                  <View style={[styles.countryDiv, { backgroundColor: colors.border }]} />
+                  <View style={styles.countryStat}>
+                    <CurrencyText amount={s.overdue} currency={s.code} style={[styles.countryStatVal, { color: colors.danger }]} />
+                    <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متأخر</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -123,6 +147,12 @@ export default function PaymentsScreen() {
 
       {/* Totals */}
       <View style={[styles.totalsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {filterCountry && (
+          <TouchableOpacity style={styles.clearCountry} onPress={() => setFilterCountry('')}>
+            <Ionicons name="close-circle" size={14} color={colors.primary} />
+            <Text style={[styles.clearCountryText, { color: colors.primary }]}>{countryLabel(filterCountry)}</Text>
+          </TouchableOpacity>
+        )}
         <View style={styles.total}>
           <CurrencyText amount={totals.paid} currency={filterCountry || undefined} style={[styles.tv, { color: colors.success }]} />
           <Text style={[styles.tl, { color: colors.textMuted }]}>محصّل</Text>
@@ -181,37 +211,39 @@ const styles = StyleSheet.create({
   totalsRow: {
     flexDirection: 'row', marginHorizontal: Theme.spacing.base,
     borderRadius: Theme.radius.lg, borderWidth: 1, padding: Theme.spacing.md, marginBottom: 8,
+    flexWrap: 'wrap', gap: 4,
   },
   total: { flex: 1, alignItems: 'center', gap: 2 },
   tv: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
   tl: { fontSize: Theme.fontSize.xs },
   td: { width: 1, marginVertical: 4 },
+  clearCountry: {
+    width: '100%', flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingBottom: 6, marginBottom: 2,
+  },
+  clearCountryText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
   ledgerLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginHorizontal: Theme.spacing.base,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Theme.radius.md,
-    borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginHorizontal: Theme.spacing.base, marginBottom: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: Theme.radius.md, borderWidth: 1,
   },
   ledgerLinkText: { flex: 1, fontSize: Theme.fontSize.sm, fontWeight: '600' },
-  countryBar: {
-    paddingHorizontal: Theme.spacing.base,
-    paddingBottom: 8,
-    gap: 8,
-    flexDirection: 'row',
+  countryScroll: {
+    paddingHorizontal: Theme.spacing.base, paddingBottom: 8, gap: 8,
   },
-  countryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Theme.radius.full,
-    borderWidth: 1,
+  countryCard: {
+    borderRadius: Theme.radius.lg, borderWidth: 1,
+    padding: Theme.spacing.sm, minWidth: 180, gap: 8,
   },
-  countryChipText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  countryCardHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+  },
+  countryName: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold, flex: 1 },
+  countryCode: { fontSize: Theme.fontSize.xs },
+  countryStats: { flexDirection: 'row', alignItems: 'center' },
+  countryStat: { flex: 1, alignItems: 'center', gap: 2 },
+  countryStatVal: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
+  countryStatLbl: { fontSize: 10 },
+  countryDiv: { width: 1, height: 28, marginHorizontal: 4 },
 });

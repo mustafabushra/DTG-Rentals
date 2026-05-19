@@ -60,6 +60,16 @@ export function resolvePaymentCurrency(
   return prop?.currency ?? 'SAR';
 }
 
+export const COUNTRY_LABELS: Partial<Record<CurrencyCode, string>> = {
+  SAR: 'السعودية', AED: 'الإمارات', EGP: 'مصر',
+  KWD: 'الكويت',  BHD: 'البحرين',  QAR: 'قطر',
+  OMR: 'عُمان',   GBP: 'بريطانيا', USD: 'أمريكا', EUR: 'أوروبا',
+};
+
+export function countryLabel(code?: string | null): string {
+  return COUNTRY_LABELS[(code ?? 'SAR') as CurrencyCode] ?? code ?? 'SAR';
+}
+
 /** كشف العملة تلقائياً من نص الموقع/العنوان */
 export function detectCurrencyFromLocation(location?: string | null): CurrencyCode {
   if (!location) return 'SAR';

@@ -9,6 +9,7 @@ import { useApp } from '../../context/AppProvider';
 import { StatusBadge } from './StatusBadge';
 import { DeleteButton } from './DeleteButton';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { countryLabel } from '../../utils/currency';
 
 interface ContractCardProps {
   contract: Contract;
@@ -56,6 +57,12 @@ export function ContractCard({ contract, onDelete }: ContractCardProps) {
           </Text>
           <Text style={[styles.infoLabel, { color: colors.textMuted }]}>رقم الوحدة</Text>
         </View>
+        {contract.currency && contract.currency !== 'SAR' && (
+          <View style={[styles.countryBadge, { backgroundColor: colors.accent, borderColor: colors.border }]}>
+            <Ionicons name="globe-outline" size={10} color={colors.primary} />
+            <Text style={[styles.countryText, { color: colors.primary }]}>{countryLabel(contract.currency)}</Text>
+          </View>
+        )}
         <Ionicons name="chevron-back-outline" size={16} color={colors.textMuted} />
       </View>
     </TouchableOpacity>
@@ -118,4 +125,10 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: Theme.fontSize.xs,
   },
+  countryBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: Theme.radius.full, borderWidth: 1,
+  },
+  countryText: { fontSize: 10, fontWeight: Theme.fontWeight.semibold },
 });
