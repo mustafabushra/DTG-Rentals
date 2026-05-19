@@ -15,7 +15,7 @@ import { formatDate } from '../data/mockData';
 import { CurrencyText } from '../components/ui/CurrencyText';
 import type { PaymentStatus } from '../data/mockData';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { resolvePaymentCurrency, countryLabel, formatAmount, type CurrencyCode } from '../utils/currency';
+import { resolvePaymentCurrency, countryLabel, formatAmount, convertToSAR, type CurrencyCode } from '../utils/currency';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -330,6 +330,17 @@ export default function LedgerScreen() {
     ];
   }, [ledgers]);
 
+  // SAR grand totals (all currencies converted)
+  const sarTotals = useMemo(() => {
+    let paid = 0, pending = 0, overdue = 0;
+    ledgers.forEach(l => {
+      paid    += convertToSAR(l.paid,    l.currency);
+      pending += convertToSAR(l.pending, l.currency);
+      overdue += convertToSAR(l.overdue, l.currency);
+    });
+    return { paid, pending, overdue };
+  }, [ledgers]);
+
   // per-country totals (from all ledgers before country filter)
   const countryStats = useMemo(() => {
     const map = new Map<string, { code: string; paid: number; pending: number; overdue: number }>();
@@ -395,6 +406,37 @@ export default function LedgerScreen() {
       {/* Country breakdown cards */}
       {countryStats.length > 1 && (
         <View style={styles.countryScroll}>
+          {/* SAR total card */}
+          <View style={[styles.countryCard, styles.sarCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary }]}>
+            <View style={styles.countryCardHeader}>
+              <Ionicons name="swap-horizontal-outline" size={13} color={colors.primary} />
+              <Text style={[styles.countryName, { color: colors.primary }]} numberOfLines={1}>المجموع الكلي بالريال</Text>
+            </View>
+            <View style={styles.countryStats}>
+              <View style={styles.countryStat}>
+                <Text style={[styles.countryStatVal, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatAmount(sarTotals.paid, 'SAR')}
+                </Text>
+                <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>محصّل</Text>
+              </View>
+              <View style={[styles.countryDiv, { backgroundColor: colors.primary + '40' }]} />
+              <View style={styles.countryStat}>
+                <Text style={[styles.countryStatVal, { color: colors.warning }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatAmount(sarTotals.pending, 'SAR')}
+                </Text>
+                <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>معلق</Text>
+              </View>
+              <View style={[styles.countryDiv, { backgroundColor: colors.primary + '40' }]} />
+              <View style={styles.countryStat}>
+                <Text style={[styles.countryStatVal, { color: colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatAmount(sarTotals.overdue, 'SAR')}
+                </Text>
+                <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متأخر</Text>
+              </View>
+            </View>
+            <Text style={[styles.sarNote, { color: colors.textMuted }]}>أسعار صرف تقريبية</Text>
+          </View>
+
           {countryStats.map(s => {
             const active = filterCountry === s.code;
             return (
@@ -610,6 +652,8 @@ const styles = StyleSheet.create({
   countryStatVal: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
   countryStatLbl: { fontSize: 10 },
   countryDiv: { width: 1, height: 28, marginHorizontal: 4 },
+  sarCard: { width: '100%' },
+  sarNote: { fontSize: 9, textAlign: 'center', marginTop: -4 },
 
   // Ledger Card
   ledgerCard: {

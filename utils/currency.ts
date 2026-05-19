@@ -46,6 +46,29 @@ export function countryLabel(code?: string | null): string {
   return COUNTRY_LABELS[(code ?? 'SAR') as CurrencyCode] ?? code ?? 'SAR';
 }
 
+/**
+ * أسعار صرف تقريبية ثابتة إلى الريال السعودي
+ * المصدر: أسعار الربط الرسمية + تقريب للعملات العائمة (مايو 2026)
+ */
+export const EXCHANGE_RATES_TO_SAR: Record<CurrencyCode, number> = {
+  SAR: 1,
+  AED: 1.021,   // درهم مرتبط بالدولار (3.6725) والريال (3.75)
+  EGP: 0.074,   // جنيه مصري (تقريبي)
+  USD: 3.75,    // ربط رسمي
+  EUR: 4.12,    // تقريبي
+  GBP: 4.82,    // تقريبي
+  KWD: 12.22,   // دينار كويتي مرتبط
+  QAR: 1.029,   // ريال قطري مرتبط بالدولار (3.64)
+  BHD: 9.96,    // دينار بحريني مرتبط (0.376)
+  OMR: 9.74,    // ريال عُماني مرتبط (0.385)
+};
+
+/** حوّل مبلغاً من أي عملة إلى ريال سعودي */
+export function convertToSAR(amount: number, currency?: string | null): number {
+  const rate = EXCHANGE_RATES_TO_SAR[(currency ?? 'SAR') as CurrencyCode] ?? 1;
+  return amount * rate;
+}
+
 /** خيارات الـ FormSelect */
 export const CURRENCY_OPTIONS = CURRENCIES.map(c => ({
   value: c.code,

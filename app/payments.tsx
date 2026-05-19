@@ -15,7 +15,7 @@ import { ListSkeleton } from '../components/ui/Skeleton';
 import { useApp } from '../context/AppProvider';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { CurrencyText } from '../components/ui/CurrencyText';
-import { resolvePaymentCurrency, countryLabel, formatAmount, type CurrencyCode } from '../utils/currency';
+import { resolvePaymentCurrency, countryLabel, formatAmount, convertToSAR, type CurrencyCode } from '../utils/currency';
 
 type Filter = 'all' | PaymentStatus;
 
@@ -29,6 +29,18 @@ export default function PaymentsScreen() {
   const [filterCountry, setFilterCountry] = useState('');
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<string | null>(null);
+
+  // ── SAR totals (all currencies converted) ─────────────────────────────────
+  const sarTotals = useMemo(() => {
+    let paid = 0, pending = 0, overdue = 0;
+    payments.forEach(p => {
+      const cur = resolvePaymentCurrency(p, contracts, units, properties);
+      if (p.status === 'paid')    paid    += convertToSAR(p.amount, cur);
+      if (p.status === 'pending') pending += convertToSAR(p.amount, cur);
+      if (p.status === 'overdue') overdue += convertToSAR(p.amount, cur);
+    });
+    return { paid, pending, overdue };
+  }, [payments, contracts, units, properties]);
 
   // ── Country stats (all payments, no status filter) ─────────────────────────
   const countryStats = useMemo((): CountryStat[] => {
@@ -93,6 +105,37 @@ export default function PaymentsScreen() {
       {/* Country breakdown cards */}
       {countryStats.length > 1 && (
         <View style={styles.countryScroll}>
+          {/* SAR total card */}
+          <View style={[styles.countryCard, styles.sarCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary }]}>
+            <View style={styles.countryCardHeader}>
+              <Ionicons name="swap-horizontal-outline" size={13} color={colors.primary} />
+              <Text style={[styles.countryName, { color: colors.primary }]} numberOfLines={1}>المجموع الكلي بالريال</Text>
+            </View>
+            <View style={styles.countryStats}>
+              <View style={styles.countryStat}>
+                <Text style={[styles.countryStatVal, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatAmount(sarTotals.paid, 'SAR')}
+                </Text>
+                <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>محصّل</Text>
+              </View>
+              <View style={[styles.countryDiv, { backgroundColor: colors.primary + '40' }]} />
+              <View style={styles.countryStat}>
+                <Text style={[styles.countryStatVal, { color: colors.warning }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatAmount(sarTotals.pending, 'SAR')}
+                </Text>
+                <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>معلق</Text>
+              </View>
+              <View style={[styles.countryDiv, { backgroundColor: colors.primary + '40' }]} />
+              <View style={styles.countryStat}>
+                <Text style={[styles.countryStatVal, { color: colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatAmount(sarTotals.overdue, 'SAR')}
+                </Text>
+                <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متأخر</Text>
+              </View>
+            </View>
+            <Text style={[styles.sarNote, { color: colors.textMuted }]}>أسعار صرف تقريبية</Text>
+          </View>
+
           {countryStats.map(s => {
             const active = filterCountry === s.code;
             return (
@@ -252,4 +295,6 @@ const styles = StyleSheet.create({
   countryStatVal: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
   countryStatLbl: { fontSize: 10 },
   countryDiv: { width: 1, height: 28, marginHorizontal: 4 },
+  sarCard: { width: '100%' },
+  sarNote: { fontSize: 9, textAlign: 'center', marginTop: -4 },
 });
