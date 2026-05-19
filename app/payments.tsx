@@ -107,10 +107,9 @@ export default function PaymentsScreen() {
               >
                 <View style={styles.countryCardHeader}>
                   <Ionicons name="globe-outline" size={13} color={active ? colors.primary : colors.textMuted} />
-                  <Text style={[styles.countryName, { color: active ? colors.primary : colors.text }]}>
+                  <Text style={[styles.countryName, { color: active ? colors.primary : colors.text }]} numberOfLines={1}>
                     {countryLabel(s.code)}
                   </Text>
-                  <Text style={[styles.countryCode, { color: colors.textMuted }]}>{s.code}</Text>
                 </View>
                 <View style={styles.countryStats}>
                   <View style={styles.countryStat}>
@@ -241,7 +240,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 5,
   },
   countryName: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold, flex: 1 },
-  countryCode: { fontSize: Theme.fontSize.xs },
   countryStats: { flexDirection: 'row', alignItems: 'center' },
   countryStat: { flex: 1, alignItems: 'center', gap: 2 },
   countryStatVal: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
