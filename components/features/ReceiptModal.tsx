@@ -32,7 +32,7 @@ export function ReceiptModal({ visible, onClose, receipt }: ReceiptModalProps) {
       `العقار:   ${receipt.propertyName}`,
       `الوحدة:   ${receipt.unitNumber}`,
       `القسط:    ${receipt.installmentNumber}`,
-      `المبلغ:   ${receipt.amount.toLocaleString('en-US')} ر.س`,
+      `المبلغ:   ${receipt.amount.toLocaleString('en-US')} ﷼`,
       `طريقة الدفع: ${PaymentService.methodLabel(receipt.paymentMethod)}`,
       receipt.referenceNumber ? `رقم المرجع: ${receipt.referenceNumber}` : '',
       `تاريخ الإصدار: ${receipt.issuedDate}`,

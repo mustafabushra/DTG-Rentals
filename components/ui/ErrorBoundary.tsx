@@ -31,9 +31,10 @@ export class ErrorBoundary extends Component<Props, State> {
         <Text style={s.sub}>
           {this.props.fallbackLabel ?? 'نعتذر عن الإزعاج. يرجى المحاولة مجدداً.'}
         </Text>
-        {__DEV__ && this.state.error && (
+        {this.state.error && (
           <ScrollView style={s.debugBox}>
             <Text style={s.debugText}>{this.state.error.message}</Text>
+            <Text style={[s.debugText, { marginTop: 8, opacity: 0.7 }]}>{this.state.error.stack?.slice(0, 400)}</Text>
           </ScrollView>
         )}
         <TouchableOpacity style={s.btn} onPress={this.reset}>

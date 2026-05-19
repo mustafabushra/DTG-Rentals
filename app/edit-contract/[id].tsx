@@ -107,7 +107,7 @@ export default function EditContractScreen() {
 
         <FormDatePicker label="تاريخ البداية" value={form.startDate} onChange={set('startDate')} required error={errors.startDate} />
         <FormDatePicker label="تاريخ النهاية" value={form.endDate} onChange={set('endDate')} required error={errors.endDate} minDate={form.startDate} />
-        <FormInput label="القيمة السنوية (ر.س)" value={form.annualValue} onChangeText={set('annualValue')} keyboardType="number-pad" required icon="cash-outline" error={errors.annualValue} />
+        <FormInput label="القيمة السنوية (﷼)" value={form.annualValue} onChangeText={set('annualValue')} keyboardType="number-pad" required icon="cash-outline" error={errors.annualValue} />
         <FormSelect label="عدد الأقساط" value={form.installmentsCount} options={installmentOptions} onSelect={set('installmentsCount')} required error={errors.installmentsCount} />
         <FormSelect label="حالة العقد" value={form.status} options={statusOptions} onSelect={set('status')} required />
         <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} multiline numberOfLines={3} icon="document-text-outline" />

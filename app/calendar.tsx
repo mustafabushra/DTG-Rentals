@@ -97,7 +97,7 @@ export default function CalendarScreen() {
         events.push({
           id: `dyn_ce_${c.id}`, title: `انتهاء عقد: ${c.contractNumber ?? c.id}`,
           date: c.endDate, type: 'contract_expiry', entityId: c.id, entityType: 'contract',
-          notes: `قيمة العقد السنوية: ${c.annualValue?.toLocaleString('en-US') ?? '—'} ر.س`,
+          notes: `قيمة العقد السنوية: ${c.annualValue?.toLocaleString('en-US') ?? '—'} ﷼`,
         });
       }
     });
@@ -105,7 +105,7 @@ export default function CalendarScreen() {
     installments.filter(p => p.status === 'pending' || p.status === 'overdue').forEach(p => {
       if (!events.find(e => e.id === `dyn_pe_${p.id}`)) {
         events.push({
-          id: `dyn_pe_${p.id}`, title: `دفعة مستحقة: ${p.amount.toLocaleString('en-US')} ر.س`,
+          id: `dyn_pe_${p.id}`, title: `دفعة مستحقة: ${p.amount.toLocaleString('en-US')} ﷼`,
           date: p.dueDate, type: 'payment', entityId: p.id, entityType: 'payment',
           notes: p.status === 'overdue' ? '⚠ متأخرة' : `قسط رقم ${p.installmentNumber}`,
         });

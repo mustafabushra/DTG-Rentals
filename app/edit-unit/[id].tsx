@@ -112,7 +112,7 @@ export default function EditUnitScreen() {
         <FormSelect label="نوع الوحدة" value={form.type} options={typeOptions} onSelect={set('type')} required error={errors.type} />
         <FormInput label="رقم الطابق" value={form.floor} onChangeText={set('floor')} keyboardType="number-pad" required icon="layers-outline" error={errors.floor} />
         <FormInput label="المساحة (م²)" value={form.area} onChangeText={set('area')} keyboardType="decimal-pad" required icon="resize-outline" error={errors.area} />
-        <FormInput label="الإيجار الشهري (ر.س)" value={form.monthlyRent} onChangeText={set('monthlyRent')} keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
+        <FormInput label="الإيجار الشهري (﷼)" value={form.monthlyRent} onChangeText={set('monthlyRent')} keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
         <FormInput label="الوصف" value={form.description} onChangeText={set('description')} multiline numberOfLines={3} icon="document-text-outline" />
 
         <View style={styles.featuresSection}>

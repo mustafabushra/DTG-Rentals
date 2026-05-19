@@ -199,14 +199,14 @@ export default function DashboardScreen() {
     contracts
       .filter(c => c.status === 'active' && (!ownerContractIds || ownerContractIds.has(c.id)))
       .forEach(c => {
-        events.push({ id: `dyn_ce_${c.id}`, title: `انتهاء عقد: ${c.contractNumber ?? c.id}`, date: c.endDate, type: 'contract_expiry', entityType: 'contract', entityId: c.id, notes: `${c.annualValue?.toLocaleString('en-US') ?? '—'} ر.س سنوياً` });
+        events.push({ id: `dyn_ce_${c.id}`, title: `انتهاء عقد: ${c.contractNumber ?? c.id}`, date: c.endDate, type: 'contract_expiry', entityType: 'contract', entityId: c.id, notes: `${c.annualValue?.toLocaleString('en-US') ?? '—'} ﷼ سنوياً` });
       });
 
     // 3. Pending / overdue payments
     payments
       .filter(p => (p.status === 'pending' || p.status === 'overdue') && (!ownerPaymentIds || ownerPaymentIds.has(p.id)))
       .forEach(p => {
-        events.push({ id: `dyn_pe_${p.id}`, title: `دفعة: ${p.amount.toLocaleString('en-US')} ر.س`, date: p.dueDate, type: 'payment', entityType: 'payment', entityId: p.id, notes: p.status === 'overdue' ? '⚠ متأخرة' : undefined });
+        events.push({ id: `dyn_pe_${p.id}`, title: `دفعة: ${p.amount.toLocaleString('en-US')} ﷼`, date: p.dueDate, type: 'payment', entityType: 'payment', entityId: p.id, notes: p.status === 'overdue' ? '⚠ متأخرة' : undefined });
       });
 
     // 4. Open maintenance
