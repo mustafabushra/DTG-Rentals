@@ -801,11 +801,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Regenerate pending installments if financial or date fields changed
+    // Use Number() coercion to handle Firestore returning numeric fields as strings
     const financialChanged =
-      (data.annualValue     !== undefined && data.annualValue     !== contract.annualValue)     ||
-      (data.installmentsCount !== undefined && data.installmentsCount !== contract.installmentsCount) ||
-      (data.startDate       !== undefined && data.startDate       !== contract.startDate)       ||
-      (data.endDate         !== undefined && data.endDate         !== contract.endDate);
+      (data as any)._forceRegenerate === true ||
+      (data.annualValue       !== undefined && Number(data.annualValue)       !== Number(contract.annualValue))       ||
+      (data.installmentsCount !== undefined && Number(data.installmentsCount) !== Number(contract.installmentsCount)) ||
+      (data.startDate         !== undefined && data.startDate                 !== contract.startDate)                 ||
+      (data.endDate           !== undefined && data.endDate                   !== contract.endDate);
 
     if (financialChanged) {
       const paidPayments    = payments.filter(p => p.contractId === id && p.status === 'paid');

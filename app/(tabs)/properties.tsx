@@ -73,6 +73,14 @@ export default function PropertiesScreen() {
             {canWrite && (
               <TouchableOpacity
                 style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+                onPress={() => router.push('/bulk-import-properties')}
+              >
+                <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+            {canWrite && (
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
                 onPress={() => router.push('/add-property')}
               >
                 <Ionicons name="add" size={22} color="#FFFFFF" />

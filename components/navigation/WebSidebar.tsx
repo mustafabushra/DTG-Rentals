@@ -97,7 +97,7 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-        <Text style={[styles.section, { color: 'rgba(195,175,118,0.6)' }]}>الرئيسي</Text>
+        <Text style={[styles.section, { color: 'rgba(195,175,118,0.6)' }]}>الرئيسية</Text>
         {visibleTab.map(item => (
           <SideItem
             key={item.route}
