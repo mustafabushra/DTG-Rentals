@@ -15,7 +15,7 @@ import { ConfirmModal } from '../../components/ui/Modal';
 import { formatDate, formatCurrency } from '../../data/mockData';
 import { CurrencyText } from '../../components/ui/CurrencyText';
 import { useAppTheme } from '../../hooks/useAppTheme';
-import { resolvePaymentCurrency } from '../../utils/currency';
+import { resolvePaymentCurrency, formatAmount } from '../../utils/currency';
 
 const methodLabels: Record<string, string> = {
   transfer:      'تحويل بنكي',
@@ -353,7 +353,7 @@ export default function PaymentDetailScreen() {
             ]} />
           </View>
           <Text style={[styles.barLabel, { color: colors.textMuted }]}>
-            {totalInstallments > 0 ? Math.round((paidCount / totalInstallments) * 100) : 0}% من إجمالي العقد ({formatCurrency(contract?.annualValue ?? 0)})
+            {totalInstallments > 0 ? Math.round((paidCount / totalInstallments) * 100) : 0}% من إجمالي العقد ({formatAmount(contract?.annualValue ?? 0, effectiveCurrency)})
           </Text>
         </View>
 
@@ -443,7 +443,7 @@ export default function PaymentDetailScreen() {
         onClose={() => setShowConfirm(false)}
         onConfirm={handleConfirm}
         title="تأكيد استلام الدفعة"
-        message={`هل تأكدت من استلام مبلغ ${formatCurrency(payment.amount)}؟ سيتم تسجيلها كمدفوعة وفتح الإيصال للطباعة.`}
+        message={`هل تأكدت من استلام مبلغ ${formatAmount(payment.amount, effectiveCurrency)}؟ سيتم تسجيلها كمدفوعة وفتح الإيصال للطباعة.`}
         confirmLabel="تأكيد الاستلام"
         variant="warning"
       />

@@ -15,6 +15,7 @@ import { formatDate } from '../data/mockData';
 import { CurrencyText } from '../components/ui/CurrencyText';
 import type { PaymentStatus } from '../data/mockData';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { resolvePaymentCurrency } from '../utils/currency';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ interface LedgerRow {
   status: PaymentStatus;
   receiptNumber: string;
   paymentId: string;
+  currency: string;
 }
 
 interface TenantLedger {
@@ -38,6 +40,7 @@ interface TenantLedger {
   propertyName: string;
   unitNumber: string;
   totalValue: number;
+  currency: string;
   rows: LedgerRow[];
   paid: number;
   pending: number;
@@ -90,7 +93,7 @@ function LedgerRowItem({ row, colors }: { row: LedgerRow; colors: any }) {
         </View>
       </View>
       <View style={styles.rowRight}>
-        <CurrencyText amount={row.amount} style={[styles.rowAmount, { color: statusColor }]} />
+        <CurrencyText amount={row.amount} currency={row.currency} style={[styles.rowAmount, { color: statusColor }]} />
         <Text style={[styles.statusLabel, { color: statusColor }]}>
           {STATUS_LABELS[row.status]}
         </Text>
@@ -148,22 +151,22 @@ function TenantLedgerCard({ ledger, colors }: { ledger: TenantLedger; colors: an
       {/* Financial Summary */}
       <View style={[styles.financialSummary, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
         <View style={styles.finItem}>
-          <CurrencyText amount={ledger.paid} style={[styles.finValue, { color: colors.success }]} />
+          <CurrencyText amount={ledger.paid} currency={ledger.currency} style={[styles.finValue, { color: colors.success }]} />
           <Text style={[styles.finLabel, { color: colors.textMuted }]}>محصّل</Text>
         </View>
         <View style={[styles.finDiv, { backgroundColor: colors.border }]} />
         <View style={styles.finItem}>
-          <CurrencyText amount={ledger.pending} style={[styles.finValue, { color: colors.warning }]} />
+          <CurrencyText amount={ledger.pending} currency={ledger.currency} style={[styles.finValue, { color: colors.warning }]} />
           <Text style={[styles.finLabel, { color: colors.textMuted }]}>معلق</Text>
         </View>
         <View style={[styles.finDiv, { backgroundColor: colors.border }]} />
         <View style={styles.finItem}>
-          <CurrencyText amount={ledger.overdue} style={[styles.finValue, { color: colors.danger }]} />
+          <CurrencyText amount={ledger.overdue} currency={ledger.currency} style={[styles.finValue, { color: colors.danger }]} />
           <Text style={[styles.finLabel, { color: colors.textMuted }]}>متأخر</Text>
         </View>
         <View style={[styles.finDiv, { backgroundColor: colors.border }]} />
         <View style={styles.finItem}>
-          <CurrencyText amount={ledger.totalValue} style={[styles.finValue, { color: colors.text }]} />
+          <CurrencyText amount={ledger.totalValue} currency={ledger.currency} style={[styles.finValue, { color: colors.text }]} />
           <Text style={[styles.finLabel, { color: colors.textMuted }]}>الإجمالي</Text>
         </View>
       </View>
@@ -253,6 +256,11 @@ export default function LedgerScreen() {
         .filter(p => p.contractId === contract.id)
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
+      const contractCurrency = resolvePaymentCurrency(
+        { currency: contract.currency, contractId: contract.id },
+        contracts, units, properties,
+      );
+
       const rows: LedgerRow[] = contractPayments.map((p, i) => ({
         id: p.id,
         paymentId: p.id,
@@ -262,6 +270,7 @@ export default function LedgerScreen() {
         paidDate: p.paidDate,
         status: p.status,
         receiptNumber: p.receiptNumber,
+        currency: contractCurrency,
       }));
 
       const paid    = rows.filter(r => r.status === 'paid').reduce((s, r) => s + r.amount, 0);
@@ -277,6 +286,7 @@ export default function LedgerScreen() {
         propertyName: property.name,
         unitNumber: unit.number,
         totalValue: contract.annualValue,
+        currency: contractCurrency,
         rows,
         paid,
         pending,

@@ -39,7 +39,8 @@ export default function RecordPaymentScreen() {
   }, [form.contractId, payments]);
 
   const installmentOptions = pendingInstallments.map(p => {
-    const sym = getCurrency(p.currency).symbol;
+    const cur = resolvePaymentCurrency(p, contracts, units, properties);
+    const sym = getCurrency(cur).symbol;
     return {
       label: `القسط ${p.installmentNumber} — ${formatCurrency(p.amount)} ${sym} (${p.dueDate})`,
       value: p.id,

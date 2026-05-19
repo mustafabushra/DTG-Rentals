@@ -301,7 +301,7 @@ export default function ContractDetailScreen() {
               {i > 0 && <View style={[styles.div, { backgroundColor: colors.border }]} />}
               <View style={styles.kpi}>
                 {'amount' in kpi
-                  ? <CurrencyText amount={kpi.amount} style={[styles.kpiVal, { color: kpi.color }]} />
+                  ? <CurrencyText amount={kpi.amount} currency={contract.currency} style={[styles.kpiVal, { color: kpi.color }]} />
                   : <Text style={[styles.kpiVal, { color: kpi.color }]} numberOfLines={1}>{kpi.text}</Text>
                 }
                 <Text style={[styles.kpiLbl, { color: colors.textMuted }]}>{kpi.label}</Text>
@@ -327,7 +327,7 @@ export default function ContractDetailScreen() {
               <View style={styles.installmentRight}>
                 <StatusBadge status={p.status} size="sm" />
                 <View>
-                  <CurrencyText amount={p.amount} style={[styles.installmentAmount, { color: colors.text }]} />
+                  <CurrencyText amount={p.amount} currency={contract.currency} style={[styles.installmentAmount, { color: colors.text }]} />
                   <Text style={[styles.installmentDate, { color: colors.textMuted }]}>
                     {p.paidDate ? `مدفوع: ${formatDate(p.paidDate)}` : `استحقاق: ${formatDate(p.dueDate)}`}
                   </Text>
