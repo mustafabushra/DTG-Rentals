@@ -12,12 +12,12 @@ import { Payment, formatCurrency } from '../data/mockData';
 import { FormContainer } from '../components/ui/FormContainer';
 import { CurrencyText } from '../components/ui/CurrencyText';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { getCurrency } from '../utils/currency';
+import { getCurrency, resolvePaymentCurrency } from '../utils/currency';
 
 export default function RecordPaymentScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { contracts, payments, tenants, units, updatePayment } = useApp();
+  const { contracts, payments, tenants, units, properties, updatePayment } = useApp();
   const { contractId: preselectedContractId } = useLocalSearchParams<{ contractId?: string }>();
 
   const [form, setForm] = useState({
@@ -124,7 +124,7 @@ export default function RecordPaymentScreen() {
         {selectedInstallment && (
           <View style={[styles.amountCard, { backgroundColor: colors.success + '15', borderColor: colors.success }]}>
             <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>المبلغ المستحق</Text>
-            <CurrencyText amount={selectedInstallment.amount} currency={selectedInstallment.currency} color={colors.success} size={32} />
+            <CurrencyText amount={selectedInstallment.amount} currency={resolvePaymentCurrency(selectedInstallment, contracts, units, properties)} color={colors.success} size={32} />
           </View>
         )}
 

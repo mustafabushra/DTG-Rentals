@@ -8,6 +8,7 @@ import { CurrencyText } from './CurrencyText';
 import { useApp } from '../../context/AppProvider';
 import { StatusBadge } from './StatusBadge';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { resolvePaymentCurrency } from '../../utils/currency';
 
 interface PaymentCardProps {
   payment: Payment;
@@ -21,9 +22,10 @@ const methodLabels: Record<string, string> = {
 
 export function PaymentCard({ payment, onDelete, onConfirm }: PaymentCardProps) {
   const { colors } = useAppTheme();
-  const { contracts, tenants } = useApp();
+  const { contracts, tenants, units, properties } = useApp();
   const contract = contracts.find(c => c.id === payment.contractId);
-  const tenant = contract ? tenants.find(t => t.id === contract.tenantId) : null;
+  const tenant   = contract ? tenants.find(t => t.id === contract.tenantId) : null;
+  const currency = resolvePaymentCurrency(payment, contracts, units, properties);
 
   return (
     <TouchableOpacity
@@ -56,7 +58,7 @@ export function PaymentCard({ payment, onDelete, onConfirm }: PaymentCardProps) 
       </View>
 
       <View style={styles.row}>
-        <CurrencyText amount={payment.amount} currency={payment.currency} color={colors.success} size={16} />
+        <CurrencyText amount={payment.amount} currency={currency} color={colors.success} size={16} />
         <Text style={[styles.tenant, { color: colors.textSecondary }]}>{tenant?.name || '—'}</Text>
       </View>
 

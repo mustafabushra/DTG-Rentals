@@ -42,6 +42,24 @@ export const CURRENCY_OPTIONS = CURRENCIES.map(c => ({
   label: `${c.label} (${c.symbol})`,
 }));
 
+/**
+ * Resolve effective currency for a payment:
+ * payment.currency → contract.currency → property.currency → 'SAR'
+ */
+export function resolvePaymentCurrency(
+  payment: { currency?: string; contractId?: string },
+  contracts: { id: string; currency?: string; unitId?: string }[],
+  units:     { id: string; propertyId?: string }[],
+  properties:{ id: string; currency?: string }[],
+): string {
+  if (payment.currency) return payment.currency;
+  const contract = contracts.find(c => c.id === payment.contractId);
+  if (contract?.currency) return contract.currency;
+  const unit = contract ? units.find(u => u.id === contract.unitId) : undefined;
+  const prop = unit ? properties.find(p => p.id === unit.propertyId) : undefined;
+  return prop?.currency ?? 'SAR';
+}
+
 /** كشف العملة تلقائياً من نص الموقع/العنوان */
 export function detectCurrencyFromLocation(location?: string | null): CurrencyCode {
   if (!location) return 'SAR';

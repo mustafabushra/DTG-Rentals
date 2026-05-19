@@ -15,6 +15,7 @@ import { ConfirmModal } from '../../components/ui/Modal';
 import { formatDate, formatCurrency } from '../../data/mockData';
 import { CurrencyText } from '../../components/ui/CurrencyText';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { resolvePaymentCurrency } from '../../utils/currency';
 
 const methodLabels: Record<string, string> = {
   transfer:      'تحويل بنكي',
@@ -220,6 +221,7 @@ export default function PaymentDetailScreen() {
   const tenant   = contract ? tenants.find(t => t.id === contract.tenantId)    ?? null  : null;
   const unit     = contract ? units.find(u => u.id === contract.unitId)        ?? null  : null;
   const property = unit     ? properties.find(p => p.id === unit.propertyId)   ?? null  : null;
+  const effectiveCurrency = payment ? resolvePaymentCurrency(payment, contracts, units, properties) : 'SAR';
 
   if (!payment) {
     return (
@@ -316,7 +318,7 @@ export default function PaymentDetailScreen() {
             <Ionicons name="receipt-outline" size={40} color={colors.primary} />
             <Text style={[styles.receiptNumber, { color: colors.textSecondary }]}>{payment.receiptNumber ?? '—'}</Text>
           </View>
-          <CurrencyText amount={payment.amount} currency={payment.currency} style={[styles.amount, { color: amountColor }]} />
+          <CurrencyText amount={payment.amount} currency={effectiveCurrency} style={[styles.amount, { color: amountColor }]} />
           <StatusBadge status={payment.status} />
           <View style={[styles.installBadge, { backgroundColor: colors.accent }]}>
             <Text style={[styles.installText, { color: colors.primary }]}>
@@ -340,7 +342,7 @@ export default function PaymentDetailScreen() {
             </View>
             <View style={[styles.progressDiv, { backgroundColor: colors.border }]} />
             <View style={styles.progressStat}>
-              <CurrencyText amount={paidTotal} currency={payment.currency} style={[styles.progressVal, { color: colors.primary }]} />
+              <CurrencyText amount={paidTotal} currency={effectiveCurrency} style={[styles.progressVal, { color: colors.primary }]} />
               <Text style={[styles.progressLbl, { color: colors.textMuted }]}>محصّل</Text>
             </View>
           </View>
