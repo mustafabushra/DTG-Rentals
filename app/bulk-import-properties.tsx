@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { read, utils } from 'xlsx';
 import { Theme } from '../constants/Theme';
 import { useApp } from '../context/AppProvider';
@@ -14,7 +13,6 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import { Property, PropertyType } from '../data/mockData';
 import { ConfirmModal } from '../components/ui/Modal';
 import { sanitizeText, sanitizeNumber } from '../utils/sanitize';
-import { systemSettings } from '../data/mockData';
 
 // ─── الأنواع المقبولة ─────────────────────────────────────────────────────────
 const TYPE_MAP: Record<string, PropertyType> = {
@@ -88,12 +86,40 @@ export default function BulkImportPropertiesScreen() {
     return { name, type, location, area, deedNumber, ownerName, ownerId: owner?.id ?? null, error };
   };
 
+  // ─── تحليل ArrayBuffer → صفوف ───────────────────────────────────────────────
+  const parseBuffer = (buffer: ArrayBuffer, name: string) => {
+    const wb  = read(buffer, { type: 'array' });
+    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const raw = utils.sheet_to_json<Record<string, string>>(ws, { defval: '' });
+    setFileName(name);
+    setRows(raw.map(parseRow));
+    setLoading(false);
+  };
+
   // ─── قراءة الملف ────────────────────────────────────────────────────────────
   const pickFile = async () => {
     setLoading(true);
     setRows([]);
     setFileName('');
     setImported(false);
+
+    if (Platform.OS === 'web') {
+      // على الويب نستخدم input[type=file] مباشرةً
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.xlsx,.xls,.csv';
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) { setLoading(false); return; }
+        const buffer = await file.arrayBuffer();
+        parseBuffer(buffer, file.name);
+      };
+      input.oncancel = () => setLoading(false);
+      input.click();
+      return;
+    }
+
+    // على الجوال نستخدم expo-document-picker + fetch
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: [
@@ -105,21 +131,14 @@ export default function BulkImportPropertiesScreen() {
         copyToCacheDirectory: true,
       });
       if (result.canceled || !result.assets?.[0]) { setLoading(false); return; }
-
       const asset = result.assets[0];
-      setFileName(asset.name);
-
-      // قراءة الملف كـ base64
-      const b64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
-      const wb  = read(b64, { type: 'base64' });
-      const ws  = wb.Sheets[wb.SheetNames[0]];
-      const raw = utils.sheet_to_json<Record<string, string>>(ws, { defval: '' });
-
-      setRows(raw.map(parseRow));
+      const resp  = await fetch(asset.uri);
+      const buffer = await resp.arrayBuffer();
+      parseBuffer(buffer, asset.name);
     } catch (e) {
       console.error(e);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // ─── تنزيل النموذج (ويب فقط) ────────────────────────────────────────────────
