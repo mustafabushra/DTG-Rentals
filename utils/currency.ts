@@ -36,6 +36,16 @@ export function formatAmount(amount: number | null | undefined, currency?: strin
   return meta.useSVG ? formatted : `${formatted} ${meta.symbol}`;
 }
 
+export const COUNTRY_LABELS: Partial<Record<CurrencyCode, string>> = {
+  SAR: 'السعودية', AED: 'الإمارات', EGP: 'مصر',
+  KWD: 'الكويت',  BHD: 'البحرين',  QAR: 'قطر',
+  OMR: 'عُمان',   GBP: 'بريطانيا', USD: 'أمريكا', EUR: 'أوروبا',
+};
+
+export function countryLabel(code?: string | null): string {
+  return COUNTRY_LABELS[(code ?? 'SAR') as CurrencyCode] ?? code ?? 'SAR';
+}
+
 /** خيارات الـ FormSelect */
 export const CURRENCY_OPTIONS = CURRENCIES.map(c => ({
   value: c.code,
@@ -64,16 +74,6 @@ export function resolvePaymentCurrency(
   const unit = contract ? units.find(u => u.id === contract.unitId) : undefined;
   const prop = unit ? properties.find(p => p.id === unit.propertyId) : undefined;
   return prop?.currency ?? 'SAR';
-}
-
-export const COUNTRY_LABELS: Partial<Record<CurrencyCode, string>> = {
-  SAR: 'السعودية', AED: 'الإمارات', EGP: 'مصر',
-  KWD: 'الكويت',  BHD: 'البحرين',  QAR: 'قطر',
-  OMR: 'عُمان',   GBP: 'بريطانيا', USD: 'أمريكا', EUR: 'أوروبا',
-};
-
-export function countryLabel(code?: string | null): string {
-  return COUNTRY_LABELS[(code ?? 'SAR') as CurrencyCode] ?? code ?? 'SAR';
 }
 
 /** كشف العملة تلقائياً من نص الموقع/العنوان */
