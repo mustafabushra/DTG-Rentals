@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -11,6 +11,7 @@ import { FormDatePicker } from '../../components/forms/FormDatePicker';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormContainer } from '../../components/ui/FormContainer';
+import { ConfirmModal } from '../../components/ui/Modal';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { COUNTRY_CURRENCY_OPTIONS, getCurrency } from '../../utils/currency';
 
@@ -32,6 +33,8 @@ export default function EditContractScreen() {
     currency: contract?.currency || 'SAR',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingData, setPendingData] = useState<any>(null);
 
   useEffect(() => {
     if (contract) {
@@ -65,47 +68,36 @@ export default function EditContractScreen() {
     return Object.keys(e).length === 0;
   };
 
+  const doSave = (data: any) => {
+    updateContract(id, data);
+    router.back();
+  };
+
   const handleSave = () => {
     if (!validate()) return;
-    const newAnnualValue      = Number(form.annualValue);
+    const newAnnualValue       = Number(form.annualValue);
     const newInstallmentsCount = Number(form.installmentsCount);
-    const valueChanged   = newAnnualValue      !== contract.annualValue;
-    const countChanged   = newInstallmentsCount !== contract.installmentsCount;
-    const datesChanged   = form.startDate !== contract.startDate || form.endDate !== contract.endDate;
-    const financialChange = valueChanged || countChanged || datesChanged;
+    const data = {
+      startDate: form.startDate,
+      endDate: form.endDate,
+      annualValue: newAnnualValue,
+      installmentsCount: newInstallmentsCount,
+      status: form.status as any,
+      notes: form.notes.trim() || undefined,
+      currency: form.currency,
+    };
+
+    const financialChange =
+      newAnnualValue       !== Number(contract.annualValue)       ||
+      newInstallmentsCount !== Number(contract.installmentsCount) ||
+      form.startDate       !== contract.startDate                 ||
+      form.endDate         !== contract.endDate;
 
     if (financialChange) {
-      Alert.alert(
-        'إعادة توليد الأقساط',
-        `سيتم حذف جميع الأقساط المعلقة وإنشاء ${newInstallmentsCount} أقساط جديدة بناءً على القيمة الجديدة. الأقساط المدفوعة لن تتأثر. هل تريد المتابعة؟`,
-        [
-          { text: 'إلغاء', style: 'cancel' },
-          {
-            text: 'تأكيد',
-            onPress: () => {
-              updateContract(id, {
-                startDate: form.startDate, endDate: form.endDate,
-                annualValue: newAnnualValue,
-                installmentsCount: newInstallmentsCount,
-                status: form.status as any,
-                notes: form.notes.trim() || undefined,
-                currency: form.currency,
-              });
-              router.back();
-            },
-          },
-        ]
-      );
+      setPendingData(data);
+      setShowConfirm(true);
     } else {
-      updateContract(id, {
-        startDate: form.startDate, endDate: form.endDate,
-        annualValue: newAnnualValue,
-        installmentsCount: newInstallmentsCount,
-        status: form.status as any,
-        notes: form.notes.trim() || undefined,
-        currency: form.currency,
-      });
-      router.back();
+      doSave(data);
     }
   };
 
@@ -135,25 +127,28 @@ export default function EditContractScreen() {
       </View>
 
       <FormContainer><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* Contract info (read-only) */}
         <View style={[styles.infoCard, { backgroundColor: colors.accent, borderColor: colors.border }]}>
           <Text style={[styles.infoText, { color: colors.text }]}>رقم العقد: {contract.contractNumber}</Text>
         </View>
 
         <FormDatePicker label="تاريخ البداية" value={form.startDate} onChange={set('startDate')} required error={errors.startDate} />
         <FormDatePicker label="تاريخ النهاية" value={form.endDate} onChange={set('endDate')} required error={errors.endDate} minDate={form.startDate} />
-        <FormSelect
-          label="دولة العقد"
-          value={form.currency}
-          options={COUNTRY_CURRENCY_OPTIONS}
-          onSelect={set('currency')}
-          required
-        />
+        <FormSelect label="دولة العقد" value={form.currency} options={COUNTRY_CURRENCY_OPTIONS} onSelect={set('currency')} required />
         <FormInput label={`القيمة السنوية (${getCurrency(form.currency).symbol})`} value={form.annualValue} onChangeText={set('annualValue')} keyboardType="number-pad" required icon="cash-outline" error={errors.annualValue} />
         <FormSelect label="عدد الأقساط" value={form.installmentsCount} options={installmentOptions} onSelect={set('installmentsCount')} required error={errors.installmentsCount} />
         <FormSelect label="حالة العقد" value={form.status} options={statusOptions} onSelect={set('status')} required />
         <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} multiline numberOfLines={3} icon="document-text-outline" />
       </ScrollView></FormContainer>
+
+      <ConfirmModal
+        visible={showConfirm}
+        onClose={() => { setShowConfirm(false); setPendingData(null); }}
+        onConfirm={() => { setShowConfirm(false); doSave(pendingData); }}
+        title="إعادة توليد الأقساط"
+        message={`سيتم حذف جميع الأقساط المعلقة وإنشاء ${pendingData?.installmentsCount ?? ''} أقساط جديدة بناءً على القيمة الجديدة. الأقساط المدفوعة لن تتأثر.`}
+        confirmLabel="تأكيد وحفظ"
+        variant="warning"
+      />
     </View>
   );
 }
