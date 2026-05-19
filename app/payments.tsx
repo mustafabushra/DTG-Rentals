@@ -92,7 +92,7 @@ export default function PaymentsScreen() {
 
       {/* Country breakdown cards */}
       {countryStats.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countryScroll}>
+        <View style={styles.countryScroll}>
           {countryStats.map(s => {
             const active = filterCountry === s.code;
             return (
@@ -136,7 +136,7 @@ export default function PaymentsScreen() {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       )}
 
       {/* Link to ledger */}
@@ -236,11 +236,12 @@ const styles = StyleSheet.create({
   ledgerLinkText: { flex: 1, fontSize: Theme.fontSize.sm, fontWeight: '600' },
   countryScroll: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: Theme.spacing.base, paddingBottom: 8, gap: 8,
   },
   countryCard: {
     borderRadius: Theme.radius.lg, borderWidth: 1,
-    padding: Theme.spacing.sm, minWidth: 180, gap: 8,
+    padding: Theme.spacing.sm, flex: 1, minWidth: 160, gap: 8,
   },
   countryCardHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
