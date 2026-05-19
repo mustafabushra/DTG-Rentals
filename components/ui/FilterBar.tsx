@@ -92,7 +92,8 @@ export function FilterBar({ options, value, onChange, containerStyle }: FilterBa
   const { colors, scheme } = useAppTheme();
   const scrollRef = useRef<ScrollView>(null);
   // في الـ dark mode الخلفية النشطة ذهبية فاتحة → نص داكن. في light mode الخلفية داكنة → نص أبيض
-  const activeTextColor = scheme === 'dark' ? '#0F1923' : '#FFFFFF';
+  const activeTextColor   = scheme === 'dark' ? '#0F1923' : '#FFFFFF';
+  const inactiveTextColor = scheme === 'dark' ? colors.textSecondary : '#1E3E5F';
 
   // على web RTL يبدأ الـ scroll من اليسار (الـ end) — نعيده لليمين (الـ start) بعد mount
   useEffect(() => {
@@ -125,7 +126,7 @@ export function FilterBar({ options, value, onChange, containerStyle }: FilterBa
             activeOpacity={0.8}
           >
             <Text
-              style={[styles.pillText, { color: isActive ? activeTextColor : colors.textSecondary }]}
+              style={[styles.pillText, { color: isActive ? activeTextColor : inactiveTextColor }]}
               numberOfLines={1}
             >
               {opt.label}
