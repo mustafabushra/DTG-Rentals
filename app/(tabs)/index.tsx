@@ -235,7 +235,7 @@ export default function DashboardScreen() {
       .slice(0, 12);
   }, [calendarEvents, contracts, payments, maintenance, attachments, currentUser, owners, properties, units]);
 
-  const recentActivity = auditLogs.slice(0, 5);
+  const recentActivity = [...auditLogs].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 5);
   const QUICK_ACTIONS  = makeQuickActions(colors).filter(a => canWrite || !a.writeOnly);
   const { isWide, cols3, isDesktop, isMobile, isSmallPhone, hPad } = useScreenSize();
   const { toggle: toggleSidebar } = useSidebar();

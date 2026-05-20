@@ -416,7 +416,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             getAll(ORG_ID, 'photos'),
           ]);
           if (gen !== loadGenRef.current) return;
-          setAuditLogs(auditData as AuditLog[]);
+          setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
           setCalendarEvents(calendarData as CalendarEvent[]);
           setAttachments(FileService.syncExpiryStatuses(attachmentsData as Attachment[]));
 
