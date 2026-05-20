@@ -39,6 +39,7 @@ interface AppState {
   attachments: Attachment[];
   isAuthenticated: boolean;
   dataLoading: boolean;
+  refreshData: () => void;
   currentUser: { id: string; name: string; email: string; phone: string; role: string; ownerId?: string };
   theme: ThemeMode;
   notificationPrefs: NotificationPrefs;
@@ -1315,6 +1316,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshData = async () => {
+    if (!userId) return;
+    setDataLoading(true);
+    try {
+      const [
+        ownersData, propertiesData, unitsData, contractsData,
+        tenantsData, paymentsData, maintenanceData,
+      ] = await Promise.all([
+        getAll(ORG_ID, 'owners'),
+        getAll(ORG_ID, 'properties'),
+        getAll(ORG_ID, 'units'),
+        getAll(ORG_ID, 'contracts'),
+        getAll(ORG_ID, 'tenants'),
+        getAll(ORG_ID, 'payments'),
+        getAll(ORG_ID, 'maintenance'),
+      ]);
+      setOwners(ownersData as Owner[]);
+      setProperties(propertiesData as Property[]);
+      setUnits(unitsData as Unit[]);
+      setContracts(contractsData as Contract[]);
+      setTenants(tenantsData as Tenant[]);
+      setPayments(paymentsData as Payment[]);
+      setMaintenance(maintenanceData as Maintenance[]);
+
+      const [auditData, calendarData, attachmentsData] = await Promise.all([
+        getAll(ORG_ID, 'auditLogs'),
+        getAll(ORG_ID, 'calendarEvents'),
+        getAll(ORG_ID, 'attachments'),
+      ]);
+      setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+      setCalendarEvents(calendarData as CalendarEvent[]);
+      setAttachments(attachmentsData as Attachment[]);
+    } catch (e) {
+      console.error('refreshData error:', e);
+    }
+    setDataLoading(false);
+  };
+
   return (
     <AppContext.Provider value={{
       owners:      visibleOwners,
@@ -1342,7 +1381,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addMaintenance, updateMaintenance, deleteMaintenance,
       cancelContract, addCalendarEvent, deleteCalendarEvent,
       addAttachment, deleteAttachment,
-      login, logout, updateProfile, importBackup,
+      login, logout, updateProfile, importBackup, refreshData,
     }}>
       {children}
     </AppContext.Provider>

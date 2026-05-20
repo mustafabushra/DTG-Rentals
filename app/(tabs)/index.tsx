@@ -122,7 +122,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { kpis, payments, contracts, maintenance, auditLogs, currentUser,
-          owners, units, properties, calendarEvents, attachments, dataLoading, canWrite } = useApp();
+          owners, units, properties, calendarEvents, attachments, dataLoading, canWrite, refreshData } = useApp();
 
   useEffect(() => { trackScreen('Dashboard'); }, []);
 
@@ -283,6 +283,9 @@ export default function DashboardScreen() {
             <Text style={[styles.appName, (isMobile || isSmallPhone) && { fontSize: Theme.fontSize.base }]}>DTG Rentals</Text>
           </View>
 
+          <TouchableOpacity onPress={refreshData} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} disabled={dataLoading}>
+            <Ionicons name="refresh-outline" size={isSmallPhone ? 20 : 22} color={dataLoading ? 'rgba(255,255,255,0.4)' : '#FFFFFF'} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color="#FFFFFF" />
             {kpis.overduePayments > 0 && (
