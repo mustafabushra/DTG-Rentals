@@ -667,9 +667,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const deleteProperty = (id: string) => {
     const prop = properties.find(p => p.id === id);
+
+    // cascade: وحدات → عقود → دفعات معلقة → صيانة
+    const propUnits     = units.filter(u => u.propertyId === id);
+    const propUnitIds   = new Set(propUnits.map(u => u.id));
+    const propContracts = contracts.filter(c => propUnitIds.has(c.unitId));
+    const propContractIds = new Set(propContracts.map(c => c.id));
+
+    // حذف الدفعات المعلقة (المدفوعة تبقى للسجل التاريخي)
+    payments
+      .filter(p => propContractIds.has(p.contractId) && p.status !== 'paid')
+      .forEach(p => fs('payments', p.id, {}, 'delete'));
+
+    // إلغاء العقود
+    propContracts.forEach(c => fs('contracts', c.id, { status: 'cancelled' }, 'update'));
+
+    // حذف الوحدات والصيانة
+    propUnits.forEach(u => fs('units', u.id, {}, 'delete'));
+    maintenance.filter(m => m.propertyId === id).forEach(m => fs('maintenance', m.id, {}, 'delete'));
+
+    // تحديث الـ state
+    setPayments(prev => prev.filter(p => !propContractIds.has(p.contractId) || p.status === 'paid'));
+    setContracts(prev => prev.map(c => propContractIds.has(c.id) ? { ...c, status: 'cancelled' as ContractStatus } : c));
+    setUnits(prev => prev.filter(u => u.propertyId !== id));
+    setMaintenance(prev => prev.filter(m => m.propertyId !== id));
     setProperties(prev => prev.filter(p => p.id !== id));
     fs('properties', id, {}, 'delete');
-    addAuditEntry('delete', 'عقار', prop?.name || id, `تم حذف العقار`);
+    addAuditEntry('delete', 'عقار', prop?.name || id,
+      `تم حذف العقار و${propUnits.length} وحدة و${propContracts.length} عقد مرتبط`);
   };
 
   // ─── Tenant ───────────────────────────────────────────────────────────────
@@ -686,9 +711,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const deleteTenant = (id: string) => {
     const tenant = tenants.find(t => t.id === id);
+
+    // cascade: حذف عقوده + دفعاته المعلقة + تحرير وحداته
+    const tenantContracts = contracts.filter(c => c.tenantId === id);
+    tenantContracts.forEach(c => {
+      // حذف الدفعات المعلقة فقط (المدفوعة تبقى كسجل تاريخي)
+      payments.filter(p => p.contractId === c.id && p.status !== 'paid')
+              .forEach(p => fs('payments', p.id, {}, 'delete'));
+      // تحرير الوحدة
+      fs('units', c.unitId, { status: 'vacant', currentTenantId: null, currentContractId: null }, 'update');
+      // إلغاء العقد (لا حذف — للحفاظ على سجل المدفوعات)
+      fs('contracts', c.id, { status: 'cancelled' }, 'update');
+    });
+
+    setPayments(prev => prev.filter(p =>
+      !tenantContracts.some(c => c.id === p.contractId && p.status !== 'paid')
+    ));
+    setContracts(prev => prev.map(c =>
+      c.tenantId === id ? { ...c, status: 'cancelled' as ContractStatus } : c
+    ));
+    setUnits(prev => prev.map(u =>
+      tenantContracts.some(c => c.unitId === u.id)
+        ? { ...u, status: 'vacant' as UnitStatus, currentTenantId: undefined, currentContractId: undefined }
+        : u
+    ));
+
     setTenants(prev => prev.filter(t => t.id !== id));
     fs('tenants', id, {}, 'delete');
-    addAuditEntry('delete', 'مستأجر', tenant?.name || id, `تم حذف المستأجر`);
+    addAuditEntry('delete', 'مستأجر', tenant?.name || id, `تم حذف المستأجر وإلغاء ${tenantContracts.length} عقد مرتبط`);
   };
 
   // ─── Unit ─────────────────────────────────────────────────────────────────
@@ -837,16 +887,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const remainingValue  = paidTotal < updatedContract.annualValue
         ? updatedContract.annualValue - paidTotal
         : Math.round((updatedContract.annualValue / newCount) * remainingCount);
+
+      // نبدأ توزيع المواعيد من اليوم (أو من startDate إن كان مستقبلياً) حتى endDate
+      // هذا يمنع توليد أقساط بتواريخ في الماضي عند تعديل عقد قديم
+      const todayMs         = Date.now();
       const startMs         = new Date(updatedContract.startDate).getTime();
       const endMs           = new Date(updatedContract.endDate).getTime();
-      const spanMs          = endMs - startMs;
+      const scheduleFromMs  = Math.max(todayMs, startMs); // لا نبدأ من الماضي
+      const remainingSpanMs = Math.max(endMs - scheduleFromMs, 0);
       const baseAmt         = Math.floor(remainingValue / remainingCount);
       const remainder       = remainingValue - baseAmt * remainingCount;
 
       const newInstallments: Payment[] = Array.from({ length: remainingCount }, (_, i) => {
-        const installmentIndex = paidCount + i;
-        const dueMs   = startMs + Math.round(((installmentIndex + 1) / newCount) * spanMs);
+        // توزيع متساوٍ من scheduleFromMs إلى endMs
+        const dueMs   = remainingCount === 1
+          ? endMs
+          : scheduleFromMs + Math.round(((i + 1) / remainingCount) * remainingSpanMs);
         const amount  = i === remainingCount - 1 ? baseAmt + remainder : baseAmt;
+        const installmentIndex = paidCount + i;
         const p: Payment = {
           id: `pay_${id}_${installmentIndex + 1}_r${Date.now()}`,
           receiptNumber: `RCP-PENDING-${installmentIndex + 1}`,
@@ -879,12 +937,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteContract = (id: string) => {
     const contract = contracts.find(c => c.id === id);
     setContracts(prev => prev.filter(c => c.id !== id));
-    // حذف أقساطه من Firestore والحالة
+    // حذف جميع الدفعات (مدفوعة وغير مدفوعة)
     payments.filter(p => p.contractId === id).forEach(p => fs('payments', p.id, {}, 'delete'));
     setPayments(prev => prev.filter(p => p.contractId !== id));
     fs('contracts', id, {}, 'delete');
-    // تحرير الوحدة (إصلاح: كانت الوحدة تبقى مؤجرة بعد حذف العقد)
+    // تحرير الوحدة
     if (contract) _releaseUnit(contract);
+    // إزالة العقد من Tenant.contractIds
+    if (contract?.tenantId) {
+      setTenants(prev => prev.map(t =>
+        t.id === contract.tenantId
+          ? { ...t, contractIds: (t.contractIds ?? []).filter(cid => cid !== id) }
+          : t
+      ));
+      const tenant = tenants.find(t => t.id === contract.tenantId);
+      if (tenant) {
+        const newIds = (tenant.contractIds ?? []).filter(cid => cid !== id);
+        fs('tenants', contract.tenantId, { contractIds: newIds }, 'update');
+      }
+    }
     addAuditEntry('delete', 'عقد', contract?.contractNumber || id, `تم حذف العقد`);
   };
 

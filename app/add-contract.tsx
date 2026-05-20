@@ -16,7 +16,7 @@ import { COUNTRY_CURRENCY_OPTIONS, getCurrency } from '../utils/currency';
 export default function AddContractScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { units, tenants, properties, addContract, systemSettings } = useApp();
+  const { units, tenants, properties, contracts, addContract, systemSettings } = useApp();
 
   const [form, setForm] = useState({
     unitId: '', tenantId: '', startDate: '', endDate: '',
@@ -32,7 +32,12 @@ export default function AddContractScreen() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.unitId) e.unitId = 'الوحدة مطلوبة';
+    if (!form.unitId) {
+      e.unitId = 'الوحدة مطلوبة';
+    } else {
+      const activeOnUnit = contracts.find(c => c.unitId === form.unitId && c.status === 'active');
+      if (activeOnUnit) e.unitId = `الوحدة مؤجرة بالفعل — العقد: ${activeOnUnit.contractNumber}`;
+    }
     if (!form.tenantId) e.tenantId = 'المستأجر مطلوب';
     if (!form.startDate) e.startDate = 'تاريخ البداية مطلوب';
     if (!form.endDate) e.endDate = 'تاريخ النهاية مطلوب';
@@ -63,7 +68,9 @@ export default function AddContractScreen() {
     router.back();
   };
 
-  const vacantUnits = units.filter(u => u.status === 'vacant');
+  // فلترة الوحدات بالعقود الفعلية — أدق من unit.status الذي قد يكون stale
+  const activeContractUnitIds = new Set(contracts.filter(c => c.status === 'active').map(c => c.unitId));
+  const vacantUnits = units.filter(u => !activeContractUnitIds.has(u.id));
   const unitOptions = vacantUnits.map(u => ({ label: `وحدة ${u.number}`, value: u.id }));
   const tenantOptions = tenants.map(t => ({ label: t.name, value: t.id }));
   const installmentOptions = ['1', '2', '4', '6', '12', '24'].map(v => {
