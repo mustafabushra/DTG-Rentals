@@ -769,21 +769,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updatedContract = { ...contract, ...data };
     const today = new Date().toISOString().split('T')[0];
 
-    // Auto-expire if new endDate is in the past and contract is still active
+    // Auto-expire / auto-activate based on new endDate
     let finalData = { ...data };
-    if (data.endDate && data.endDate < today && contract.status === 'active') {
-      finalData.status = 'expired';
+    if (data.endDate) {
+      if (data.endDate < today && contract.status === 'active') {
+        finalData.status = 'expired';
+      } else if (data.endDate >= today && contract.status === 'expired') {
+        // تمديد عقد منتهي → يرجع نشطاً تلقائياً
+        finalData.status = 'active';
+      }
     }
 
     setContracts(prev => prev.map(c => c.id === id ? { ...c, ...finalData } : c));
     fs('contracts', id, finalData, 'update');
 
-    // Release unit if the contract becomes inactive
+    // Sync unit status based on contract status change
     const newStatus = finalData.status ?? contract.status;
     if (['terminated', 'expired', 'cancelled'].includes(newStatus) && contract.status === 'active') {
       const unitUpdate: Partial<Unit> = { status: 'vacant' as UnitStatus, currentTenantId: undefined, currentContractId: undefined };
       setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitUpdate } : u));
       fs('units', contract.unitId, { status: 'vacant', currentTenantId: null, currentContractId: null }, 'update');
+    } else if (newStatus === 'active' && contract.status === 'expired') {
+      // عقد رجع نشطاً → الوحدة مؤجرة مجدداً
+      setUnits(prev => prev.map(u => u.id === contract.unitId
+        ? { ...u, status: 'rented' as UnitStatus, currentTenantId: contract.tenantId, currentContractId: id }
+        : u
+      ));
+      fs('units', contract.unitId, { status: 'rented', currentTenantId: contract.tenantId, currentContractId: id }, 'update');
     }
 
     // If only currency changed (no financial change), update all pending payments' currency
