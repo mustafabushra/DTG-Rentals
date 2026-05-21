@@ -38,6 +38,7 @@ export default function PropertyDetailScreen() {
   const owner = property ? owners.find(o => o.id === property.ownerId) ?? null : null;
   const propUnits = units.filter(u => u.propertyId === id);
   const propMaintenance = maintenance.filter(m => m.propertyId === id);
+  const isSingleUnit = (property?.unitStructure ?? 'multi') === 'single';
 
   const rentedCount = propUnits.filter(u => u.status === 'rented').length;
   const vacantCount = propUnits.filter(u => u.status === 'vacant').length;
@@ -147,7 +148,7 @@ export default function PropertyDetailScreen() {
         {activeTab === 'units' && (
           <View style={{ marginTop: 8 }}>
             {propUnits.length === 0 ? (
-              <EmptyState icon="home-outline" title="لا توجد وحدات" actionLabel={canWrite ? 'إضافة وحدة' : undefined} onAction={canWrite ? () => router.push('/add-unit') : undefined} />
+              <EmptyState icon="home-outline" title="لا توجد وحدات" actionLabel={canWrite && !isSingleUnit ? 'إضافة وحدة' : undefined} onAction={canWrite && !isSingleUnit ? () => router.push('/add-unit') : undefined} />
             ) : (
               <ResponsiveGrid>{propUnits.map(u => <UnitCard key={u.id} unit={u} />)}</ResponsiveGrid>
             )}
@@ -200,8 +201,8 @@ export default function PropertyDetailScreen() {
         )}
       </ScrollView>
 
-      {/* FAB — إضافة وحدة، مخفي للـ viewer */}
-      {canWrite && <TouchableOpacity
+      {/* FAB — إضافة وحدة، مخفي للعقارات الفردية وللـ viewer */}
+      {canWrite && !isSingleUnit && <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() => router.push('/add-unit')}
       >

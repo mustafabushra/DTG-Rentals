@@ -4,6 +4,7 @@ import {
   Owner, Property, Tenant, Unit, Contract, Payment, Maintenance, AuditLog, CalendarEvent,
   ContractStatus, UnitStatus,
 } from '../data/mockData';
+import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
 import { getAll, getOne, setOne, updateOne, deleteOne, deleteAll, ORG_ID, runContractTransaction } from '../lib/firestoreService';
 import {
@@ -655,9 +656,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Property ─────────────────────────────────────────────────────────────
   const addProperty = (property: Property) => {
-    setProperties(prev => [...prev, property]);
-    fs('properties', property.id, property, 'set');
-    addAuditEntry('add', 'عقار', property.name, `تم إضافة عقار جديد: ${property.name}`);
+    const structure = property.unitStructure ?? defaultUnitStructure(property.type);
+    const finalProperty = { ...property, unitStructure: structure };
+
+    setProperties(prev => [...prev, finalProperty]);
+    fs('properties', finalProperty.id, finalProperty, 'set');
+
+    // للعقارات الفردية → ننشئ وحدة رئيسية واحدة تلقائياً مخفية عن المستخدم
+    if (structure === 'single') {
+      const autoUnit: Unit = {
+        id:           `u_${finalProperty.id}`,
+        propertyId:   finalProperty.id,
+        number:       'رئيسية',
+        type:         'apartment_1',
+        floor:        1,
+        area:         finalProperty.area ?? 0,
+        monthlyRent:  0,
+        annualRent:   0,
+        status:       'vacant' as UnitStatus,
+        description:  '',
+        features:     [],
+      };
+      setUnits(prev => [...prev, autoUnit]);
+      fs('units', autoUnit.id, autoUnit, 'set');
+    }
+
+    addAuditEntry('add', 'عقار', finalProperty.name, `تم إضافة عقار جديد: ${finalProperty.name}`);
   };
   const updateProperty = (id: string, data: Partial<Property>) => {
     setProperties(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));

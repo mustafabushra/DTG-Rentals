@@ -3,6 +3,13 @@
 // ===========================
 
 export type PropertyType = 'apartment' | 'villa' | 'office' | 'shop' | 'building' | 'tower' | 'land';
+export type UnitStructure = 'single' | 'multi';
+
+export const SINGLE_UNIT_TYPES: PropertyType[] = ['apartment', 'office', 'shop', 'land'];
+
+export function defaultUnitStructure(type: PropertyType): UnitStructure {
+  return SINGLE_UNIT_TYPES.includes(type) ? 'single' : 'multi';
+}
 export type PropertyStatus = 'active' | 'inactive';
 export type UnitStatus = 'rented' | 'vacant' | 'maintenance' | 'reserved';
 export type UnitType = 'studio' | 'apartment_1' | 'apartment_2' | 'apartment_3' | 'apartment_4' | 'villa' | 'office' | 'shop';
@@ -37,9 +44,10 @@ export interface Property {
   status: PropertyStatus;
   description: string;
   image?: string;
-  currency?: string;   // e.g. 'SAR' | 'AED' | 'EGP' — عملة العقار
-  deedNumber?: string; // رقم الصك (اختياري)
-  area?: number;       // المساحة بالمتر المربع (اختياري)
+  currency?: string;        // e.g. 'SAR' | 'AED' | 'EGP'
+  deedNumber?: string;      // رقم الصك (اختياري)
+  area?: number;            // المساحة بالمتر المربع (اختياري)
+  unitStructure?: UnitStructure; // single = وحدة رئيسية تلقائية، multi = وحدات يضيفها المستخدم
   createdAt: string;
 }
 
