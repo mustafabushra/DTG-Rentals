@@ -4,7 +4,7 @@ import {
   Owner, Property, Tenant, Unit, Contract, Payment, Maintenance, AuditLog, CalendarEvent,
   ContractStatus, UnitStatus,
 } from '../data/mockData';
-import { defaultUnitStructure } from '../data/mockData';
+import { defaultUnitStructure, UnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
 import { getAll, getOne, setOne, updateOne, deleteOne, deleteAll, ORG_ID, runContractTransaction } from '../lib/firestoreService';
 import {
@@ -260,11 +260,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const resolvedProperties = useCache ? (cached.properties as Property[] ?? []) : propertiesData as Property[];
 
           setOwners(resolvedOwners);
-          setProperties(resolvedProperties);
 
           const today = new Date().toISOString().split('T')[0];
           const rawContracts = (useCache ? (cached.contracts as Contract[] ?? []) : contractsData as Contract[]);
           const rawUnits     = (useCache ? (cached.units     as Unit[]     ?? []) : unitsData     as Unit[]);
+
+          // ترقية العقارات القديمة — تضيف unitStructure وتنشئ وحدات رئيسية إن لزم
+          const { properties: migratedProps, units: migratedUnits } =
+            migrateProperties(resolvedProperties, rawUnits);
+          setProperties(migratedProps);
           const unitUpdatesMap: Record<string, Partial<Unit>> = {};
 
           const updatedContracts = rawContracts.map(c => {
@@ -283,7 +287,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               .map(c => [c.unitId, c])
           );
 
-          const finalUnits = rawUnits.map(u => {
+          const finalUnits = migratedUnits.map(u => {
             // أولوية: تحديث الوحدات التي انتهت عقودها (من updatedContracts أعلاه)
             if (unitUpdatesMap[u.id]) {
               console.log(`[UNIT_SYNC] ${u.id} → vacant (expired contract)`);
@@ -653,6 +657,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fs('owners', id, {}, 'delete');
     addAuditEntry('delete', 'مالك', owner?.name || id, `تم حذف المالك`);
   };
+
+  // ─── Migration: unitStructure للعقارات القديمة ────────────────────────────
+  // تعمل مرة واحدة عند تحميل البيانات — تضيف unitStructure للعقارات التي تفتقر إليه
+  // وتنشئ وحدة رئيسية للعقارات الفردية التي ليس لها وحدات بعد
+  const migrateProperties = useCallback((
+    loadedProperties: Property[],
+    loadedUnits: Unit[],
+  ): { properties: Property[]; units: Unit[] } => {
+    const existingUnitsByProperty = new Map<string, Unit[]>();
+    loadedUnits.forEach(u => {
+      const list = existingUnitsByProperty.get(u.propertyId) ?? [];
+      list.push(u);
+      existingUnitsByProperty.set(u.propertyId, list);
+    });
+
+    const newUnits: Unit[] = [];
+    const migratedProperties = loadedProperties.map(p => {
+      // ① إضافة unitStructure إذا لم يكن موجوداً
+      const structure: UnitStructure = (p.unitStructure as UnitStructure) ?? defaultUnitStructure(p.type);
+      const needsStructureUpdate = !p.unitStructure;
+
+      if (needsStructureUpdate) {
+        updateOne(ORG_ID, 'properties', p.id, { unitStructure: structure }).catch(() => {});
+      }
+
+      // ② إنشاء وحدة رئيسية للعقارات الفردية بدون وحدات
+      if (structure === 'single') {
+        const existingUnits = existingUnitsByProperty.get(p.id) ?? [];
+        // لا ننشئ وحدة إذا كانت موجودة بالفعل (حتى لو كانت مضافة يدوياً قبل هذا التحديث)
+        if (existingUnits.length === 0) {
+          const autoUnit: Unit = {
+            id:          `u_${p.id}`,
+            propertyId:  p.id,
+            number:      'رئيسية',
+            type:        'apartment_1',
+            floor:       1,
+            area:        p.area ?? 0,
+            monthlyRent: 0,
+            annualRent:  0,
+            status:      'vacant' as UnitStatus,
+            description: '',
+            features:    [],
+          };
+          // تحقق إضافي: لا تنشئ إذا كان ID موجوداً بالفعل في Firestore
+          const alreadyExists = loadedUnits.some(u => u.id === autoUnit.id);
+          if (!alreadyExists) {
+            setOne(ORG_ID, 'units', autoUnit.id, autoUnit).catch(() => {});
+            newUnits.push(autoUnit);
+          }
+        }
+      }
+
+      return { ...p, unitStructure: structure };
+    });
+
+    return { properties: migratedProperties, units: [...loadedUnits, ...newUnits] };
+  }, []);
 
   // ─── Property ─────────────────────────────────────────────────────────────
   const addProperty = (property: Property) => {
@@ -1443,9 +1504,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getAll(ORG_ID, 'payments'),
         getAll(ORG_ID, 'maintenance'),
       ]);
+      const { properties: migratedProps, units: migratedUnits } =
+        migrateProperties(propertiesData as Property[], unitsData as Unit[]);
       setOwners(ownersData as Owner[]);
-      setProperties(propertiesData as Property[]);
-      setUnits(unitsData as Unit[]);
+      setProperties(migratedProps);
+      setUnits(migratedUnits);
       setContracts(contractsData as Contract[]);
       setTenants(tenantsData as Tenant[]);
       setPayments(paymentsData as Payment[]);
