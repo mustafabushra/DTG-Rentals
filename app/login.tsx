@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
 import { FormInput } from '../components/forms/FormInput';
-import { loginUser, registerUser, resetPassword } from '../lib/auth';
+import { loginUser, registerUser, resetPassword, loginWithGoogle } from '../lib/auth';
 import { useAppTheme } from '../hooks/useAppTheme';
 
 export default function LoginScreen() {
@@ -191,6 +191,42 @@ export default function LoginScreen() {
                 <Text style={[styles.forgotText, { color: colors.secondary }]}>نسيت كلمة المرور؟</Text>
               </TouchableOpacity>
             )}
+
+            {/* فاصل */}
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textMuted }]}>أو</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            </View>
+
+            {/* زر Google */}
+            <TouchableOpacity
+              style={[styles.googleBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
+              onPress={async () => {
+                setAuthError('');
+                setLoading(true);
+                try {
+                  await loginWithGoogle();
+                  // Navigation handled by onAuthChange in _layout.tsx
+                } catch (err: any) {
+                  if (err?.code !== 'auth/popup-closed-by-user') {
+                    setAuthError(err?.code === 'auth/popup-blocked'
+                      ? 'تم حجب النافذة المنبثقة. أتح النوافذ المنبثقة لهذا الموقع وأعد المحاولة'
+                      : `حدث خطأ: ${err?.code ?? err?.message ?? 'غير معروف'}`
+                    );
+                  }
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {/* Google G logo */}
+              <Text style={styles.googleLogo}>G</Text>
+              <Text style={[styles.googleBtnText, { color: colors.text }]}>المتابعة بحساب Google</Text>
+            </TouchableOpacity>
+
           </View>
         </ScrollView>
       </View>
@@ -230,4 +266,17 @@ const styles = StyleSheet.create({
   forgotText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },
   errorBox: { backgroundColor: '#FDEDEC', borderRadius: Theme.radius.md, padding: 12 },
   errorText: { color: '#C0392B', fontSize: Theme.fontSize.sm, textAlign: 'center' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { fontSize: Theme.fontSize.sm },
+  googleBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, borderRadius: Theme.radius.lg, paddingVertical: 14,
+    borderWidth: 1.5,
+  },
+  googleLogo: {
+    fontSize: 18, fontWeight: '800', color: '#4285F4',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  googleBtnText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.semibold },
 });

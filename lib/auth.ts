@@ -8,6 +8,8 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  GoogleAuthProvider,
+  signInWithPopup,
   type User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -160,6 +162,33 @@ export async function updateUserProfile(uid: string, data: {
 
   const { setDoc } = await import('firebase/firestore');
   await setDoc(doc(db, 'users', uid), { ...clean, updatedAt: new Date() }, { merge: true });
+}
+
+// ─── تسجيل الدخول بحساب Google ───────────────────────────────────────────────
+export async function loginWithGoogle() {
+  const auth = getFirebaseAuth();
+  if (!auth) throw new Error('Auth not available');
+
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  const credential = await signInWithPopup(auth, provider);
+  const user = credential.user;
+
+  // إنشاء ملف المستخدم في Firestore إذا لم يكن موجوداً
+  const profileSnap = await getDoc(doc(db, 'users', user.uid));
+  if (!profileSnap.exists()) {
+    await setDoc(doc(db, 'users', user.uid), {
+      name:      user.displayName ?? 'مستخدم Google',
+      email:     user.email ?? '',
+      role:      'admin',
+      orgId:     'main',
+      status:    'active',
+      createdAt: serverTimestamp(),
+    });
+  }
+
+  return user;
 }
 
 // ─── مراقبة حالة الدخول ──────────────────────────────────────────────────────
