@@ -6,7 +6,7 @@ import { useApp } from '../context/AppProvider';
 import { AppHeader } from '../components/ui/AppHeader';
 import { CurrencyText } from '../components/ui/CurrencyText';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { CURRENCIES, getCurrency, type CurrencyCode } from '../utils/currency';
+import { CURRENCIES, getCurrency, convertToSAR, formatAmount, type CurrencyCode } from '../utils/currency';
 
 type Period     = '1m' | '3m' | '6m' | '1y';
 type ActiveTab  = 'overview' | 'owners' | 'overdue' | 'countries';
@@ -189,6 +189,20 @@ export default function FinancialReportsScreen() {
 
   const maxBar = Math.max(...stats.barData.map(d => d.value), 1);
 
+  // ── SAR totals across all countries (for multi-currency summary card) ───────
+  const sarTotals = useMemo(() => {
+    const now    = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
+    let revenue = 0, collected = 0, overdue = 0;
+    byCountry.forEach(c => {
+      revenue   += convertToSAR(c.revenue,   c.code as CurrencyCode);
+      collected += convertToSAR(c.collected, c.code as CurrencyCode);
+      overdue   += convertToSAR(c.overdue,   c.code as CurrencyCode);
+    });
+    const rate = revenue > 0 ? Math.min(100, Math.round((collected / revenue) * 100)) : 0;
+    return { revenue, collected, overdue, rate };
+  }, [byCountry, months]);
+
   // ── Export ─────────────────────────────────────────────────────────────────
   const handleExport = async () => {
     const filterLabel = countryFilter === 'all' ? 'كل الدول' : `${countryLabel(countryFilter)} (${countryFilter})`;
@@ -347,6 +361,80 @@ export default function FinancialReportsScreen() {
             ))}
           </View>
         </ScrollView>
+
+        {/* ── Country Cards (multi-currency only) ─────────────────────────── */}
+        {activeCurrencies.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.countryScroll} contentContainerStyle={styles.countryScrollContent}>
+            {/* SAR total card */}
+            <View style={[styles.countryCard, styles.sarCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary }]}>
+              <View style={styles.countryCardHeader}>
+                <Ionicons name="swap-horizontal-outline" size={13} color={colors.primary} />
+                <Text style={[styles.countryCardName, { color: colors.primary }]} numberOfLines={1}>المجموع الكلي بالريال</Text>
+              </View>
+              <View style={styles.countryStats}>
+                <View style={styles.countryStat}>
+                  <Text style={[styles.countryStatVal, { color: colors.primary }]} numberOfLines={1} adjustsFontSizeToFit>{formatAmount(sarTotals.revenue, 'SAR')}</Text>
+                  <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متوقع</Text>
+                </View>
+                <View style={[styles.countryDiv, { backgroundColor: colors.primary + '40' }]} />
+                <View style={styles.countryStat}>
+                  <Text style={[styles.countryStatVal, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>{formatAmount(sarTotals.collected, 'SAR')}</Text>
+                  <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>محصّل</Text>
+                </View>
+                <View style={[styles.countryDiv, { backgroundColor: colors.primary + '40' }]} />
+                <View style={styles.countryStat}>
+                  <Text style={[styles.countryStatVal, { color: colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>{formatAmount(sarTotals.overdue, 'SAR')}</Text>
+                  <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متأخر</Text>
+                </View>
+                <View style={[styles.countryDiv, { backgroundColor: colors.primary + '40' }]} />
+                <View style={styles.countryStat}>
+                  <Text style={[styles.countryStatVal, { color: sarTotals.rate >= 80 ? colors.success : sarTotals.rate >= 50 ? colors.warning : colors.danger }]} numberOfLines={1}>{sarTotals.rate}%</Text>
+                  <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>تحصيل</Text>
+                </View>
+              </View>
+              <Text style={[styles.sarNote, { color: colors.textMuted }]}>أسعار صرف تقريبية</Text>
+            </View>
+
+            {/* Per-country cards */}
+            {byCountry.map(c => {
+              const active = countryFilter === c.code;
+              return (
+                <TouchableOpacity
+                  key={c.code}
+                  style={[styles.countryCard, { minWidth: 220, backgroundColor: active ? colors.primary + '10' : colors.card, borderColor: active ? colors.primary : colors.border }]}
+                  onPress={() => setCountryFilter(active ? 'all' : c.code as CountryFilter)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.countryCardHeader}>
+                    <Ionicons name="globe-outline" size={13} color={active ? colors.primary : colors.textMuted} />
+                    <Text style={[styles.countryCardName, { color: active ? colors.primary : colors.text }]} numberOfLines={1}>{c.country}</Text>
+                  </View>
+                  <View style={styles.countryStats}>
+                    <View style={styles.countryStat}>
+                      <Text style={[styles.countryStatVal, { color: colors.primary }]} numberOfLines={1} adjustsFontSizeToFit>{formatAmount(c.revenue, c.code as CurrencyCode)}</Text>
+                      <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متوقع</Text>
+                    </View>
+                    <View style={[styles.countryDiv, { backgroundColor: colors.border }]} />
+                    <View style={styles.countryStat}>
+                      <Text style={[styles.countryStatVal, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>{formatAmount(c.collected, c.code as CurrencyCode)}</Text>
+                      <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>محصّل</Text>
+                    </View>
+                    <View style={[styles.countryDiv, { backgroundColor: colors.border }]} />
+                    <View style={styles.countryStat}>
+                      <Text style={[styles.countryStatVal, { color: colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>{formatAmount(c.overdue, c.code as CurrencyCode)}</Text>
+                      <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>متأخر</Text>
+                    </View>
+                    <View style={[styles.countryDiv, { backgroundColor: colors.border }]} />
+                    <View style={styles.countryStat}>
+                      <Text style={[styles.countryStatVal, { color: c.rate >= 80 ? colors.success : c.rate >= 50 ? colors.warning : colors.danger }]} numberOfLines={1}>{c.rate}%</Text>
+                      <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>تحصيل</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* ── KPI Row ─────────────────────────────────────────────────────── */}
         <View style={[styles.kpiGrid, isDesktop && styles.kpiGridDesktop]}>
@@ -702,4 +790,13 @@ const styles = StyleSheet.create({
 
   countryTableLeft:  { flex: 1, gap: 2 },
   countryTableRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+
+  // Horizontal country cards (overview tab)
+  countryScroll:        { marginBottom: 4 },
+  countryScrollContent: { paddingHorizontal: Theme.spacing.base, gap: 10, paddingVertical: 4 },
+  countryCardName:      { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  countryStats:         { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  countryDiv:           { width: 1, height: 28, marginHorizontal: 4 },
+  sarCard:              { minWidth: 260 },
+  sarNote:              { fontSize: 9, textAlign: 'center', marginTop: 6 },
 });
