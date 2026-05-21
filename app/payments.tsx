@@ -193,29 +193,6 @@ export default function PaymentsScreen() {
         <Ionicons name="chevron-back" size={14} color={colors.primary} />
       </TouchableOpacity>
 
-      {/* Totals */}
-      <View style={[styles.totalsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {filterCountry && (
-          <TouchableOpacity style={styles.clearCountry} onPress={() => setFilterCountry('')}>
-            <Ionicons name="close-circle" size={14} color={colors.primary} />
-            <Text style={[styles.clearCountryText, { color: colors.primary }]}>{countryLabel(filterCountry)}</Text>
-          </TouchableOpacity>
-        )}
-        <View style={styles.total}>
-          <CurrencyText amount={totals.paid} currency={filterCountry || undefined} style={[styles.tv, { color: colors.success }]} />
-          <Text style={[styles.tl, { color: colors.textMuted }]}>محصّل</Text>
-        </View>
-        <View style={[styles.td, { backgroundColor: colors.border }]} />
-        <View style={styles.total}>
-          <CurrencyText amount={totals.pending} currency={filterCountry || undefined} style={[styles.tv, { color: colors.warning }]} />
-          <Text style={[styles.tl, { color: colors.textMuted }]}>معلق</Text>
-        </View>
-        <View style={[styles.td, { backgroundColor: colors.border }]} />
-        <View style={styles.total}>
-          <CurrencyText amount={totals.overdue} currency={filterCountry || undefined} style={[styles.tv, { color: colors.danger }]} />
-          <Text style={[styles.tl, { color: colors.textMuted }]}>متأخر</Text>
-        </View>
-      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {filtered.length === 0 ? (

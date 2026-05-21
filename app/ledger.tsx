@@ -528,24 +528,6 @@ export default function LedgerScreen() {
         )}
       </View>
 
-      {/* Grand Summary */}
-      <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {[
-          { label: 'محصّل', value: totals.paid,    color: colors.success },
-          { label: 'معلق',  value: totals.pending,  color: colors.warning },
-          { label: 'متأخر', value: totals.overdue,  color: colors.danger  },
-          { label: 'الإجمالي', value: totals.total, color: colors.text    },
-        ].map((item, i, arr) => (
-          <React.Fragment key={item.label}>
-            <View style={styles.summaryItem}>
-              <CurrencyText amount={item.value} currency={filterCountry || undefined} style={[styles.summaryValue, { color: item.color }]} />
-              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{item.label}</Text>
-            </View>
-            {i < arr.length - 1 && <View style={[styles.summaryDiv, { backgroundColor: colors.border }]} />}
-          </React.Fragment>
-        ))}
-      </View>
-
       {/* Tenant count badge */}
       <View style={styles.countRow}>
         <Text style={[styles.countText, { color: colors.textMuted }]}>
