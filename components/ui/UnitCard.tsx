@@ -17,9 +17,15 @@ interface UnitCardProps {
 
 export function UnitCard({ unit, onDelete }: UnitCardProps) {
   const { colors } = useAppTheme();
-  const { properties } = useApp();
+  const { properties, contracts } = useApp();
   const property  = properties.find(p => p.id === unit.propertyId);
   const mainPhoto = unit.photos?.find(p => p.isMain) ?? unit.photos?.[0];
+
+  // العملة: من العقد النشط أولاً → من العقار → افتراضي
+  const activeContract = unit.currentContractId
+    ? contracts.find(c => c.id === unit.currentContractId)
+    : null;
+  const effectiveCurrency = activeContract?.currency ?? property?.currency ?? undefined;
 
   return (
     <TouchableOpacity
@@ -42,7 +48,7 @@ export function UnitCard({ unit, onDelete }: UnitCardProps) {
       <Text style={[styles.property, { color: colors.textSecondary }]}>{property?.name}</Text>
 
       <View style={styles.row}>
-        <CurrencyText amount={unit.monthlyRent} color={colors.success} size={14} currency={property?.currency} />
+        <CurrencyText amount={unit.monthlyRent} color={colors.success} size={14} currency={effectiveCurrency} />
         <View style={styles.typeRow}>
           <Ionicons name="resize-outline" size={13} color={colors.textMuted} />
           <Text style={[styles.area, { color: colors.textMuted }]}>{unit.area ? `${unit.area} م²` : '— م²'}</Text>

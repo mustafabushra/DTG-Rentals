@@ -13,6 +13,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { AttachmentPanel } from '../../components/features/AttachmentPanel';
 import { PhotoGallery } from '../../components/features/PhotoGallery';
 import { formatCurrency, getUnitTypeLabel } from '../../data/mockData';
+import { CurrencyText } from '../../components/ui/CurrencyText';
 import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function UnitDetailScreen() {
@@ -30,6 +31,7 @@ export default function UnitDetailScreen() {
   const tenant   = unit?.currentTenantId ? tenants.find(t => t.id === unit.currentTenantId) ?? null : null;
   const unitMaintenance = maintenance.filter(m => m.unitId === id);
   const unitContract = unit?.currentContractId ? contracts.find(c => c.id === unit.currentContractId) : null;
+  const effectiveCurrency = unitContract?.currency ?? property?.currency ?? undefined;
   const unitPhotos = id ? (allUnitPhotos[id] ?? []) : [];
 
   if (!unit) {
@@ -74,16 +76,19 @@ export default function UnitDetailScreen() {
 
         {/* KPI Row */}
         <View style={[styles.kpiRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {[
-            { label: 'المساحة', value: `${unit.area} م²`, color: colors.text },
-            { label: 'الإيجار الشهري', value: formatCurrency(unit.monthlyRent ?? 0), color: colors.success },
-            { label: 'الطابق', value: (unit.floor ?? 0).toString(), color: colors.secondary },
-            { label: 'النوع', value: getUnitTypeLabel(unit.type) ?? '—', color: colors.text },
-          ].map((kpi, i) => (
+          {([
+            { label: 'المساحة',       value: `${unit.area} م²`,                   color: colors.text      },
+            { label: 'الإيجار الشهري', value: '__currency__',                       color: colors.success   },
+            { label: 'الطابق',        value: (unit.floor ?? 0).toString(),          color: colors.secondary },
+            { label: 'النوع',         value: getUnitTypeLabel(unit.type) ?? '—',    color: colors.text      },
+          ] as { label: string; value: string; color: string }[]).map((kpi, i) => (
             <React.Fragment key={kpi.label}>
               {i > 0 && <View style={[styles.div, { backgroundColor: colors.border }]} />}
               <View style={styles.kpi}>
-                <Text style={[styles.kpiVal, { color: kpi.color }]} numberOfLines={1} adjustsFontSizeToFit>{kpi.value}</Text>
+                {kpi.value === '__currency__'
+                  ? <CurrencyText amount={unit.monthlyRent ?? 0} currency={effectiveCurrency} style={[styles.kpiVal, { color: kpi.color }]} />
+                  : <Text style={[styles.kpiVal, { color: kpi.color }]} numberOfLines={1} adjustsFontSizeToFit>{kpi.value}</Text>
+                }
                 <Text style={[styles.kpiLbl, { color: colors.textMuted }]}>{kpi.label}</Text>
               </View>
             </React.Fragment>
