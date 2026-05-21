@@ -71,7 +71,15 @@ export default function AddContractScreen() {
   // فلترة الوحدات بالعقود الفعلية — أدق من unit.status الذي قد يكون stale
   const activeContractUnitIds = new Set(contracts.filter(c => c.status === 'active').map(c => c.unitId));
   const vacantUnits = units.filter(u => !activeContractUnitIds.has(u.id));
-  const unitOptions = vacantUnits.map(u => ({ label: `وحدة ${u.number}`, value: u.id }));
+  const unitOptions = vacantUnits.map(u => {
+    const prop = properties.find(p => p.id === u.propertyId);
+    const propName = prop?.name ?? '';
+    // وحدة رئيسية (عقار فردي) → اعرض اسم العقار فقط
+    const label = u.number === 'رئيسية'
+      ? propName
+      : propName ? `${propName} — ${u.number}` : u.number;
+    return { label, value: u.id };
+  });
   const tenantOptions = tenants.map(t => ({ label: t.name, value: t.id }));
   const installmentOptions = ['1', '2', '4', '6', '12', '24'].map(v => {
     const n = Number(v);
