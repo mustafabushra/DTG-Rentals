@@ -268,7 +268,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // ترقية العقارات القديمة — تضيف unitStructure وتنشئ وحدات رئيسية إن لزم
           const { properties: migratedProps, units: migratedUnits } =
             migrateProperties(resolvedProperties, rawUnits);
-          setProperties(migratedProps);
+          const currencyMigratedProps = migratePropertyCurrencies(migratedProps, migratedUnits, rawContracts);
+          setProperties(currencyMigratedProps);
           const unitUpdatesMap: Record<string, Partial<Unit>> = {};
 
           const updatedContracts = rawContracts.map(c => {
@@ -657,6 +658,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fs('owners', id, {}, 'delete');
     addAuditEntry('delete', 'مالك', owner?.name || id, `تم حذف المالك`);
   };
+
+  // ─── Migration: currency للعقارات التي عملتها SAR أو فارغة ─────────────────
+  // تستنتج العملة من العقود المرتبطة — لو كل عقوده AED مثلاً → العقار AED
+  const migratePropertyCurrencies = useCallback((
+    loadedProperties: Property[],
+    loadedUnits: Unit[],
+    loadedContracts: Contract[],
+  ): Property[] => {
+    // خريطة: propertyId → مجموعة عملات عقوده
+    const propCurrencyMap = new Map<string, Map<string, number>>();
+    loadedContracts.forEach(c => {
+      if (!c.currency || c.currency === 'SAR') return;
+      const unit = loadedUnits.find(u => u.id === c.unitId);
+      if (!unit) return;
+      const pid = unit.propertyId;
+      if (!propCurrencyMap.has(pid)) propCurrencyMap.set(pid, new Map());
+      const freq = propCurrencyMap.get(pid)!;
+      freq.set(c.currency, (freq.get(c.currency) ?? 0) + 1);
+    });
+
+    return loadedProperties.map(p => {
+      // لو العقار بالفعل عنده currency غير SAR → لا نتدخل
+      if (p.currency && p.currency !== 'SAR') return p;
+
+      const freq = propCurrencyMap.get(p.id);
+      if (!freq || freq.size === 0) return p;
+
+      // اختر العملة الأكثر تكراراً في عقوده
+      let topCurrency = 'SAR', topCount = 0;
+      freq.forEach((count, cur) => { if (count > topCount) { topCount = count; topCurrency = cur; } });
+
+      if (topCurrency !== 'SAR' && topCurrency !== p.currency) {
+        updateOne(ORG_ID, 'properties', p.id, { currency: topCurrency }).catch(() => {});
+        return { ...p, currency: topCurrency };
+      }
+      return p;
+    });
+  }, []);
 
   // ─── Migration: unitStructure للعقارات القديمة ────────────────────────────
   // تعمل مرة واحدة عند تحميل البيانات — تضيف unitStructure للعقارات التي تفتقر إليه
@@ -1506,8 +1545,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ]);
       const { properties: migratedProps, units: migratedUnits } =
         migrateProperties(propertiesData as Property[], unitsData as Unit[]);
+      const currencyMigratedProps = migratePropertyCurrencies(migratedProps, migratedUnits, contractsData as Contract[]);
       setOwners(ownersData as Owner[]);
-      setProperties(migratedProps);
+      setProperties(currencyMigratedProps);
       setUnits(migratedUnits);
       setContracts(contractsData as Contract[]);
       setTenants(tenantsData as Tenant[]);
