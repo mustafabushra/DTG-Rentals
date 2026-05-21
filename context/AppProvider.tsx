@@ -5,7 +5,7 @@ import {
   ContractStatus, UnitStatus,
 } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
-import { getAll, getOne, setOne, updateOne, deleteOne, deleteAll, ORG_ID } from '../lib/firestoreService';
+import { getAll, getOne, setOne, updateOne, deleteOne, deleteAll, ORG_ID, runContractTransaction } from '../lib/firestoreService';
 import {
   SystemSettings, DEFAULT_SYSTEM_SETTINGS, resolvePermissions,
 } from '../constants/SystemDefaults';
@@ -762,52 +762,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Contract ─────────────────────────────────────────────────────────────
   const addContract = (contract: Contract) => {
-    setContracts(prev => [...prev, contract]);
-    fs('contracts', contract.id, contract, 'set');
+    if (!userId) return;
 
-    // ① تحديث حالة الوحدة + ربط المستأجر والعقد بها
-    const unitUpdate: Partial<Unit> = {
+    // ① حساب الوحدة والمستأجر المحدّثين
+    const unitPatch: Partial<Unit> = {
       status: 'rented' as UnitStatus,
       currentTenantId: contract.tenantId,
       currentContractId: contract.id,
     };
-    setUnits(prev => prev.map(u =>
-      u.id === contract.unitId ? { ...u, ...unitUpdate } : u,
-    ));
-    fs('units', contract.unitId, unitUpdate, 'update');
+    const tenant = tenants.find(t => t.id === contract.tenantId);
+    const newContractIds = [...(tenant?.contractIds ?? []), contract.id];
+    const tenantPatch = { contractIds: newContractIds };
 
-    // ② إضافة معرف العقد إلى قائمة عقود المستأجر
-    setTenants(prev => prev.map(t => {
-      if (t.id !== contract.tenantId) return t;
-      const contractIds = [...(t.contractIds ?? []), contract.id];
-      fs('tenants', t.id, { contractIds }, 'update');
-      return { ...t, contractIds };
-    }));
-
-    // ③ توليد أقساط الدفع تلقائياً
+    // ② حساب الأقساط
     const count = contract.installmentsCount;
     const baseAmount = Math.floor(contract.annualValue / count);
-    const remainder = contract.annualValue - baseAmount * count; // الفرق يُضاف للقسط الأخير
+    const remainder = contract.annualValue - baseAmount * count;
     const startMs = new Date(contract.startDate).getTime();
     const endMs   = new Date(contract.endDate).getTime();
     const spanMs  = endMs - startMs;
     const installments: Payment[] = Array.from({ length: count }, (_, i) => {
       const dueMs = startMs + Math.round((i / count) * spanMs);
       const amount = i === count - 1 ? baseAmount + remainder : baseAmount;
-      const p: Payment = {
+      return {
         id: `pay_${contract.id}_${i + 1}`,
         receiptNumber: `RCP-PENDING-${i + 1}`,
         contractId: contract.id,
         amount,
         dueDate: new Date(dueMs).toISOString().split('T')[0],
-        status: 'pending',
+        status: 'pending' as const,
         installmentNumber: i + 1,
         ...(contract.currency ? { currency: contract.currency } : {}),
       };
-      fs('payments', p.id, p, 'set');
-      return p;
     });
+
+    // ③ تحديث الـ state فوراً (optimistic)
+    setContracts(prev => [...prev, contract]);
+    setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitPatch } : u));
+    setTenants(prev => prev.map(t => t.id === contract.tenantId ? { ...t, contractIds: newContractIds } : t));
     setPayments(prev => [...prev, ...installments]);
+
+    // ④ كتابة Firestore كلها في transaction واحدة ذرية
+    runContractTransaction({
+      orgId:       ORG_ID,
+      contract,
+      unitId:      contract.unitId,
+      unitPatch,
+      tenantId:    contract.tenantId,
+      tenantPatch,
+      payments:    installments.map(p => ({ id: p.id, data: p })),
+    }).catch(e => showSaveError(e, 'addContract transaction'));
 
     addAuditEntry('add', 'عقد', contract.contractNumber, `تم إضافة عقد جديد ${contract.contractNumber}`);
   };

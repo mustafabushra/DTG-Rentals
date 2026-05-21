@@ -1,6 +1,7 @@
 import {
   collection, doc, getDocs, getDoc,
   addDoc, setDoc, deleteDoc,
+  runTransaction,
   serverTimestamp,
   type DocumentData,
 } from 'firebase/firestore';
@@ -77,4 +78,44 @@ export async function deleteOne(orgId: string, col: string, id: string) {
 export async function deleteAll(orgId: string, col: string): Promise<void> {
   const snap = await getDocs(orgCol(orgId, col));
   await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+}
+
+// ─── Atomic contract creation ─────────────────────────────────────────────────
+// Writes contract + unit update + tenant contractIds + all payments in one
+// transaction so a network drop mid-way can never leave partial data.
+export interface ContractTransactionPayload {
+  orgId:      string;
+  contract:   DocumentData;
+  unitId:     string;
+  unitPatch:  DocumentData;
+  tenantId:   string;
+  tenantPatch: DocumentData;
+  payments:   { id: string; data: DocumentData }[];
+}
+
+export async function runContractTransaction(p: ContractTransactionPayload): Promise<void> {
+  const now = serverTimestamp();
+  await runTransaction(db, async tx => {
+    const contractRef = orgDoc(p.orgId, 'contracts', p.contract['id'] as string);
+    const unitRef     = orgDoc(p.orgId, 'units', p.unitId);
+    const tenantRef   = orgDoc(p.orgId, 'tenants', p.tenantId);
+
+    // Read unit first to verify it's still vacant (race condition guard)
+    const unitSnap = await tx.get(unitRef);
+    if (unitSnap.exists()) {
+      const currentContractId = unitSnap.data()['currentContractId'];
+      if (currentContractId && currentContractId !== p.contract['id']) {
+        throw new Error('الوحدة أُجِّرت لعقد آخر في نفس الوقت');
+      }
+    }
+
+    tx.set(contractRef, stripUndefined({ ...p.contract, createdAt: now, updatedAt: now }));
+    tx.set(unitRef,     stripUndefined({ ...unitSnap.data(), ...p.unitPatch, updatedAt: now }), { merge: true });
+    tx.set(tenantRef,   stripUndefined({ ...p.tenantPatch, updatedAt: now }), { merge: true });
+
+    for (const { id, data } of p.payments) {
+      const payRef = orgDoc(p.orgId, 'payments', id);
+      tx.set(payRef, stripUndefined({ ...data, createdAt: now, updatedAt: now }));
+    }
+  });
 }
