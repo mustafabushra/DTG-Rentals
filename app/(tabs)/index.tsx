@@ -1,5 +1,5 @@
-import React, { useMemo, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Platform } from 'react-native';
+import React, { useMemo, useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -13,6 +13,14 @@ import { useScreenSize } from '../../hooks/useScreenSize';
 import { useSidebar } from '../../context/SidebarContext';
 import { trackScreen } from '../../lib/analytics';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { SmartAlert, buildSmartAlert } from '../../components/dashboard/SmartAlert';
+import { CollectionProgress } from '../../components/dashboard/CollectionProgress';
+import { RevenueComparison } from '../../components/dashboard/RevenueComparison';
+import { TenantStats } from '../../components/dashboard/TenantStats';
+import { ExpiringContracts } from '../../components/dashboard/ExpiringContracts';
+import { DuePayments } from '../../components/dashboard/DuePayments';
+import { VacantUnits } from '../../components/dashboard/VacantUnits';
+import { RevenueChart } from '../../components/dashboard/RevenueChart';
 
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                        'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -122,7 +130,8 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { kpis, payments, contracts, maintenance, auditLogs, currentUser,
-          owners, units, properties, calendarEvents, attachments, dataLoading, canWrite, refreshData } = useApp();
+          owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData } = useApp();
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
 
   useEffect(() => { trackScreen('Dashboard'); }, []);
 
@@ -181,7 +190,10 @@ export default function DashboardScreen() {
       ? new Set(properties.filter(p => p.ownerId === ownerRecord.id).map(p => p.id))
       : null;
     const ownerContractIds = ownerPropIds
-      ? new Set(contracts.filter(c => ownerPropIds!.has(c.propertyId ?? '')).map(c => c.id))
+      ? new Set(contracts.filter(c => {
+          const u = units.find(u => u.id === c.unitId);
+          return u ? ownerPropIds!.has(u.propertyId) : false;
+        }).map(c => c.id))
       : null;
     const ownerPaymentIds = ownerContractIds
       ? new Set(payments.filter(p => ownerContractIds!.has(p.contractId ?? '')).map(p => p.id))
@@ -247,6 +259,143 @@ export default function DashboardScreen() {
     if (newThisMonth === 0) return undefined;
     return `+${newThisMonth} هذا الشهر`;
   }, [contracts]);
+
+  // ── Dashboard data calculations ───────────────────────────────────────────
+
+  // 1. Collection progress — this month's paid vs total due
+  const collectionData = useMemo(() => {
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const monthPayments = payments.filter(p => p.dueDate?.startsWith(thisMonth));
+    const collected = monthPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
+    const totalDue  = monthPayments.reduce((s, p) => s + p.amount, 0);
+    return { collected, totalDue };
+  }, [payments]);
+
+  // 2. Expiring contracts (≤30 days)
+  const expiringContracts = useMemo(() => {
+    const today = new Date();
+    return contracts
+      .filter(c => c.status === 'active')
+      .map(c => {
+        const end = new Date(c.endDate);
+        const daysLeft = Math.ceil((end.getTime() - today.getTime()) / 86400000);
+        const unit     = units.find(u => u.id === c.unitId);
+        const tenant   = tenants.find(t => t.id === c.tenantId);
+        return { id: c.id, contractNumber: c.contractNumber, unitNumber: unit?.number ?? '—', tenantName: tenant?.name ?? '—', endDate: c.endDate, daysLeft };
+      })
+      .filter(c => c.daysLeft >= 0 && c.daysLeft <= 30)
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+  }, [contracts, units, tenants]);
+
+  // 3. Due payments — today & this week
+  const duePaymentsData = useMemo(() => {
+    const today   = new Date().toISOString().split('T')[0];
+    const in7days = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+    const pending = payments.filter(p => p.status === 'pending' || p.status === 'overdue');
+    const buildRow = (p: typeof payments[0]) => {
+      const contract = contracts.find(c => c.id === p.contractId);
+      const unit     = contract ? units.find(u => u.id === contract.unitId) : null;
+      const tenant   = contract ? tenants.find(t => t.id === contract.tenantId) : null;
+      return {
+        id: p.id, tenantName: tenant?.name ?? '—', unitNumber: unit?.number ?? '—',
+        amount: p.amount, dueDate: p.dueDate, status: p.status as 'pending' | 'overdue',
+        currency: contract ? undefined : undefined,
+      };
+    };
+    const todayP = pending.filter(p => p.dueDate <= today).map(buildRow);
+    const weekP  = pending.filter(p => p.dueDate > today && p.dueDate <= in7days).map(buildRow);
+    return { today: todayP, week: weekP };
+  }, [payments, contracts, units, tenants]);
+
+  // 4. Revenue comparison — this month vs last month
+  const revenueComparison = useMemo(() => {
+    const now   = new Date();
+    const thisM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prevM = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastM = `${prevM.getFullYear()}-${String(prevM.getMonth() + 1).padStart(2, '0')}`;
+    const sum = (month: string) =>
+      payments.filter(p => p.status === 'paid' && p.paidDate?.startsWith(month)).reduce((s, p) => s + p.amount, 0);
+    return { currentMonth: sum(thisM), lastMonth: sum(lastM) };
+  }, [payments]);
+
+  // 5. Vacant units with days vacant
+  const vacantUnitsData = useMemo(() => {
+    const vacant = units.filter(u => u.status === 'vacant' || u.status === 'maintenance');
+    return vacant.map(u => {
+      const prop = properties.find(p => p.id === u.propertyId);
+      // Estimate vacant since: find last contract end date for this unit
+      const lastContract = contracts
+        .filter(c => c.unitId === u.id && c.status !== 'active')
+        .sort((a, b) => b.endDate.localeCompare(a.endDate))[0];
+      const vacantDays = lastContract
+        ? Math.max(0, Math.ceil((Date.now() - new Date(lastContract.endDate).getTime()) / 86400000))
+        : undefined;
+      return { id: u.id, number: u.number, floor: u.floor, propertyName: prop?.name, vacantDays, status: u.status as 'vacant' | 'maintenance' };
+    });
+  }, [units, properties, contracts]);
+
+  // 6. Tenant stats
+  const tenantStats = useMemo(() => {
+    const activeContractIds = new Set(contracts.filter(c => c.status === 'active').map(c => c.tenantId));
+    const activeTenants = tenants.filter(t => activeContractIds.has(t.id)).length;
+
+    // Avg tenancy in months from all contracts
+    const durations = contracts
+      .filter(c => c.startDate && c.endDate)
+      .map(c => {
+        const start = new Date(c.startDate);
+        const end   = new Date(c.endDate);
+        return Math.round((end.getTime() - start.getTime()) / (30 * 86400000));
+      });
+    const avgMonths = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
+
+    // Top payer by total paid amount
+    const paidByTenant = new Map<string, number>();
+    payments.filter(p => p.status === 'paid').forEach(p => {
+      const c = contracts.find(con => con.id === p.contractId);
+      if (c?.tenantId) paidByTenant.set(c.tenantId, (paidByTenant.get(c.tenantId) ?? 0) + p.amount);
+    });
+    let topTenant: { name: string; totalPaid: number; id: string } | undefined;
+    paidByTenant.forEach((amt, tid) => {
+      if (!topTenant || amt > topTenant.totalPaid) {
+        const t = tenants.find(t => t.id === tid);
+        if (t) topTenant = { name: t.name, totalPaid: amt, id: tid };
+      }
+    });
+
+    return { activeTenants, avgTenancyMonths: avgMonths, topTenant };
+  }, [tenants, contracts, payments]);
+
+  // 7. 6-month revenue chart data
+  const chartData = useMemo(() => {
+    const months: { month: string; revenue: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(1);
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const revenue = payments
+        .filter(p => p.status === 'paid' && p.paidDate?.startsWith(key))
+        .reduce((s, p) => s + p.amount, 0);
+      months.push({ month: key, revenue });
+    }
+    return months;
+  }, [payments]);
+
+  // 8. Smart alert
+  const smartAlert = useMemo(() => {
+    const vacantSinceDays: Record<string, number> = {};
+    vacantUnitsData.forEach(u => { if (u.vacantDays !== undefined) vacantSinceDays[u.id] = u.vacantDays; });
+    return buildSmartAlert({
+      expiringContracts,
+      overduePayments: kpis.overduePayments,
+      collectionRate: kpis.collectionRate,
+      vacantUnits: vacantUnitsData,
+      vacantSinceDays,
+    });
+  }, [expiringContracts, kpis, vacantUnitsData]);
+
+  const visibleAlert = smartAlert && !dismissedAlerts.has(smartAlert.id) ? smartAlert : null;
 
   if (dataLoading) {
     return (
@@ -321,6 +470,32 @@ export default function DashboardScreen() {
               </View>
             </>
           )}
+        </View>
+
+        {/* ── Smart Alert ── */}
+        {visibleAlert && (
+          <View style={styles.sectionPad}>
+            <SmartAlert alert={visibleAlert} onDismiss={id => setDismissedAlerts(prev => new Set([...prev, id]))} />
+          </View>
+        )}
+
+        {/* ── Collection Progress ── */}
+        <View style={styles.sectionPad}>
+          <CollectionProgress
+            collected={collectionData.collected}
+            totalDue={collectionData.totalDue}
+          />
+        </View>
+
+        {/* ── Revenue Comparison + Tenant Stats (2-col on web) ── */}
+        <View style={[styles.sectionPad, isWide && styles.rowPair]}>
+          <RevenueComparison currentMonth={revenueComparison.currentMonth} lastMonth={revenueComparison.lastMonth} />
+          {isWide && <View style={{ width: Theme.spacing.sm }} />}
+          <TenantStats
+            activeTenants={tenantStats.activeTenants}
+            avgTenancyMonths={tenantStats.avgTenancyMonths}
+            topTenant={tenantStats.topTenant}
+          />
         </View>
 
         {/* ── Occupancy Section ── */}
@@ -423,6 +598,29 @@ export default function DashboardScreen() {
             </View>
           )}
         </View>
+
+        {/* ── Expiring Contracts + Due Payments (2-col on web) ── */}
+        {(expiringContracts.length > 0 || duePaymentsData.today.length > 0 || duePaymentsData.week.length > 0) && (
+          <View style={[styles.sectionPad, isWide && styles.rowPair]}>
+            {expiringContracts.length > 0 && (
+              <ExpiringContracts contracts={expiringContracts} />
+            )}
+            {isWide && expiringContracts.length > 0 && <View style={{ width: Theme.spacing.sm }} />}
+            <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
+          </View>
+        )}
+
+        {/* ── Vacant Units ── */}
+        <View style={styles.sectionPad}>
+          <VacantUnits units={vacantUnitsData} />
+        </View>
+
+        {/* ── Revenue Chart 6-month ── */}
+        {chartData.some(d => d.revenue > 0) && (
+          <View style={styles.sectionPad}>
+            <RevenueChart data={chartData} />
+          </View>
+        )}
 
         {/* Quick Actions */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -701,6 +899,10 @@ const styles = StyleSheet.create({
   sectionPad: {
     paddingHorizontal: Theme.spacing.base,
     marginTop: Theme.spacing.lg,
+  },
+  rowPair: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   sectionHeading: {
     fontSize: Theme.fontSize.lg,
