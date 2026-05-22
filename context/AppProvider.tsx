@@ -678,17 +678,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     return loadedProperties.map(p => {
-      // لو العقار بالفعل عنده currency غير SAR → لا نتدخل
+      // لو العقار بالفعل عنده currency محددة → لا نتدخل
       if (p.currency && p.currency !== 'SAR') return p;
 
       const freq = propCurrencyMap.get(p.id);
-      if (!freq || freq.size === 0) return p;
 
       // اختر العملة الأكثر تكراراً في عقوده
       let topCurrency = 'SAR', topCount = 0;
-      freq.forEach((count, cur) => { if (count > topCount) { topCount = count; topCurrency = cur; } });
+      if (freq && freq.size > 0) {
+        freq.forEach((count, cur) => { if (count > topCount) { topCount = count; topCurrency = cur; } });
+      }
 
-      if (topCurrency !== 'SAR' && topCurrency !== p.currency) {
+      // إذا لم تكن currency محددة أصلاً → اكتبها في Firestore (SAR أو ما استُنتج)
+      if (!p.currency || p.currency !== topCurrency) {
         updateOne(ORG_ID, 'properties', p.id, { currency: topCurrency }).catch(() => {});
         return { ...p, currency: topCurrency };
       }

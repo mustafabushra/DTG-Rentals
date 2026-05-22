@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { FormContainer } from '../../components/ui/FormContainer';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { CURRENCY_OPTIONS } from '../../utils/currency';
 
 export default function EditPropertyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,6 +28,7 @@ export default function EditPropertyScreen() {
     floors: property?.floors?.toString() || '',
     ownerId: property?.ownerId || '',
     status: property?.status || 'active',
+    currency: property?.currency || 'SAR',
     description: property?.description || '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -40,6 +42,7 @@ export default function EditPropertyScreen() {
         floors: property.floors?.toString() || '',
         ownerId: property.ownerId || '',
         status: property.status || 'active',
+        currency: property.currency || 'SAR',
         description: property.description || '',
       });
     }
@@ -69,6 +72,7 @@ export default function EditPropertyScreen() {
       name: form.name.trim(), type: form.type as any,
       location: form.location.trim(), floors: Number(form.floors),
       ownerId: form.ownerId, status: form.status as any,
+      currency: form.currency,
       description: form.description.trim(),
     });
     router.back();
@@ -108,6 +112,7 @@ export default function EditPropertyScreen() {
         <FormInput label="عدد الطوابق" value={form.floors} onChangeText={set('floors')} keyboardType="number-pad" required icon="layers-outline" error={errors.floors} />
         <FormSelect label="المالك" value={form.ownerId} options={ownerOptions} onSelect={set('ownerId')} required error={errors.ownerId} />
         <FormSelect label="الحالة" value={form.status} options={statusOptions} onSelect={set('status')} required />
+        <FormSelect label="عملة العقار" value={form.currency} options={CURRENCY_OPTIONS} onSelect={set('currency')} required />
         <FormInput label="الوصف" value={form.description} onChangeText={set('description')} multiline numberOfLines={3} icon="document-text-outline" />
       </ScrollView></FormContainer>
     </View>
