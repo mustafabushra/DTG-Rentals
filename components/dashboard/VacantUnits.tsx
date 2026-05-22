@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   allRentedTxt: { color: '#27AE60', fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: Theme.spacing.md, paddingBottom: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.base, paddingTop: Theme.spacing.base, paddingBottom: 10,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title:    { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
@@ -100,8 +100,8 @@ const styles = StyleSheet.create({
   countBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
   countTxt:   { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.bold },
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: Theme.spacing.md, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: Theme.spacing.base, paddingVertical: 13,
   },
   info:     { flex: 1 },
   nameRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' },

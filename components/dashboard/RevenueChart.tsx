@@ -149,7 +149,7 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: Theme.radius.xl, borderWidth: 1, padding: Theme.spacing.md, gap: Theme.spacing.sm },
+  card: { borderRadius: Theme.radius.xl, borderWidth: 1, padding: Theme.spacing.base, gap: 12 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title:  { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
   trendBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: Theme.radius.full },

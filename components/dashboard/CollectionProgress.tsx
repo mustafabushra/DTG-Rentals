@@ -73,7 +73,7 @@ export function CollectionProgress({ collected, totalDue, currency = 'ريال' 
 const styles = StyleSheet.create({
   card: {
     borderRadius: Theme.radius.xl, borderWidth: 1,
-    padding: Theme.spacing.md, gap: Theme.spacing.sm,
+    padding: Theme.spacing.base, gap: 12,
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title:  { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },

@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   card: { flex: 1, borderRadius: Theme.radius.xl, borderWidth: 1, overflow: 'hidden' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: Theme.spacing.md, paddingTop: Theme.spacing.md, paddingBottom: 8,
+    paddingHorizontal: Theme.spacing.base, paddingTop: Theme.spacing.base, paddingBottom: 10,
   },
   title: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
   tabs:  { flexDirection: 'row', gap: 4 },
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   tabTxt: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: Theme.spacing.md, paddingVertical: 10, borderBottomWidth: 1,
+    paddingHorizontal: Theme.spacing.base, paddingVertical: 13, borderBottomWidth: 1,
   },
   info:   { flex: 1 },
   tenant: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   overdueTxt:   { color: '#E74C3C', fontSize: 9, fontWeight: '700' },
   totalRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderTopWidth: 1, paddingHorizontal: Theme.spacing.md, paddingVertical: 10,
+    borderTopWidth: 1, paddingHorizontal: Theme.spacing.base, paddingVertical: 12,
   },
   totalLbl: { fontSize: Theme.fontSize.sm },
   totalAmt: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },

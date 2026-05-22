@@ -62,7 +62,7 @@ export function TenantStats({ activeTenants, avgTenancyMonths, topTenant, curren
 const styles = StyleSheet.create({
   card: {
     flex: 1, borderRadius: Theme.radius.xl, borderWidth: 1,
-    padding: Theme.spacing.md, gap: Theme.spacing.sm,
+    padding: Theme.spacing.base, gap: 12,
   },
   title: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
   strip: { flexDirection: 'row', alignItems: 'center' },

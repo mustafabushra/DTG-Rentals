@@ -138,10 +138,9 @@ export function buildSmartAlert(input: AlertInput): SmartAlertData | null {
 const styles = StyleSheet.create({
   card: {
     borderRightWidth: 4,
-    borderRadius: Theme.radius.lg,
-    padding: Theme.spacing.md,
-    gap: Theme.spacing.sm,
-    marginBottom: Theme.spacing.sm,
+    borderRadius: Theme.radius.xl,
+    padding: Theme.spacing.base,
+    gap: 12,
   },
   top: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   msgRow: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 8, justifyContent: 'flex-end' },

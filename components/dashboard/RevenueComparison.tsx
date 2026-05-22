@@ -68,7 +68,7 @@ export function RevenueComparison({ currentMonth, lastMonth, currency = 'ريا�
 const styles = StyleSheet.create({
   card: {
     flex: 1, borderRadius: Theme.radius.xl, borderWidth: 1,
-    padding: Theme.spacing.md, gap: Theme.spacing.sm,
+    padding: Theme.spacing.base, gap: 12,
   },
   title:    { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold, textAlign: 'right', marginBottom: 2 },
   row:      { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'flex-end', gap: 8 },

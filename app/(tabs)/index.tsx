@@ -446,25 +446,27 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
         {/* KPI Cards */}
-        <View style={[styles.kpiGrid, isWide && styles.kpiGridWide, { padding: hPad, gap: isSmallPhone ? 8 : Theme.spacing.sm }]}>
+        <View style={[styles.kpiGrid, isWide && styles.kpiGridWide, {
+          padding: hPad,
+          gap: isSmallPhone ? 8 : 12,
+          rowGap: isSmallPhone ? 12 : 12,
+        }]}>
           {isWide ? (
-            // Wide: single row of 4
-            <View style={styles.kpiRow}>
+            <View style={[styles.kpiRow, { gap: 16 }]}>
               <KPICard label="إجمالي العقارات" value={kpis.totalProperties} icon="business-outline" color={colors.primary} />
               <KPICard label="الوحدات المؤجرة" value={kpis.rentedUnits} icon="home" color={colors.success} trend={rentedTrend ? 'up' : undefined} trendValue={rentedTrend} />
               <KPICard label="الإيرادات الشهرية" value={formatCurrency(kpis.monthlyRevenue)} icon="cash-outline" color="#8E44AD" />
               <KPICard label="طلبات مفتوحة" value={kpis.openMaintenanceRequests} icon="construct-outline" color={colors.warning} />
             </View>
           ) : (
-            // Mobile: 2×2 grid
             <>
-              <View style={[styles.kpiRow, { gap: isSmallPhone ? 8 : Theme.spacing.sm }]}>
+              <View style={[styles.kpiRow, { gap: isSmallPhone ? 8 : 12 }]}>
                 <KPICard label="إجمالي العقارات" value={kpis.totalProperties} icon="business-outline" color={colors.primary} />
                 <KPICard label="الوحدات المؤجرة" value={kpis.rentedUnits} icon="home" color={colors.success} trend={rentedTrend ? 'up' : undefined} trendValue={rentedTrend} />
               </View>
-              <View style={[styles.kpiRow, { gap: isSmallPhone ? 8 : Theme.spacing.sm }]}>
+              <View style={[styles.kpiRow, { gap: isSmallPhone ? 8 : 12 }]}>
                 <KPICard label="الإيرادات الشهرية" value={formatCurrency(kpis.monthlyRevenue)} icon="cash-outline" color="#8E44AD" />
                 <KPICard label="طلبات مفتوحة" value={kpis.openMaintenanceRequests} icon="construct-outline" color={colors.warning} />
               </View>
@@ -474,28 +476,32 @@ export default function DashboardScreen() {
 
         {/* ── Smart Alert ── */}
         {visibleAlert && (
-          <View style={styles.sectionPad}>
+          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
             <SmartAlert alert={visibleAlert} onDismiss={id => setDismissedAlerts(prev => new Set([...prev, id]))} />
           </View>
         )}
 
         {/* ── Collection Progress ── */}
-        <View style={styles.sectionPad}>
-          <CollectionProgress
-            collected={collectionData.collected}
-            totalDue={collectionData.totalDue}
-          />
+        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+          <Text style={[styles.secLabel, { color: colors.textMuted }]}>التحصيل</Text>
+          <CollectionProgress collected={collectionData.collected} totalDue={collectionData.totalDue} />
         </View>
 
-        {/* ── Revenue Comparison + Tenant Stats (2-col on web) ── */}
-        <View style={[styles.sectionPad, isWide && styles.rowPair]}>
-          <RevenueComparison currentMonth={revenueComparison.currentMonth} lastMonth={revenueComparison.lastMonth} />
-          {isWide && <View style={{ width: Theme.spacing.sm }} />}
-          <TenantStats
-            activeTenants={tenantStats.activeTenants}
-            avgTenancyMonths={tenantStats.avgTenancyMonths}
-            topTenant={tenantStats.topTenant}
-          />
+        {/* ── Revenue Comparison + Tenant Stats ── */}
+        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+          <Text style={[styles.secLabel, { color: colors.textMuted }]}>المالية والمستأجرون</Text>
+          {isWide ? (
+            <View style={styles.rowPair}>
+              <RevenueComparison currentMonth={revenueComparison.currentMonth} lastMonth={revenueComparison.lastMonth} />
+              <View style={{ width: 16 }} />
+              <TenantStats activeTenants={tenantStats.activeTenants} avgTenancyMonths={tenantStats.avgTenancyMonths} topTenant={tenantStats.topTenant} />
+            </View>
+          ) : (
+            <View style={{ gap: 16 }}>
+              <RevenueComparison currentMonth={revenueComparison.currentMonth} lastMonth={revenueComparison.lastMonth} />
+              <TenantStats activeTenants={tenantStats.activeTenants} avgTenancyMonths={tenantStats.avgTenancyMonths} topTenant={tenantStats.topTenant} />
+            </View>
+          )}
         </View>
 
         {/* ── Occupancy Section ── */}
@@ -599,25 +605,35 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {/* ── Expiring Contracts + Due Payments (2-col on web) ── */}
+        {/* ── Expiring Contracts + Due Payments ── */}
         {(expiringContracts.length > 0 || duePaymentsData.today.length > 0 || duePaymentsData.week.length > 0) && (
-          <View style={[styles.sectionPad, isWide && styles.rowPair]}>
-            {expiringContracts.length > 0 && (
-              <ExpiringContracts contracts={expiringContracts} />
+          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+            <Text style={[styles.secLabel, { color: colors.textMuted }]}>العقود والدفعات</Text>
+            {isWide ? (
+              <View style={styles.rowPair}>
+                {expiringContracts.length > 0 && <ExpiringContracts contracts={expiringContracts} />}
+                {expiringContracts.length > 0 && <View style={{ width: 16 }} />}
+                <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
+              </View>
+            ) : (
+              <View style={{ gap: 16 }}>
+                {expiringContracts.length > 0 && <ExpiringContracts contracts={expiringContracts} />}
+                <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
+              </View>
             )}
-            {isWide && expiringContracts.length > 0 && <View style={{ width: Theme.spacing.sm }} />}
-            <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
           </View>
         )}
 
         {/* ── Vacant Units ── */}
-        <View style={styles.sectionPad}>
+        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+          <Text style={[styles.secLabel, { color: colors.textMuted }]}>الوحدات الشاغرة</Text>
           <VacantUnits units={vacantUnitsData} />
         </View>
 
         {/* ── Revenue Chart 6-month ── */}
         {chartData.some(d => d.revenue > 0) && (
-          <View style={styles.sectionPad}>
+          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+            <Text style={[styles.secLabel, { color: colors.textMuted }]}>اتجاه الإيرادات</Text>
             <RevenueChart data={chartData} />
           </View>
         )}
@@ -898,17 +914,26 @@ const styles = StyleSheet.create({
   },
   sectionPad: {
     paddingHorizontal: Theme.spacing.base,
-    marginTop: Theme.spacing.lg,
+    marginTop: Theme.spacing.xl,
   },
   rowPair: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
+    flexWrap: 'nowrap',
   },
   sectionHeading: {
     fontSize: Theme.fontSize.lg,
     fontWeight: Theme.fontWeight.bold,
     marginBottom: Theme.spacing.sm,
     textAlign: 'right',
+  },
+  secLabel: {
+    fontSize: Theme.fontSize.xs,
+    fontWeight: Theme.fontWeight.semibold,
+    textAlign: 'right',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   alertCard: {
     flexDirection: 'row',

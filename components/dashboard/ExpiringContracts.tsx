@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   card: { flex: 1, borderRadius: Theme.radius.xl, borderWidth: 1, overflow: 'hidden' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: Theme.spacing.md, paddingBottom: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.base, paddingTop: Theme.spacing.base, paddingBottom: 10,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   title:    { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   countTxt:   { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.bold },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: Theme.spacing.md, paddingVertical: 10,
+    paddingHorizontal: Theme.spacing.base, paddingVertical: 12,
     borderRightWidth: 4,
   },
   rowBorder: { borderBottomWidth: 1 },
