@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { router } from 'expo-router';
 import { Theme } from '../constants/Theme';
@@ -65,27 +64,8 @@ export default function UnitsScreen() {
 
       <FilterBar options={UNIT_FILTERS} value={filter} onChange={v => setFilter(v as Filter)} />
 
-      {/* Country filter chips */}
       {countryOptions.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countryBar}>
-          {countryOptions.map(opt => {
-            const active = filterCountry === opt.value;
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.countryChip, {
-                  backgroundColor: active ? colors.primary : colors.card,
-                  borderColor: active ? colors.primary : colors.border,
-                }]}
-                onPress={() => setFilterCountry(active && opt.value ? '' : opt.value)}
-                activeOpacity={0.8}
-              >
-                {opt.value && <Ionicons name="globe-outline" size={12} color={active ? '#FFF' : colors.textMuted} />}
-                <Text style={[styles.countryChipText, { color: active ? '#FFF' : colors.text }]}>{opt.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <FilterBar options={countryOptions} value={filterCountry} onChange={setFilterCountry} />
       )}
 
       {/* Stats */}
@@ -143,13 +123,4 @@ const styles = StyleSheet.create({
   sv: { fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold },
   sl: { fontSize: Theme.fontSize.xs },
   sd: { width: 1, marginVertical: 4 },
-  countryBar: {
-    paddingHorizontal: Theme.spacing.base, paddingBottom: 8, gap: 8,
-  },
-  countryChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: Theme.radius.full, borderWidth: 1,
-  },
-  countryChipText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
 });
