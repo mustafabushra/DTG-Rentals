@@ -151,12 +151,12 @@ export default function UnitDetailScreen() {
         {/* Maintenance History */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>سجل الصيانة ({unitMaintenance.length})</Text>
             {canWrite && (
               <TouchableOpacity onPress={() => router.push('/add-maintenance')}>
                 <Text style={[styles.cardAction, { color: colors.secondary }]}>طلب صيانة</Text>
               </TouchableOpacity>
             )}
-            <Text style={[styles.cardTitle, { color: colors.text }]}>سجل الصيانة ({unitMaintenance.length})</Text>
           </View>
           {unitMaintenance.length === 0 ? (
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>لا توجد طلبات صيانة</Text>

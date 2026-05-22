@@ -34,9 +34,6 @@ export function ExpiringContracts({ contracts }: Props) {
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/contracts' as any)}>
-          <Text style={[styles.seeAll, { color: '#C3AF76' }]}>عرض الكل</Text>
-        </TouchableOpacity>
         <View style={styles.titleRow}>
           <View style={[styles.countBadge, { backgroundColor: '#FDEDEC' }]}>
             <Text style={[styles.countTxt, { color: '#E74C3C' }]}>{contracts.length}</Text>
@@ -44,6 +41,9 @@ export function ExpiringContracts({ contracts }: Props) {
           <Ionicons name="time-outline" size={16} color="#F39C12" />
           <Text style={[styles.title, { color: colors.text }]}>العقود المنتهية خلال 30 يوم</Text>
         </View>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/contracts' as any)}>
+          <Text style={[styles.seeAll, { color: '#C3AF76' }]}>عرض الكل</Text>
+        </TouchableOpacity>
       </View>
 
       {/* List */}

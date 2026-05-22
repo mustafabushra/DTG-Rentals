@@ -313,10 +313,10 @@ export default function ContractDetailScreen() {
         {/* Payment Schedule */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>جدول الأقساط</Text>
             <TouchableOpacity onPress={() => router.push('/record-payment')}>
               <Text style={[styles.cardAction, { color: colors.secondary }]}>تسجيل دفعة</Text>
             </TouchableOpacity>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>جدول الأقساط</Text>
           </View>
           {contractPayments.map((p, i) => (
             <TouchableOpacity

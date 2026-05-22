@@ -507,10 +507,10 @@ export default function DashboardScreen() {
         {/* ── Occupancy Section ── */}
         <View style={styles.sectionPad}>
           <View style={styles.rowBetween}>
+            <Text style={[styles.sectionHeading, { color: colors.text }]}>نسبة الإشغال</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/properties' as any)}>
               <Text style={[styles.seeAll, { color: colors.secondary }]}>تفاصيل</Text>
             </TouchableOpacity>
-            <Text style={[styles.sectionHeading, { color: colors.text }]}>نسبة الإشغال</Text>
           </View>
 
           {/* Overall card */}
@@ -671,10 +671,10 @@ export default function DashboardScreen() {
         {upcomingTimeline.length > 0 && (
           <View style={styles.sectionPad}>
             <View style={styles.rowBetween}>
+              <Text style={[styles.sectionHeading, { color: colors.text }]}>المواعيد القادمة</Text>
               <TouchableOpacity onPress={() => router.push('/calendar' as any)}>
                 <Text style={[styles.seeAll, { color: colors.secondary }]}>عرض التقويم</Text>
               </TouchableOpacity>
-              <Text style={[styles.sectionHeading, { color: colors.text }]}>المواعيد القادمة</Text>
             </View>
 
             <View style={[styles.tlCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -801,10 +801,10 @@ export default function DashboardScreen() {
         {/* Recent Activity */}
         <View style={styles.sectionPad}>
           <View style={styles.rowBetween}>
+            <Text style={[styles.sectionHeading, { color: colors.text }]}>آخر العمليات</Text>
             <TouchableOpacity onPress={() => router.push('/audit-log')}>
               <Text style={[styles.seeAll, { color: colors.secondary }]}>عرض الكل</Text>
             </TouchableOpacity>
-            <Text style={[styles.sectionHeading, { color: colors.text }]}>آخر العمليات</Text>
           </View>
           {recentActivity.map(log => (
             <View key={log.id} style={[styles.logCard, { backgroundColor: colors.card, borderColor: colors.border }]}>

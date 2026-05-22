@@ -38,15 +38,15 @@ export function VacantUnits({ units }: Props) {
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/units' as any)}>
-          <Text style={[styles.seeAll, { color: '#C3AF76' }]}>عرض الكل</Text>
-        </TouchableOpacity>
         <View style={styles.titleRow}>
           <View style={[styles.countBadge, { backgroundColor: '#FDEDEC' }]}>
             <Text style={[styles.countTxt, { color: '#E74C3C' }]}>{units.length}</Text>
           </View>
           <Text style={[styles.title, { color: colors.text }]}>الوحدات الشاغرة</Text>
         </View>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/units' as any)}>
+          <Text style={[styles.seeAll, { color: '#C3AF76' }]}>عرض الكل</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Rows */}
