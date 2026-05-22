@@ -321,14 +321,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setContracts(updatedContracts);
           setUnits(finalUnits);
 
-          if (!useCache) {
-            saveCache(uid, {
-              owners:     resolvedOwners,
-              properties: resolvedProperties,
-              units:      finalUnits,
-              contracts:  updatedContracts,
-            });
-          }
+          saveCache(uid, {
+            owners:     resolvedOwners,
+            properties: currencyMigratedProps,
+            units:      finalUnits,
+            contracts:  updatedContracts,
+          });
           hydrated.current = true;
           console.log('[DATA_LOADED] critical Firestore data ready', {
             owners: resolvedOwners.length,
