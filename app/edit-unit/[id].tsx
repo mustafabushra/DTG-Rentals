@@ -12,6 +12,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { UnitType } from '../../data/mockData';
 import { FormContainer } from '../../components/ui/FormContainer';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { CURRENCY_OPTIONS } from '../../utils/currency';
 
 const FEATURE_OPTIONS = [
   'مكيف مركزي', 'مطبخ مجهز', 'باركنج', 'أمن 24 ساعة', 'تراس',
@@ -30,7 +31,8 @@ export default function EditUnitScreen() {
   const [form, setForm] = useState({
     number: unit?.number || '', type: unit?.type || '' as UnitType | '',
     floor: unit?.floor?.toString() || '', area: unit?.area?.toString() || '',
-    monthlyRent: unit?.monthlyRent?.toString() || '', description: unit?.description || '',
+    monthlyRent: unit?.monthlyRent?.toString() || '', currency: unit?.currency || '',
+    description: unit?.description || '',
   });
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(unit?.features || []);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -43,6 +45,7 @@ export default function EditUnitScreen() {
         floor: unit.floor?.toString() || '',
         area: unit.area?.toString() || '',
         monthlyRent: unit.monthlyRent?.toString() || '',
+        currency: unit.currency || '',
         description: unit.description || '',
       });
       setSelectedFeatures(unit.features || []);
@@ -74,6 +77,7 @@ export default function EditUnitScreen() {
       number: form.number.trim(), type: form.type as UnitType,
       floor: Number(form.floor), area: Number(form.area),
       monthlyRent: monthly, annualRent: monthly * 12,
+      currency: form.currency || undefined,
       description: form.description.trim(), features: selectedFeatures,
     });
     router.back();
@@ -113,6 +117,7 @@ export default function EditUnitScreen() {
         <FormInput label="رقم الطابق" value={form.floor} onChangeText={set('floor')} keyboardType="number-pad" required icon="layers-outline" error={errors.floor} />
         <FormInput label="المساحة (م²)" value={form.area} onChangeText={set('area')} keyboardType="decimal-pad" required icon="resize-outline" error={errors.area} />
         <FormInput label="الإيجار الشهري (﷼)" value={form.monthlyRent} onChangeText={set('monthlyRent')} keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
+        <FormSelect label="عملة الوحدة / الدولة" value={form.currency} options={CURRENCY_OPTIONS} onSelect={set('currency')} placeholder="اختر العملة..." />
         <FormInput label="الوصف" value={form.description} onChangeText={set('description')} multiline numberOfLines={3} icon="document-text-outline" />
 
         <View style={styles.featuresSection}>

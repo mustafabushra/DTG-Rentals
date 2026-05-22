@@ -75,6 +75,7 @@ export interface Unit {
   status: UnitStatus;
   description: string;
   features: string[];
+  currency?: string;         // عملة الوحدة — الأولوية: unit > contract > property > system
   currentTenantId?: string;
   currentContractId?: string;
 }

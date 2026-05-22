@@ -318,13 +318,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             vacant: finalUnits.filter(u => u.status === 'vacant').length,
           });
 
+          const currencyMigratedUnits = migrateUnitCurrencies(finalUnits, currencyMigratedProps, updatedContracts);
           setContracts(updatedContracts);
-          setUnits(finalUnits);
+          setUnits(currencyMigratedUnits);
 
           saveCache(uid, {
             owners:     resolvedOwners,
             properties: currencyMigratedProps,
-            units:      finalUnits,
+            units:      currencyMigratedUnits,
             contracts:  updatedContracts,
           });
           hydrated.current = true;
@@ -692,6 +693,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return { ...p, currency: topCurrency };
       }
       return p;
+    });
+  }, []);
+
+  // ─── Migration: currency للوحدات القديمة بدون عملة ───────────────────────
+  // تورث العملة من العقد النشط → العقار → SAR
+  const migrateUnitCurrencies = useCallback((
+    loadedUnits: Unit[],
+    loadedProperties: Property[],
+    loadedContracts: Contract[],
+  ): Unit[] => {
+    return loadedUnits.map(u => {
+      if (u.currency) return u;
+      // استنتج من العقد النشط
+      const activeContract = loadedContracts.find(c => c.id === u.currentContractId);
+      const inherited = activeContract?.currency
+        ?? loadedProperties.find(p => p.id === u.propertyId)?.currency
+        ?? 'SAR';
+      if (inherited && inherited !== u.currency) {
+        updateOne(ORG_ID, 'units', u.id, { currency: inherited }).catch(() => {});
+        return { ...u, currency: inherited };
+      }
+      return u;
     });
   }, []);
 
@@ -1544,9 +1567,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { properties: migratedProps, units: migratedUnits } =
         migrateProperties(propertiesData as Property[], unitsData as Unit[]);
       const currencyMigratedProps = migratePropertyCurrencies(migratedProps, migratedUnits, contractsData as Contract[]);
+      const currencyMigratedUnits = migrateUnitCurrencies(migratedUnits, currencyMigratedProps, contractsData as Contract[]);
       setOwners(ownersData as Owner[]);
       setProperties(currencyMigratedProps);
-      setUnits(migratedUnits);
+      setUnits(currencyMigratedUnits);
       setContracts(contractsData as Contract[]);
       setTenants(tenantsData as Tenant[]);
       setPayments(paymentsData as Payment[]);
