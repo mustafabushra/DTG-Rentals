@@ -105,8 +105,8 @@ export default function CalendarScreen() {
     installments.filter(p => p.status === 'pending' || p.status === 'overdue').forEach(p => {
       if (!events.find(e => e.id === `dyn_pe_${p.id}`)) {
         events.push({
-          id: `dyn_pe_${p.id}`, title: `دفعة مستحقة: ${p.amount.toLocaleString('en-US')} ﷼`,
-          date: p.dueDate, type: 'payment', entityId: p.id, entityType: 'payment',
+          id: `dyn_pe_${p.id}`, title: `دفعة مستحقة: ${(p.amount ?? 0).toLocaleString('en-US')} ﷼`,
+          date: p.dueDate ?? '', type: 'payment', entityId: p.id, entityType: 'payment',
           notes: p.status === 'overdue' ? '⚠ متأخرة' : `قسط رقم ${p.installmentNumber}`,
         });
       }

@@ -218,7 +218,7 @@ export default function DashboardScreen() {
     payments
       .filter(p => (p.status === 'pending' || p.status === 'overdue') && (!ownerPaymentIds || ownerPaymentIds.has(p.id)))
       .forEach(p => {
-        events.push({ id: `dyn_pe_${p.id}`, title: `دفعة: ${p.amount.toLocaleString('en-US')} ﷼`, date: p.dueDate, type: 'payment', entityType: 'payment', entityId: p.id, notes: p.status === 'overdue' ? '⚠ متأخرة' : undefined });
+        events.push({ id: `dyn_pe_${p.id}`, title: `دفعة: ${(p.amount ?? 0).toLocaleString('en-US')} ﷼`, date: p.dueDate ?? '', type: 'payment', entityType: 'payment', entityId: p.id, notes: p.status === 'overdue' ? '⚠ متأخرة' : undefined });
       });
 
     // 4. Open maintenance
