@@ -43,11 +43,38 @@ function loadGIS(): Promise<void> {
   });
 }
 
-// ─── Auth — طلب صلاحية Calendar عبر GIS (مستقل عن Firebase Auth) ─────────────
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
 function isMobileBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+// بناء رابط OAuth redirect للجوال (implicit flow → token في URL hash)
+export function buildGoogleOAuthRedirectURL(): string {
+  const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '';
+  const redirectUri = typeof window !== 'undefined'
+    ? `${window.location.origin}/settings`
+    : '';
+  const params = new URLSearchParams({
+    client_id:     clientId,
+    redirect_uri:  redirectUri,
+    response_type: 'token',
+    scope:         CALENDAR_SCOPE,
+    prompt:        'consent',
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+}
+
+// استخراج الـ token من URL hash بعد الرجوع من Google
+export function parseOAuthRedirectHash(): { accessToken: string; expiresIn: number } | null {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash.replace(/^#/, '');
+  if (!hash) return null;
+  const p = new URLSearchParams(hash);
+  const accessToken = p.get('access_token');
+  if (!accessToken) return null;
+  return { accessToken, expiresIn: Number(p.get('expires_in') ?? 3600) };
 }
 
 export async function connectGoogleCalendar(uid: string): Promise<GCalToken> {
@@ -55,13 +82,16 @@ export async function connectGoogleCalendar(uid: string): Promise<GCalToken> {
     throw new Error('ربط Google Calendar متاح على الويب فقط حالياً');
   }
 
+  const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  if (!clientId) throw new Error('Google Client ID غير مضبوط');
+
+  // الجوال: redirect flow
   if (isMobileBrowser()) {
-    throw new Error('يرجى فتح التطبيق من متصفح سطح المكتب لربط Google Calendar، لأن متصفح الجوال لا يدعم نافذة الصلاحيات');
+    window.location.href = buildGoogleOAuthRedirectURL();
+    return new Promise(() => {}); // الصفحة ستنتقل — لن يصل لهنا
   }
 
-  const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
-  if (!clientId) throw new Error('Google Client ID غير مضبوط — أضف EXPO_PUBLIC_GOOGLE_CLIENT_ID في .env.local');
-
+  // سطح المكتب: popup flow عبر GIS
   await loadGIS();
 
   return new Promise<GCalToken>((resolve, reject) => {

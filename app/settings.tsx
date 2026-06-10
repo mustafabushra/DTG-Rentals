@@ -14,7 +14,7 @@ import { useSidebar } from '../context/SidebarContext';
 import { useAppTheme } from '../hooks/useAppTheme';
 import {
   connectGoogleCalendar, disconnectCalendar, loadToken,
-  syncToGoogleCalendar, buildSyncItems,
+  syncToGoogleCalendar, buildSyncItems, parseOAuthRedirectHash, saveToken,
 } from '../lib/googleCalendar';
 
 export default function SettingsScreen() {
@@ -127,6 +127,28 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (!currentUser?.id) return;
     loadToken(currentUser.id).then(t => setCalConnected(!!t?.connected));
+  }, [currentUser?.id]);
+
+  // استقبال token بعد redirect من Google على الجوال
+  useEffect(() => {
+    if (!currentUser?.id || Platform.OS !== 'web') return;
+    const result = parseOAuthRedirectHash();
+    if (!result) return;
+    // نظف الـ hash من URL
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    const token = {
+      accessToken: result.accessToken,
+      expiresAt:   Date.now() + (result.expiresIn - 60) * 1000,
+      connected:   true,
+    };
+    saveToken(currentUser.id, token).then(() => {
+      setCalConnected(true);
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert('تم ربط Google Calendar بنجاح ✓');
+      }
+    });
   }, [currentUser?.id]);
 
   const handleConnectCalendar = async () => {
