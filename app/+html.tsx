@@ -59,6 +59,9 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="icon" type="image/png"    href={ICON} sizes="32x32" />
         <link rel="shortcut icon"            href="/favicon.ico" />
 
+        {/* ── Google Search Console Verification ── */}
+        <meta name="google-site-verification" content="F1WsWXgt7IaiN7a8oOClgDjobiAO7NR7-GSZhofjYTQ" />
+
         {/* ── SEO ── */}
         <meta name="description"   content="نظام إدارة العقارات والإيجارات — DTG Rentals" />
         <meta name="keywords"      content="عقارات, إيجار, عقود, مستأجرين, إدارة عقارات" />
