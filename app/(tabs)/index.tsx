@@ -199,7 +199,7 @@ export default function DashboardScreen() {
       ? new Set(payments.filter(p => ownerContractIds!.has(p.contractId ?? '')).map(p => p.id))
       : null;
 
-    type TlEvent = { id: string; title: string; date: string; type: keyof typeof TL_CFG; entityType: string; entityId: string; notes?: string };
+    type TlEvent = { id: string; title: string; date: string; type: keyof typeof TL_CFG; entityType: string; entityId: string; notes?: string; subtitle?: string; overdue?: boolean };
     const events: TlEvent[] = [];
 
     // 1. Manual calendar events
@@ -211,14 +211,42 @@ export default function DashboardScreen() {
     contracts
       .filter(c => c.status === 'active' && (!ownerContractIds || ownerContractIds.has(c.id)))
       .forEach(c => {
-        events.push({ id: `dyn_ce_${c.id}`, title: `انتهاء عقد: ${c.contractNumber ?? c.id}`, date: c.endDate, type: 'contract_expiry', entityType: 'contract', entityId: c.id, notes: `${c.annualValue?.toLocaleString('en-US') ?? '—'} ﷼ سنوياً` });
+        const unit     = units.find(u => u.id === c.unitId);
+        const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
+        const tenant   = tenants.find(t => t.id === c.tenantId);
+        const location = [property?.name, unit ? `وحدة ${unit.number}` : null].filter(Boolean).join(' — ');
+        events.push({
+          id: `dyn_ce_${c.id}`,
+          title: tenant?.name ?? c.contractNumber ?? c.id,
+          date: c.endDate,
+          type: 'contract_expiry',
+          entityType: 'contract',
+          entityId: c.id,
+          subtitle: location || c.contractNumber,
+          notes: `${c.annualValue?.toLocaleString('en-US') ?? '—'} ﷼ سنوياً`,
+        });
       });
 
     // 3. Pending / overdue payments
     payments
       .filter(p => (p.status === 'pending' || p.status === 'overdue') && (!ownerPaymentIds || ownerPaymentIds.has(p.id)))
       .forEach(p => {
-        events.push({ id: `dyn_pe_${p.id}`, title: `دفعة: ${(p.amount ?? 0).toLocaleString('en-US')} ﷼`, date: p.dueDate ?? '', type: 'payment', entityType: 'payment', entityId: p.id, notes: p.status === 'overdue' ? '⚠ متأخرة' : undefined });
+        const contract = contracts.find(c => c.id === p.contractId);
+        const unit     = contract ? units.find(u => u.id === contract.unitId) : null;
+        const property = unit ? properties.find(pr => pr.id === unit.propertyId) : null;
+        const tenant   = contract ? tenants.find(t => t.id === contract.tenantId) : null;
+        const location = [property?.name, unit ? `وحدة ${unit.number}` : null].filter(Boolean).join(' — ');
+        events.push({
+          id: `dyn_pe_${p.id}`,
+          title: tenant?.name ?? `دفعة ${(p.amount ?? 0).toLocaleString('en-US')} ﷼`,
+          date: p.dueDate ?? '',
+          type: 'payment',
+          entityType: 'payment',
+          entityId: p.id,
+          subtitle: location || contract?.contractNumber,
+          notes: `${(p.amount ?? 0).toLocaleString('en-US')} ﷼`,
+          overdue: p.status === 'overdue',
+        });
       });
 
     // 4. Open maintenance
@@ -721,8 +749,20 @@ export default function DashboardScreen() {
                           <Ionicons name={cfg.icon as any} size={11} color={cfg.color} />
                           <Text style={[styles.tlTypeText, { color: cfg.color }]}>{cfg.label}</Text>
                         </View>
+                        {(ev as any).overdue && (
+                          <View style={[styles.tlTypeBadge, { backgroundColor: '#FDEDEC', marginRight: 4 }]}>
+                            <Ionicons name="warning-outline" size={11} color="#E74C3C" />
+                            <Text style={[styles.tlTypeText, { color: '#E74C3C' }]}>متأخرة</Text>
+                          </View>
+                        )}
                       </View>
                       <Text style={[styles.tlTitle, { color: colors.text }]} numberOfLines={1}>{ev.title}</Text>
+                      {(ev as any).subtitle ? (
+                        <View style={styles.tlSubRow}>
+                          <Ionicons name="location-outline" size={11} color={colors.textMuted} />
+                          <Text style={[styles.tlNotes, { color: colors.textMuted }]} numberOfLines={1}>{(ev as any).subtitle}</Text>
+                        </View>
+                      ) : null}
                       {ev.notes ? <Text style={[styles.tlNotes, { color: colors.textSecondary }]} numberOfLines={1}>{ev.notes}</Text> : null}
                     </View>
 
@@ -1028,6 +1068,7 @@ const styles = StyleSheet.create({
   tlTypeText:  { fontSize: 10, fontWeight: Theme.fontWeight.bold },
   tlTitle:  { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
   tlNotes:  { fontSize: Theme.fontSize.xs, textAlign: 'right' },
+  tlSubRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
   tlUrgency: { borderWidth: 1, borderRadius: Theme.radius.lg, paddingHorizontal: 7, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 2 },
   tlUrgencyText: { fontSize: 10, fontWeight: Theme.fontWeight.bold },
 
