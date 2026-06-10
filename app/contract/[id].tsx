@@ -44,6 +44,7 @@ export default function ContractDetailScreen() {
   const [reason,            setReason]            = useState('');
   const [termResult,        setTermResult]        = useState<{ tenantName: string; tenantPhone: string; tenantEmail: string; terminationDate: string; reason: string } | null>(null);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [showRenewConfirm,  setShowRenewConfirm]  = useState(false);
 
   const isAdmin = isAdminRole(currentUser.role);
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
@@ -80,6 +81,18 @@ export default function ContractDetailScreen() {
   const statusLabel: Record<string, string> = { active: 'نشط', expired: 'منتهي', cancelled: 'ملغي', terminated: 'منتهي بقرار إداري', pending: 'قيد الانتظار' };
 
   // ── Terminate handlers ────────────────────────────────────────────────────
+
+  const handleRenew = () => {
+    if (!contract) return;
+    const start = new Date(contract.startDate);
+    const end   = new Date(contract.endDate);
+    const durationMs = end.getTime() - start.getTime();
+    const newStart = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+    const newEnd   = new Date(newStart.getTime() + durationMs);
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    updateContract(id!, { startDate: fmt(newStart), endDate: fmt(newEnd) });
+    setShowRenewConfirm(false);
+  };
 
   const handleConfirmTerminate = () => {
     const trimmed = reason.trim();
@@ -126,6 +139,36 @@ export default function ContractDetailScreen() {
         title={contract.contractNumber}
         rightText={canWrite ? { label: 'تعديل', onPress: () => router.push(`/edit-contract/${id}`) } : undefined}
       />
+
+      {/* ── Renew confirmation modal ────────────────────────────────────── */}
+      <RNModal visible={showRenewConfirm} transparent animationType="fade" onRequestClose={() => setShowRenewConfirm(false)}>
+        <View style={styles.overlay}>
+          <View style={[styles.dialog, { backgroundColor: colors.card }]}>
+            <View style={[styles.dialogIcon, { backgroundColor: '#EBF5FB' }]}>
+              <Ionicons name="refresh-circle-outline" size={32} color="#1B4F72" />
+            </View>
+            <Text style={[styles.dialogTitle, { color: colors.text }]}>تجديد العقد</Text>
+            <Text style={[styles.dialogSub, { color: colors.textSecondary }]}>
+              سيتم تجديد العقد بنفس المدة والقيمة والأقساط تبدأ من اليوم التالي لانتهاء العقد الحالي.
+            </Text>
+            <View style={styles.dialogBtns}>
+              <TouchableOpacity
+                style={[styles.dialogBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={() => setShowRenewConfirm(false)}
+              >
+                <Text style={[styles.dialogBtnText, { color: colors.text }]}>إلغاء</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dialogBtn, { backgroundColor: '#1B4F72' }]}
+                onPress={handleRenew}
+              >
+                <Ionicons name="refresh-outline" size={16} color="#FFF" />
+                <Text style={[styles.dialogBtnText, { color: '#FFF' }]}>تأكيد التجديد</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </RNModal>
 
       {/* ── Confirmation modal ──────────────────────────────────────────── */}
       <RNModal visible={showConfirm} transparent animationType="fade" onRequestClose={() => { Keyboard.dismiss(); setShowConfirm(false); }}>
@@ -250,6 +293,18 @@ export default function ContractDetailScreen() {
               </View>
             );
           })()}
+          {/* Renew button — for expired contracts */}
+          {(isAdmin || canWrite) && contract.status === 'expired' && (
+            <View style={styles.bannerActions}>
+              <TouchableOpacity
+                style={styles.renewBtn}
+                onPress={() => setShowRenewConfirm(true)}
+              >
+                <Ionicons name="refresh-outline" size={16} color="#FFF" />
+                <Text style={styles.renewBtnText}>تجديد العقد</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {/* Termination info badge */}
           {contract.status === 'terminated' && contract.cancelledAt && (
             <View style={styles.terminatedBadge}>
@@ -517,6 +572,17 @@ const styles = StyleSheet.create({
   currencyCodeText:   { fontSize: Theme.fontSize.base, fontWeight: '700' },
   currencyOptionLabel:{ fontSize: Theme.fontSize.base, fontWeight: '600', textAlign: 'right' },
   currencyOptionCode: { fontSize: Theme.fontSize.xs, marginTop: 1, textAlign: 'right' },
+
+  // Renew button (inside banner)
+  renewBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 4,
+    paddingHorizontal: 16, paddingVertical: 12,
+    minHeight: 44,
+    borderRadius: Theme.radius.full,
+    backgroundColor: '#1B4F72',
+  },
+  renewBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
 
   // Terminate button (inside banner)
   terminateBtn: {
