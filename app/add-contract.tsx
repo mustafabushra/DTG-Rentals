@@ -81,7 +81,7 @@ export default function AddContractScreen() {
     return { label, value: u.id };
   });
   const tenantOptions = tenants.map(t => ({ label: t.name, value: t.id }));
-  const installmentOptions = ['1', '2', '4', '6', '12', '24'].map(v => {
+  const installmentOptions = ['1', '2', '3', '4', '6', '12', '24'].map(v => {
     const n = Number(v);
     const label = n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : `${v} أقساط`;
     return { label, value: v };

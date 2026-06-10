@@ -101,7 +101,7 @@ export default function EditContractScreen() {
     }
   };
 
-  const installmentOptions = ['1', '2', '4', '6', '12', '24'].map(v => ({
+  const installmentOptions = ['1', '2', '3', '4', '6', '12', '24'].map(v => ({
     label: v === '1' ? 'قسط واحد' : v === '2' ? 'قسطان' : `${v} أقساط`,
     value: v,
   }));
