@@ -35,15 +35,19 @@ const SECTIONS = [
     body: 'نحتفظ ببياناتك طوال فترة نشاط حسابك. بعد إغلاق الحساب، قد نحتفظ ببعض البيانات لمدة لا تتجاوز 3 سنوات للامتثال للمتطلبات القانونية والمحاسبية.',
   },
   {
-    title: '٨. ملفات تعريف الارتباط',
+    title: '٨. تكامل Google Calendar',
+    body: 'يتيح التطبيق الربط الاختياري بـ Google Calendar لجدولة مواعيد العقود والمدفوعات. عند تفعيل هذه الميزة:\n• نطلب إذن الوصول إلى Google Calendar لإنشاء الأحداث فقط (calendar.events).\n• لا نطّلع على أي أحداث موجودة مسبقاً في تقويمك ولا نحذفها.\n• يُخزَّن رمز الوصول (Access Token) بشكل مشفر في قاعدة بياناتنا ولا يُشارَك مع أي طرف ثالث.\n• يمكنك قطع الاتصال في أي وقت من إعدادات التطبيق، مما يحذف رمز الوصول نهائياً.\n• نستخدم هذا الوصول حصراً لإنشاء تذكيرات تخص بيانات التطبيق التي أدخلتها أنت.',
+  },
+  {
+    title: '٩. ملفات تعريف الارتباط',
     body: 'يستخدم التطبيق تخزيناً محلياً (Local Storage / AsyncStorage) لحفظ إعداداتك وتفضيلاتك. لا نستخدم ملفات تعريف الارتباط لأغراض إعلانية.',
   },
   {
-    title: '٩. التغييرات على هذه السياسة',
+    title: '١٠. التغييرات على هذه السياسة',
     body: 'قد نُحدّث هذه السياسة من وقت لآخر. سنُعلمك بأي تغييرات جوهرية عبر إشعار داخل التطبيق أو بريد إلكتروني. استمرارك في استخدام التطبيق بعد التحديث يعني قبولك للسياسة الجديدة.',
   },
   {
-    title: '١٠. التواصل معنا',
+    title: '١١. التواصل معنا',
     body: 'إذا كان لديك أي استفسار حول هذه السياسة أو ممارساتنا المتعلقة بالخصوصية، يمكنك التواصل معنا عبر:\n• البريد الإلكتروني: privacy@dtgrentals.com\n• الهاتف: 920 000 000\n• أوقات العمل: الأحد – الخميس، 9ص – 5م',
   },
 ];
@@ -58,7 +62,7 @@ export default function PrivacyPolicyScreen() {
       <FormContainer><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Last Updated */}
         <View style={[styles.updatedBanner, { backgroundColor: colors.accent, borderColor: colors.border }]}>
-          <Text style={[styles.updatedText, { color: colors.textSecondary }]}>آخر تحديث: ١ يناير ٢٠٢٥</Text>
+          <Text style={[styles.updatedText, { color: colors.textSecondary }]}>آخر تحديث: ١١ يونيو ٢٠٢٦</Text>
         </View>
 
         {/* Intro */}
