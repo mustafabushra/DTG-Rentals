@@ -1,17 +1,16 @@
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { getFirebaseAuth, db } from './firebase';
+import { db } from './firebase';
 import { Platform } from 'react-native';
 
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const API_BASE       = 'https://www.googleapis.com/calendar/v3';
-const DTG_TAG        = 'dtg-rentals'; // نستخدمه للتمييز بين الأحداث
+const DTG_TAG        = 'dtg-rentals';
 
 // ─── Token storage ────────────────────────────────────────────────────────────
 
 export interface GCalToken {
   accessToken: string;
-  expiresAt:   number; // ms timestamp
+  expiresAt:   number;
   connected:   boolean;
 }
 
@@ -28,32 +27,54 @@ export async function disconnectCalendar(uid: string) {
   await setDoc(doc(db, 'users', uid), { googleCalendar: { connected: false, accessToken: '', expiresAt: 0 } }, { merge: true });
 }
 
-// ─── Auth — طلب صلاحية Calendar ──────────────────────────────────────────────
+// ─── تحميل Google Identity Services ──────────────────────────────────────────
+
+function loadGIS(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') { reject(new Error('web only')); return; }
+    if ((window as any).google?.accounts?.oauth2) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.onload  = () => resolve();
+    s.onerror = () => reject(new Error('فشل تحميل Google Identity Services'));
+    document.head.appendChild(s);
+  });
+}
+
+// ─── Auth — طلب صلاحية Calendar عبر GIS (مستقل عن Firebase Auth) ─────────────
 
 export async function connectGoogleCalendar(uid: string): Promise<GCalToken> {
   if (Platform.OS !== 'web') {
     throw new Error('ربط Google Calendar متاح على الويب فقط حالياً');
   }
 
-  const auth = getFirebaseAuth();
-  if (!auth) throw new Error('Auth not available');
+  const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  if (!clientId) throw new Error('Google Client ID غير مضبوط — أضف EXPO_PUBLIC_GOOGLE_CLIENT_ID في .env.local');
 
-  const provider = new GoogleAuthProvider();
-  provider.addScope(CALENDAR_SCOPE);
-  provider.setCustomParameters({ prompt: 'consent', access_type: 'online' });
+  await loadGIS();
 
-  const result    = await signInWithPopup(auth, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  if (!credential?.accessToken) throw new Error('لم يتم الحصول على صلاحية التقويم');
-
-  const token: GCalToken = {
-    accessToken: credential.accessToken,
-    expiresAt:   Date.now() + 55 * 60 * 1000, // 55 دقيقة (أقل من ساعة للأمان)
-    connected:   true,
-  };
-
-  await saveToken(uid, token);
-  return token;
+  return new Promise<GCalToken>((resolve, reject) => {
+    const client = (window as any).google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope:     CALENDAR_SCOPE,
+      callback:  async (response: any) => {
+        if (response.error) {
+          reject(new Error(`Google OAuth error: ${response.error}`));
+          return;
+        }
+        const token: GCalToken = {
+          accessToken: response.access_token,
+          expiresAt:   Date.now() + (Number(response.expires_in ?? 3600) - 60) * 1000,
+          connected:   true,
+        };
+        await saveToken(uid, token);
+        resolve(token);
+      },
+    });
+    client.requestAccessToken({ prompt: 'consent' });
+  });
 }
 
 // ─── فحص صلاحية الـ token ─────────────────────────────────────────────────────
