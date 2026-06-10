@@ -39,19 +39,18 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
   const chartW = Math.max(Math.min(screenW - 32, 800) - PAD_LEFT - PAD_RIGHT, 10);
   const totalH  = CHART_H + PAD_TOP + PAD_BOTTOM;
 
-  const values  = data.map(d => (isFinite(d.revenue) ? d.revenue : 0));
+  const values  = data.map(d => { const r = Number(d.revenue); return isFinite(r) ? r : 0; });
   const minVal  = Math.min(...values);
   const maxVal  = Math.max(...values);
   const range   = maxVal - minVal || 1;
 
-  const toX = (i: number) => PAD_LEFT + (i / Math.max(data.length - 1, 1)) * chartW;
-  const toY = (v: number) => {
-    const safe = isFinite(v) ? v : 0;
-    return PAD_TOP + CHART_H - ((safe - minVal) / range) * CHART_H;
-  };
+  if (!isFinite(minVal) || !isFinite(maxVal)) return null;
 
-  const points  = data.map((d, i) => `${toX(i)},${toY(d.revenue)}`).join(' ');
-  const areaTop = data.map((d, i) => `${toX(i)},${toY(d.revenue)}`).join(' ');
+  const toX = (i: number) => PAD_LEFT + (i / Math.max(data.length - 1, 1)) * chartW;
+  const toY = (v: number) => PAD_TOP + CHART_H - ((v - minVal) / range) * CHART_H;
+
+  const points  = values.map((v, i) => `${toX(i)},${toY(v)}`).join(' ');
+  const areaTop = values.map((v, i) => `${toX(i)},${toY(v)}`).join(' ');
   const areaPoints = `${toX(0)},${PAD_TOP + CHART_H} ${areaTop} ${toX(data.length - 1)},${PAD_TOP + CHART_H}`;
 
   const last  = values[values.length - 1];
@@ -122,9 +121,10 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
         <Polyline points={points} fill="none" stroke="#C3AF76" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
 
         {/* Data points + labels */}
-        {data.map((d, i) => {
+        {values.map((v, i) => {
+          const d = data[i];
           const x = toX(i);
-          const y = toY(d.revenue);
+          const y = toY(v);
           const mLabel = ARABIC_MONTHS[Number(d.month.split('-')[1]) - 1]?.slice(0, 3) ?? '';
           const isSel  = selected === i;
           return (
