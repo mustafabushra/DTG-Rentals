@@ -138,7 +138,14 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
         // because router.replace('/(tabs)') from '/' causes Expo Router to remount the root.
         if (pathnameRef.current === '/login' || pathnameRef.current === '/about') {
           console.log('[AUTH_STATE_CHANGED] user=signed-in → navigating to tabs');
-          router.replace('/(tabs)');
+          // في وضع PWA standalone نحتاج reload كامل عشان يتحدث الـ view بعد تسجيل الدخول
+          const isStandalone = typeof window !== 'undefined' &&
+            (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+          if (isStandalone) {
+            window.location.replace('/');
+          } else {
+            router.replace('/(tabs)');
+          }
         } else {
           console.log('[AUTH_STATE_CHANGED] user=signed-in → already in app, no navigation');
         }

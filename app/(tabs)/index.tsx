@@ -1,5 +1,5 @@
-import React, { useMemo, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform, Animated, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -132,6 +132,23 @@ export default function DashboardScreen() {
   const { kpis, payments, contracts, maintenance, auditLogs, currentUser,
           owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData } = useApp();
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  const handleRefresh = () => {
+    Animated.loop(
+      Animated.timing(spinAnim, { toValue: 1, duration: 800, useNativeDriver: true })
+    ).start();
+    refreshData();
+  };
+
+  useEffect(() => {
+    if (!dataLoading) {
+      spinAnim.stopAnimation();
+      spinAnim.setValue(0);
+    }
+  }, [dataLoading]);
+
+  const spinInterpolate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   useEffect(() => { trackScreen('Dashboard'); }, []);
 
@@ -460,8 +477,10 @@ export default function DashboardScreen() {
             <Text style={[styles.appName, (isMobile || isSmallPhone) && { fontSize: Theme.fontSize.base }]}>DTG Rentals</Text>
           </View>
 
-          <TouchableOpacity onPress={refreshData} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} disabled={dataLoading}>
-            <Ionicons name="refresh-outline" size={isSmallPhone ? 20 : 22} color={dataLoading ? 'rgba(255,255,255,0.4)' : '#FFFFFF'} />
+          <TouchableOpacity onPress={handleRefresh} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} disabled={dataLoading}>
+            <Animated.View style={{ transform: [{ rotate: spinInterpolate }] }}>
+              <Ionicons name="refresh-outline" size={isSmallPhone ? 20 : 22} color={dataLoading ? 'rgba(255,255,255,0.5)' : '#C3AF76'} />
+            </Animated.View>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color="#FFFFFF" />
@@ -474,7 +493,13 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 48 }}
+        refreshControl={
+          <RefreshControl refreshing={dataLoading} onRefresh={handleRefresh} tintColor="#C3AF76" colors={['#C3AF76']} />
+        }
+      >
         {/* KPI Cards */}
         <View style={[styles.kpiGrid, isWide && styles.kpiGridWide, {
           padding: hPad,
