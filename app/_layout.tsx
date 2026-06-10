@@ -29,8 +29,9 @@ if (Platform.OS !== 'web' && !I18nManager.isRTL) {
 function StackContent() {
   const { isDesktop } = useScreenSize();
   const pathname = usePathname();
-  const PUBLIC_PATHS = ['/', '/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
-  const isLogin = PUBLIC_PATHS.includes(pathname);
+  // '/' هو مسار home tab للمستخدم المسجل — لا يُدرج هنا
+  const NO_SIDEBAR_PATHS = ['/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
+  const isLogin = NO_SIDEBAR_PATHS.includes(pathname);
   const { theme } = useApp();
   const systemScheme = useColorScheme();
   const resolvedScheme = theme === 'system' ? (systemScheme ?? 'light') : theme;
