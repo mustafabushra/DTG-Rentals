@@ -460,6 +460,8 @@ export default function SettingsScreen() {
             onPress={() => router.push('/change-password')} />
           <Item icon="shield-outline" label="سياسة الخصوصية" color={colors.textSecondary}
             onPress={() => router.push('/privacy-policy')} />
+          <Item icon="document-text-outline" label="شروط الخدمة" color={colors.textSecondary}
+            onPress={() => router.push('/terms-of-service')} />
         </View>
 
         {/* ── Support ── */}
