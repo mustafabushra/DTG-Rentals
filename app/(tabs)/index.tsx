@@ -342,7 +342,7 @@ export default function DashboardScreen() {
     const prevM = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastM = `${prevM.getFullYear()}-${String(prevM.getMonth() + 1).padStart(2, '0')}`;
     const sum = (month: string) =>
-      payments.filter(p => p.status === 'paid' && p.paidDate?.startsWith(month)).reduce((s, p) => s + p.amount, 0);
+      payments.filter(p => p.status === 'paid' && p.paidDate?.startsWith(month)).reduce((s, p) => s + (Number(p.amount) || 0), 0);
     return { currentMonth: sum(thisM), lastMonth: sum(lastM) };
   }, [payments]);
 
@@ -404,7 +404,7 @@ export default function DashboardScreen() {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const revenue = payments
         .filter(p => p.status === 'paid' && p.paidDate?.startsWith(key))
-        .reduce((s, p) => s + p.amount, 0);
+        .reduce((s, p) => s + (Number(p.amount) || 0), 0);
       months.push({ month: key, revenue });
     }
     return months;

@@ -36,16 +36,19 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
 
   if (!data || data.length < 2) return null;
 
-  const chartW = Math.min(screenW - 32, 800) - PAD_LEFT - PAD_RIGHT;
+  const chartW = Math.max(Math.min(screenW - 32, 800) - PAD_LEFT - PAD_RIGHT, 10);
   const totalH  = CHART_H + PAD_TOP + PAD_BOTTOM;
 
-  const values  = data.map(d => d.revenue);
+  const values  = data.map(d => (isFinite(d.revenue) ? d.revenue : 0));
   const minVal  = Math.min(...values);
   const maxVal  = Math.max(...values);
   const range   = maxVal - minVal || 1;
 
-  const toX = (i: number) => PAD_LEFT + (i / (data.length - 1)) * chartW;
-  const toY = (v: number) => PAD_TOP + CHART_H - ((v - minVal) / range) * CHART_H;
+  const toX = (i: number) => PAD_LEFT + (i / Math.max(data.length - 1, 1)) * chartW;
+  const toY = (v: number) => {
+    const safe = isFinite(v) ? v : 0;
+    return PAD_TOP + CHART_H - ((safe - minVal) / range) * CHART_H;
+  };
 
   const points  = data.map((d, i) => `${toX(i)},${toY(d.revenue)}`).join(' ');
   const areaTop = data.map((d, i) => `${toX(i)},${toY(d.revenue)}`).join(' ');
