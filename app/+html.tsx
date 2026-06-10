@@ -162,7 +162,41 @@ export default function Root({ children }: PropsWithChildren) {
           }
         `}} />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* Static landing page — visible to crawlers before JS loads, hidden once React mounts */}
+        <div id="dtg-static-landing" dangerouslySetInnerHTML={{ __html: `
+          <style>
+            #dtg-static-landing{font-family:Arial,sans-serif;background:#021C36;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center;box-sizing:border-box;}
+            #dtg-static-landing h1{color:#C3AF76;font-size:2.2em;margin:0 0 12px;}
+            #dtg-static-landing p{font-size:1.05em;max-width:600px;line-height:1.8;margin:0 0 28px;opacity:.85;}
+            #dtg-static-landing .features{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;max-width:700px;margin-bottom:32px;}
+            #dtg-static-landing .feat{background:rgba(195,175,118,.08);border:1px solid rgba(195,175,118,.2);border-radius:12px;padding:16px 20px;min-width:180px;max-width:220px;font-size:.9em;line-height:1.6;}
+            #dtg-static-landing .feat strong{color:#C3AF76;display:block;margin-bottom:4px;}
+            #dtg-static-landing a.btn{background:#C3AF76;color:#021C36;padding:14px 36px;border-radius:30px;text-decoration:none;font-weight:700;font-size:1em;display:inline-block;margin-bottom:24px;}
+            #dtg-static-landing .links a{color:rgba(195,175,118,.8);margin:0 10px;font-size:.85em;text-decoration:none;}
+          </style>
+          <h1>DTG Rentals</h1>
+          <p>منصة إدارة العقارات والإيجارات الذكية — نظام متكامل يساعد ملاك العقارات وشركات الإدارة على تتبع العقود والمدفوعات والمستأجرين في مكان واحد.</p>
+          <div class="features">
+            <div class="feat"><strong>إدارة العقارات</strong>إدارة كاملة للعقارات والوحدات السكنية والتجارية</div>
+            <div class="feat"><strong>عقود الإيجار</strong>إنشاء العقود وتجديدها وتتبع حالتها بسهولة</div>
+            <div class="feat"><strong>الدفعات والإيرادات</strong>تتبع المدفوعات والمتأخرات وتقارير الإيرادات</div>
+            <div class="feat"><strong>إدارة المستأجرين</strong>ملفات شاملة لكل مستأجر مع سجل كامل للتعاملات</div>
+            <div class="feat"><strong>Google Calendar</strong>مزامنة تلقائية للمواعيد والتذكيرات</div>
+            <div class="feat"><strong>التقارير المالية</strong>تقارير تفصيلية وإحصائيات لاتخاذ القرارات</div>
+          </div>
+          <a class="btn" href="/login">تسجيل الدخول</a>
+          <div class="links">
+            <a href="/about">عن التطبيق</a>
+            <a href="/privacy-policy">سياسة الخصوصية</a>
+            <a href="/terms-of-service">شروط الخدمة</a>
+          </div>
+        ` }} />
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){var el=document.getElementById('dtg-static-landing');if(el)el.style.display='none';})();
+        ` }} />
+        {children}
+      </body>
     </html>
   );
 }
