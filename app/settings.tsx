@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, Platform, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -12,6 +12,10 @@ import { isAdminRole } from '../utils/roleUtils';
 import { useScreenSize } from '../hooks/useScreenSize';
 import { useSidebar } from '../context/SidebarContext';
 import { useAppTheme } from '../hooks/useAppTheme';
+import {
+  connectGoogleCalendar, disconnectCalendar, loadToken,
+  syncToGoogleCalendar, buildSyncItems,
+} from '../lib/googleCalendar';
 
 export default function SettingsScreen() {
   const insets   = useSafeAreaInsets();
@@ -22,9 +26,13 @@ export default function SettingsScreen() {
     notificationPrefs, setNotificationPref,
     resetSystem,
     kpis,
+    contracts, payments, tenants, units, properties,
   } = useApp();
 
-  const [showReset, setShowReset] = useState(false);
+  const [showReset,        setShowReset]        = useState(false);
+  const [calConnected,     setCalConnected]     = useState(false);
+  const [calLoading,       setCalLoading]       = useState(false);
+  const [calSyncing,       setCalSyncing]       = useState(false);
   const isAdmin = isAdminRole(currentUser.role);
   const initials = (currentUser.name || '؟').split(' ').slice(0, 2).map((n: string) => n[0] ?? '').join('') || '؟';
   const { isMobile, isDesktop, isTablet } = useScreenSize();
@@ -114,6 +122,55 @@ export default function SettingsScreen() {
       </View>
     </TouchableOpacity>
   );
+
+  // ── Google Calendar ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    loadToken(currentUser.id).then(t => setCalConnected(!!t?.connected));
+  }, [currentUser?.id]);
+
+  const handleConnectCalendar = async () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('غير متاح', 'ربط Google Calendar متاح على الويب فقط حالياً.');
+      return;
+    }
+    setCalLoading(true);
+    try {
+      await connectGoogleCalendar(currentUser.id);
+      setCalConnected(true);
+      Alert.alert('تم الربط ✓', 'تم ربط Google Calendar بنجاح. اضغط "مزامنة" لرفع المواعيد.');
+    } catch (e: any) {
+      Alert.alert('خطأ', e?.message ?? 'فشل الربط، حاول مجدداً');
+    } finally {
+      setCalLoading(false);
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    if (typeof window !== 'undefined' && window.confirm) {
+      if (!window.confirm('هل تريد قطع الاتصال بـ Google Calendar؟')) return;
+    }
+    await disconnectCalendar(currentUser.id);
+    setCalConnected(false);
+  };
+
+  const handleSyncCalendar = async () => {
+    setCalSyncing(true);
+    try {
+      const items = buildSyncItems({ contracts, payments, tenants, units, properties });
+      const result = await syncToGoogleCalendar(currentUser.id, items);
+      if (result.error === 'token_expired') {
+        Alert.alert('انتهت الصلاحية', 'انتهت صلاحية الربط، اضغط "ربط" مرة أخرى.');
+        setCalConnected(false);
+      } else {
+        Alert.alert('تمت المزامنة ✓', `تمت إضافة ${result.created} حدث جديد.\n${result.skipped} حدث موجود مسبقاً.`);
+      }
+    } catch (e: any) {
+      Alert.alert('خطأ في المزامنة', e?.message ?? 'حاول مجدداً');
+    } finally {
+      setCalSyncing(false);
+    }
+  };
 
   const themeLabel = theme === 'dark' ? 'داكن' : theme === 'light' ? 'فاتح' : 'تلقائي';
 
@@ -318,6 +375,60 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* ── Integrations ── */}
+        <SectionHeader title="التكاملات" />
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.integrationRow, { borderBottomColor: colors.border }]}>
+            {/* Icon + info */}
+            <View style={styles.integrationLeft}>
+              <View style={[styles.integrationIcon, { backgroundColor: '#E8F0FE' }]}>
+                <Ionicons name="calendar-outline" size={22} color="#4285F4" />
+              </View>
+              <View>
+                <Text style={[styles.integrationTitle, { color: colors.text }]}>Google Calendar</Text>
+                <Text style={[styles.integrationSub, { color: calConnected ? '#27AE60' : colors.textMuted }]}>
+                  {calConnected ? 'مرتبط ✓' : 'غير مرتبط'}
+                </Text>
+              </View>
+            </View>
+            {/* Buttons */}
+            <View style={styles.integrationBtns}>
+              {calConnected ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.integrationBtn, { backgroundColor: '#1B4F72' }]}
+                    onPress={handleSyncCalendar}
+                    disabled={calSyncing}
+                  >
+                    {calSyncing
+                      ? <ActivityIndicator size="small" color="#FFF" />
+                      : <Ionicons name="sync-outline" size={16} color="#FFF" />}
+                    <Text style={styles.integrationBtnText}>مزامنة</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.integrationBtn, { backgroundColor: '#FDEDEC', borderWidth: 1, borderColor: '#E74C3C' }]}
+                    onPress={handleDisconnectCalendar}
+                  >
+                    <Ionicons name="unlink-outline" size={16} color="#E74C3C" />
+                    <Text style={[styles.integrationBtnText, { color: '#E74C3C' }]}>قطع</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.integrationBtn, { backgroundColor: '#4285F4' }]}
+                  onPress={handleConnectCalendar}
+                  disabled={calLoading}
+                >
+                  {calLoading
+                    ? <ActivityIndicator size="small" color="#FFF" />
+                    : <Ionicons name="link-outline" size={16} color="#FFF" />}
+                  <Text style={styles.integrationBtnText}>ربط</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+
         {/* ── Account ── */}
         <SectionHeader title="الحساب" />
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -498,6 +609,21 @@ const styles = StyleSheet.create({
   previewBody: { width: '100%', paddingHorizontal: 6, gap: 4 },
   previewCard: { height: 10, borderRadius: 4, width: '100%' },
   previewLabel: { fontSize: 10, fontWeight: '600', marginTop: 6 },
+
+  integrationRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Theme.spacing.md, paddingVertical: 14,
+  },
+  integrationLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  integrationIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  integrationTitle: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
+  integrationSub:   { fontSize: Theme.fontSize.xs, marginTop: 2, textAlign: 'right' },
+  integrationBtns:  { flexDirection: 'row', gap: 8 },
+  integrationBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: Theme.radius.full, minHeight: 36,
+  },
+  integrationBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
 
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
