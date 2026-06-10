@@ -29,7 +29,7 @@ if (Platform.OS !== 'web' && !I18nManager.isRTL) {
 function StackContent() {
   const { isDesktop } = useScreenSize();
   const pathname = usePathname();
-  const PUBLIC_PATHS = ['/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
+  const PUBLIC_PATHS = ['/', '/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
   const isLogin = PUBLIC_PATHS.includes(pathname);
   const { theme } = useApp();
   const systemScheme = useColorScheme();
@@ -135,7 +135,7 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
         // Only navigate to tabs when explicitly on the login screen.
         // If pathname is '/' we are already inside the app (tabs index) — do NOT navigate
         // because router.replace('/(tabs)') from '/' causes Expo Router to remount the root.
-        if (pathnameRef.current === '/login') {
+        if (pathnameRef.current === '/login' || pathnameRef.current === '/about') {
           console.log('[AUTH_STATE_CHANGED] user=signed-in → navigating to tabs');
           router.replace('/(tabs)');
         } else {
@@ -146,8 +146,9 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
         sessionCleanupRef.current = null;
         const PUBLIC_ROUTES = ['/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
         if (!PUBLIC_ROUTES.includes(pathnameRef.current)) {
-          console.log('[AUTH_STATE_CHANGED] user=signed-out → navigating to login');
-          router.replace('/login');
+          console.log('[AUTH_STATE_CHANGED] user=signed-out → navigating to about/login');
+          // Root path → about page (public landing), all others → login
+          router.replace(pathnameRef.current === '/' ? '/about' : '/login');
         }
       }
     };
