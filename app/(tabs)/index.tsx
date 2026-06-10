@@ -477,11 +477,6 @@ export default function DashboardScreen() {
             <Text style={[styles.appName, (isMobile || isSmallPhone) && { fontSize: Theme.fontSize.base }]}>DTG Rentals</Text>
           </View>
 
-          <TouchableOpacity onPress={handleRefresh} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} disabled={dataLoading}>
-            <Animated.View style={{ transform: [{ rotate: spinInterpolate }] }}>
-              <Ionicons name="refresh-outline" size={isSmallPhone ? 20 : 22} color={dataLoading ? 'rgba(255,255,255,0.5)' : '#C3AF76'} />
-            </Animated.View>
-          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color="#FFFFFF" />
             {kpis.overduePayments > 0 && (
