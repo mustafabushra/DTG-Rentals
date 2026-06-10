@@ -29,7 +29,8 @@ if (Platform.OS !== 'web' && !I18nManager.isRTL) {
 function StackContent() {
   const { isDesktop } = useScreenSize();
   const pathname = usePathname();
-  const isLogin = pathname === '/login';
+  const PUBLIC_PATHS = ['/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
+  const isLogin = PUBLIC_PATHS.includes(pathname);
   const { theme } = useApp();
   const systemScheme = useColorScheme();
   const resolvedScheme = theme === 'system' ? (systemScheme ?? 'light') : theme;
@@ -78,7 +79,9 @@ function StackContent() {
       <Stack.Screen name="change-password" options={{ headerShown: false }} />
       <Stack.Screen name="help-center" options={{ headerShown: false }} />
       <Stack.Screen name="contact-us" options={{ headerShown: false }} />
-      <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+      <Stack.Screen name="privacy-policy"   options={{ headerShown: false }} />
+      <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
+      <Stack.Screen name="about"            options={{ headerShown: false }} />
       <Stack.Screen name="user-management" options={{ headerShown: false }} />
       <Stack.Screen name="backup" options={{ headerShown: false }} />
       <Stack.Screen name="ledger" options={{ headerShown: false }} />
@@ -141,7 +144,8 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
       } else {
         sessionCleanupRef.current?.();
         sessionCleanupRef.current = null;
-        if (pathnameRef.current !== '/login') {
+        const PUBLIC_ROUTES = ['/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
+        if (!PUBLIC_ROUTES.includes(pathnameRef.current)) {
           console.log('[AUTH_STATE_CHANGED] user=signed-out → navigating to login');
           router.replace('/login');
         }
