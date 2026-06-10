@@ -45,9 +45,18 @@ function loadGIS(): Promise<void> {
 
 // ─── Auth — طلب صلاحية Calendar عبر GIS (مستقل عن Firebase Auth) ─────────────
 
+function isMobileBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 export async function connectGoogleCalendar(uid: string): Promise<GCalToken> {
   if (Platform.OS !== 'web') {
     throw new Error('ربط Google Calendar متاح على الويب فقط حالياً');
+  }
+
+  if (isMobileBrowser()) {
+    throw new Error('يرجى فتح التطبيق من متصفح سطح المكتب لربط Google Calendar، لأن متصفح الجوال لا يدعم نافذة الصلاحيات');
   }
 
   const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
