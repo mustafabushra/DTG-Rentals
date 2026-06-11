@@ -48,6 +48,9 @@ export interface Property {
   deedNumber?: string;      // رقم الصك (اختياري)
   area?: number;            // المساحة بالمتر المربع (اختياري)
   unitStructure?: UnitStructure; // single = وحدة رئيسية تلقائية، multi = وحدات يضيفها المستخدم
+  isVirtual?: boolean;
+  sourceUnitId?: string;
+  sourcePropertyId?: string;
   createdAt: string;
 }
 

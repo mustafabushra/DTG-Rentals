@@ -543,34 +543,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── فلترة البيانات للمالك (مشروطة بإعداد ownerDataIsolation) ──────────────
 
-  // وحدات مملوكة مباشرة لهذا المالك (حتى لو العقار باسم مالك آخر)
-  const ownerDirectUnitIds = useMemo(() =>
-    applyOwnerFilter
-      ? new Set(units.filter(u => u.ownerId === currentUser.ownerId).map(u => u.id))
-      : new Set<string>(),
-  [applyOwnerFilter, units, currentUser.ownerId]);
-
   const visibleProperties = useMemo(() => {
     if (!applyOwnerFilter) return properties;
-    const directPropIds = new Set(properties.filter(p => p.ownerId === currentUser.ownerId).map(p => p.id));
-    // أضف العقارات التي تحوي وحدات مملوكة لهذا المالك
-    units.filter(u => u.ownerId === currentUser.ownerId).forEach(u => directPropIds.add(u.propertyId));
-    return properties.filter(p => directPropIds.has(p.id));
+
+    // عقارات مملوكة مباشرة لهذا المالك
+    const ownedProps = properties.filter(
+      p => p.ownerId === currentUser.ownerId && !p.isVirtual
+    );
+
+    // وحدات مملوكة لهذا المالك في عقارات غيره → تتحول لعقارات افتراضية
+    const virtualProps = units
+      .filter(u => u.ownerId === currentUser.ownerId)
+      .map(u => {
+        const parent = properties.find(p => p.id === u.propertyId);
+        if (!parent || parent.ownerId === currentUser.ownerId) return null;
+        return {
+          ...parent,
+          id: `virtual_${u.id}`,
+          name: u.number ? `وحدة ${u.number}` : parent.name,
+          totalUnits: 1,
+          ownerId: currentUser.ownerId!,
+          isVirtual: true as const,
+          sourceUnitId: u.id,
+          sourcePropertyId: u.propertyId,
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+
+    return [...ownedProps, ...virtualProps];
   }, [applyOwnerFilter, currentUser.ownerId, properties, units]);
 
   const visiblePropertyIds = useMemo(() =>
-    new Set(visibleProperties.map(p => p.id)),
+    new Set(visibleProperties.map(p => p.isVirtual ? p.sourcePropertyId! : p.id)),
   [visibleProperties]);
 
   const visibleUnits = useMemo(() => {
     if (!applyOwnerFilter) return units;
-    return units.filter(u =>
-      // وحدة مملوكة مباشرة لهذا المالك
-      u.ownerId === currentUser.ownerId ||
-      // أو وحدة بدون ownerId خاص وعقارها مملوك لهذا المالك
-      (!u.ownerId && visiblePropertyIds.has(u.propertyId))
-    );
-  }, [applyOwnerFilter, units, currentUser.ownerId, visiblePropertyIds]);
+    return units.filter(u => {
+      if (u.ownerId === currentUser.ownerId) return true;
+      const prop = properties.find(p => p.id === u.propertyId);
+      return !u.ownerId && prop?.ownerId === currentUser.ownerId;
+    });
+  }, [applyOwnerFilter, units, currentUser.ownerId, properties]);
 
   const visibleUnitIds = useMemo(() =>
     new Set(visibleUnits.map(u => u.id)),
