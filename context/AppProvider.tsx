@@ -644,11 +644,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     applyOwnerFilter ? [] as AuditLog[] : auditLogs,
   [applyOwnerFilter, auditLogs]);
 
-  const visibleTenants = useMemo(() =>
-    applyOwnerFilter
-      ? tenants.filter(t => visibleContracts.some(c => c.tenantId === t.id))
-      : tenants,
-  [applyOwnerFilter, tenants, visibleContracts]);
+  const visibleTenants = useMemo(() => {
+    if (!applyOwnerFilter) return tenants;
+    const oid = currentUser.ownerId;
+    return tenants.filter(t =>
+      // مستأجر مرتبط بعقد للمالك
+      visibleContracts.some(c => c.tenantId === t.id) ||
+      // أو أضافه المالك مباشرة (بدون عقد بعد)
+      (t as any).ownerId === oid
+    );
+  }, [applyOwnerFilter, tenants, visibleContracts, currentUser.ownerId]);
 
   const visibleAttachments = useMemo(() => {
     if (!applyOwnerFilter) return attachments;
@@ -917,8 +922,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Tenant ───────────────────────────────────────────────────────────────
   const addTenant = (tenant: Tenant) => {
-    setTenants(prev => [...prev, tenant]);
-    fs('tenants', tenant.id, tenant, 'set');
+    const finalTenant = isOwner && currentUser.ownerId && !tenant.ownerId
+      ? { ...tenant, ownerId: currentUser.ownerId }
+      : tenant;
+    setTenants(prev => [...prev, finalTenant]);
+    fs('tenants', finalTenant.id, finalTenant, 'set');
     addAuditEntry('add', 'مستأجر', tenant.name, `تم إضافة مستأجر جديد: ${tenant.name}`);
   };
   const updateTenant = (id: string, data: Partial<Tenant>) => {
