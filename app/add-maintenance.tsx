@@ -14,7 +14,7 @@ import { useAppTheme } from '../hooks/useAppTheme';
 export default function AddMaintenanceScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { properties, units, addMaintenance, currentUser } = useApp();
+  const { properties, units, addMaintenance, currentUser, externalOwnedUnits } = useApp();
 
   const [form, setForm] = useState({
     propertyId: '', unitId: '', title: '', description: '', priority: '' as MaintenancePriority | '',
@@ -49,8 +49,21 @@ export default function AddMaintenanceScreen() {
     router.back();
   };
 
-  const propUnits = form.propertyId ? units.filter(u => u.propertyId === form.propertyId) : [];
-  const propertyOptions = properties.map(p => ({ label: p.name, value: p.id }));
+  // عقارات الخارجية من وحداته المملوكة في عقارات الآخرين
+  const externalPropertyIds = new Set(externalOwnedUnits.map(u => u.propertyId));
+  const externalProperties = externalOwnedUnits
+    .filter((u, i, arr) => arr.findIndex(x => x.propertyId === u.propertyId) === i)
+    .map(u => ({ label: u.parentPropertyName ?? u.propertyId, value: u.propertyId }));
+
+  const propUnits = form.propertyId
+    ? externalPropertyIds.has(form.propertyId)
+      ? externalOwnedUnits.filter(u => u.propertyId === form.propertyId)
+      : units.filter(u => u.propertyId === form.propertyId)
+    : [];
+  const propertyOptions = [
+    ...properties.map(p => ({ label: p.name, value: p.id })),
+    ...externalProperties,
+  ];
   const unitOptions = propUnits.map(u => ({ label: `وحدة ${u.number}`, value: u.id }));
   const priorityOptions = [
     { label: 'عاجل — فوري', value: 'urgent' },

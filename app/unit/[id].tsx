@@ -22,12 +22,17 @@ export default function UnitDetailScreen() {
   const {
     units, tenants, properties, maintenance, contracts,
     unitPhotos: allUnitPhotos, addUnitPhoto, removeUnitPhoto, setUnitMainPhoto,
-    canWrite, canDelete,
+    canWrite, canDelete, externalOwnedUnits,
   } = useApp();
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
   const unit     = units.find(u => u.id === id);
-  const property = unit ? properties.find(p => p.id === unit.propertyId) ?? null : null;
+  // للوحدات الخارجية: properties لا تحتوي عقار المالك الأصلي → نبحث في externalOwnedUnits
+  const externalUnit = externalOwnedUnits.find(u => u.id === id);
+  const property = unit
+    ? properties.find(p => p.id === unit.propertyId) ?? null
+    : null;
+  const propertyName = property?.name ?? externalUnit?.parentPropertyName ?? null;
   const tenant   = unit?.currentTenantId ? tenants.find(t => t.id === unit.currentTenantId) ?? null : null;
   const unitMaintenance = maintenance.filter(m => m.unitId === id);
   const unitContract = unit?.currentContractId ? contracts.find(c => c.id === unit.currentContractId) : null;
@@ -67,10 +72,14 @@ export default function UnitDetailScreen() {
           <StatusBadge status={unit.status} />
           <Text style={[styles.unitTitle, { color: colors.text }]}>وحدة {unit.number}</Text>
         </View>
-        {property && (
-          <TouchableOpacity style={styles.propRow} onPress={() => router.push(`/property/${property.id}`)}>
+        {propertyName && (
+          <TouchableOpacity
+            style={styles.propRow}
+            onPress={() => property && router.push(`/property/${property.id}`)}
+            activeOpacity={property ? 0.7 : 1}
+          >
             <Ionicons name="chevron-back-outline" size={14} color={colors.secondary} />
-            <Text style={[styles.propName, { color: colors.secondary }]}>{property.name}</Text>
+            <Text style={[styles.propName, { color: colors.secondary }]}>{propertyName}</Text>
           </TouchableOpacity>
         )}
 

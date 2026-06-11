@@ -16,7 +16,7 @@ import { COUNTRY_CURRENCY_OPTIONS, getCurrency } from '../utils/currency';
 export default function AddContractScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { units, tenants, properties, contracts, addContract, systemSettings } = useApp();
+  const { units, tenants, properties, contracts, addContract, systemSettings, externalOwnedUnits } = useApp();
 
   const [form, setForm] = useState({
     unitId: '', tenantId: '', startDate: '', endDate: '',
@@ -71,10 +71,10 @@ export default function AddContractScreen() {
   // فلترة الوحدات بالعقود الفعلية — أدق من unit.status الذي قد يكون stale
   const activeContractUnitIds = new Set(contracts.filter(c => c.status === 'active').map(c => c.unitId));
   const vacantUnits = units.filter(u => !activeContractUnitIds.has(u.id));
+  const externalUnitNames = new Map(externalOwnedUnits.map(u => [u.id, u.parentPropertyName]));
   const unitOptions = vacantUnits.map(u => {
     const prop = properties.find(p => p.id === u.propertyId);
-    const propName = prop?.name ?? '';
-    // وحدة رئيسية (عقار فردي) → اعرض اسم العقار فقط
+    const propName = prop?.name ?? externalUnitNames.get(u.id) ?? '';
     const label = u.number === 'رئيسية'
       ? propName
       : propName ? `${propName} — ${u.number}` : u.number;
