@@ -7,6 +7,17 @@ export interface NetworkStatus {
   type: string | null;
 }
 
+function getWebStatus(): NetworkStatus {
+  const online = navigator.onLine;
+  const conn = (navigator as any).connection ?? (navigator as any).mozConnection ?? (navigator as any).webkitConnection;
+  const weakTypes = new Set(['slow-2g', '2g']);
+  const isWeak = online && conn != null && (
+    weakTypes.has(conn.effectiveType) ||
+    (conn.downlink != null && conn.downlink < 0.5)
+  );
+  return { isOnline: online, isWeak, type: conn?.effectiveType ?? null };
+}
+
 export function useNetworkStatus(): NetworkStatus {
   const [status, setStatus] = useState<NetworkStatus>({
     isOnline: true,
@@ -16,17 +27,23 @@ export function useNetworkStatus(): NetworkStatus {
 
   useEffect(() => {
     if (Platform.OS === 'web') {
-      const update = () => setStatus({ isOnline: navigator.onLine, isWeak: false, type: null });
+      const update = () => setStatus(getWebStatus());
       update();
+
       window.addEventListener('online', update);
       window.addEventListener('offline', update);
+
+      const conn = (navigator as any).connection ?? (navigator as any).mozConnection ?? (navigator as any).webkitConnection;
+      conn?.addEventListener('change', update);
+
       return () => {
         window.removeEventListener('online', update);
         window.removeEventListener('offline', update);
+        conn?.removeEventListener('change', update);
       };
     }
 
-    // Native only — lazy-load NetInfo to avoid web bundle issues
+    // Native only
     let unsub: (() => void) | undefined;
     import('@react-native-community/netinfo').then(({ default: NetInfo }) => {
       unsub = NetInfo.addEventListener((state: any) => {
@@ -51,7 +68,6 @@ export function useNetworkStatus(): NetworkStatus {
   return status;
 }
 
-// Exponential backoff retry for API calls
 export async function withRetry<T>(
   fn: () => Promise<T>,
   options: { maxAttempts?: number; baseDelayMs?: number; label?: string } = {}
