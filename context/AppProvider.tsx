@@ -625,11 +625,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       : maintenance,
   [applyOwnerFilter, maintenance, visiblePropertyIds, visibleUnitIds]);
 
-  const visibleOwners    = applyOwnerFilter ? owners.filter(o => o.id === currentUser.ownerId) : owners;
-  const visibleAuditLogs = applyOwnerFilter ? [] : auditLogs;
-  const visibleTenants   = applyOwnerFilter
-    ? tenants.filter(t => visibleContracts.some(c => c.tenantId === t.id))
-    : tenants;
+  const visibleOwners = useMemo(() =>
+    applyOwnerFilter ? owners.filter(o => o.id === currentUser.ownerId) : owners,
+  [applyOwnerFilter, owners, currentUser.ownerId]);
+
+  const visibleAuditLogs = useMemo(() =>
+    applyOwnerFilter ? [] as AuditLog[] : auditLogs,
+  [applyOwnerFilter, auditLogs]);
+
+  const visibleTenants = useMemo(() =>
+    applyOwnerFilter
+      ? tenants.filter(t => visibleContracts.some(c => c.tenantId === t.id))
+      : tenants,
+  [applyOwnerFilter, tenants, visibleContracts]);
 
   const visibleAttachments = useMemo(() => {
     if (!applyOwnerFilter) return attachments;
