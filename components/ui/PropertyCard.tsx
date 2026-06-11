@@ -79,7 +79,10 @@ export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCou
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, Theme.shadow.md]}
-      onPress={() => router.push(`/property/${property.id}` as any)}
+      onPress={() => property.isVirtual && property.sourceUnitId
+        ? router.push(`/unit/${property.sourceUnitId}` as any)
+        : router.push(`/property/${property.id}` as any)
+      }
       activeOpacity={0.88}
     >
       {/* ── Image / Placeholder ── */}
@@ -119,7 +122,14 @@ export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCou
 
         {/* Name + location overlay — bottom */}
         <View style={styles.overlay} pointerEvents="none">
-          <Text style={styles.overlayName} numberOfLines={1}>{property.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.overlayName} numberOfLines={1}>{property.name}</Text>
+            {property.isVirtual && (
+              <View style={{ backgroundColor: 'rgba(142,68,173,0.75)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>وحدة مستقلة</Text>
+              </View>
+            )}
+          </View>
           {(location || city) && (
             <View style={styles.overlayLocation}>
               <Ionicons name="location-outline" size={11} color="rgba(255,255,255,0.8)" />

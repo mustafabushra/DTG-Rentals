@@ -29,6 +29,12 @@ export default function PropertyDetailScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('units');
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
+  // العقارات الافتراضية تُحوَّل فوراً لصفحة الوحدة
+  if (id?.startsWith('virtual_')) {
+    router.replace(`/unit/${id.replace('virtual_', '')}` as any);
+    return null;
+  }
+
   const property = properties.find(p => p.id === id);
   const photos   = id ? (propertyPhotos[id] ?? []) : [];
 

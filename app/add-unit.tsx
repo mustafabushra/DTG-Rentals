@@ -61,7 +61,7 @@ export default function AddUnitScreen() {
     router.back();
   };
 
-  const propertyOptions = properties.map(p => ({ label: p.name, value: p.id }));
+  const propertyOptions = properties.filter(p => !p.isVirtual).map(p => ({ label: p.name, value: p.id }));
   const ownerOptions    = [
     { label: 'مالك العقار (افتراضي)', value: '' },
     ...owners.map(o => ({ label: o.name, value: o.id })),

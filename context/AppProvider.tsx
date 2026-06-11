@@ -642,7 +642,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const totalDue = visiblePayments.reduce((sum, p) => sum + p.amount, 0);
     const collectionRate = totalDue > 0 ? Math.round((paidTotal / totalDue) * 100) : 0;
     return {
-      totalProperties: visibleProperties.length,
+      totalProperties: visibleProperties.filter(p => !p.isVirtual).length,
       rentedUnits,
       vacantUnits,
       monthlyRevenue,
