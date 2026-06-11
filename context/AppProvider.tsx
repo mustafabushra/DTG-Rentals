@@ -829,7 +829,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ─── Property ─────────────────────────────────────────────────────────────
   const addProperty = (property: Property) => {
     const structure = property.unitStructure ?? defaultUnitStructure(property.type);
-    const finalProperty = { ...property, unitStructure: structure };
+    // لو المستخدم مالك ولم يُحدد ownerId → نربطه بحساب المالك تلقائياً
+    const autoOwnerId = isOwner && currentUser.ownerId && !property.ownerId
+      ? currentUser.ownerId : property.ownerId;
+    const finalProperty = { ...property, unitStructure: structure, ownerId: autoOwnerId };
 
     setProperties(prev => [...prev, finalProperty]);
     fs('properties', finalProperty.id, finalProperty, 'set');
@@ -939,8 +942,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Unit ─────────────────────────────────────────────────────────────────
   const addUnit = (unit: Unit) => {
-    setUnits(prev => [...prev, unit]);
-    fs('units', unit.id, unit, 'set');
+    // لو المستخدم مالك وهذه وحدة في عقار يملكه → ownerId غير مطلوب (يرثه من العقار)
+    // لو أضاف وحدة في عقار آخر → نحتفظ بـ ownerId المُحدد
+    // لكن لو لا ownerId ولا propertyId يطابق عقاره → نربطه به تلقائياً
+    const finalUnit = isOwner && currentUser.ownerId && !unit.ownerId ? (() => {
+      const parentProp = properties.find(p => p.id === unit.propertyId);
+      // لو العقار الأب ملكه → لا نضيف ownerId (الوحدة ترث)
+      if (parentProp?.ownerId === currentUser.ownerId) return unit;
+      // لو العقار لشخص آخر → أضف ownerId صراحةً
+      return { ...unit, ownerId: currentUser.ownerId };
+    })() : unit;
+    setUnits(prev => [...prev, finalUnit]);
+    fs('units', finalUnit.id, finalUnit, 'set');
     addAuditEntry('add', 'وحدة', `وحدة ${unit.number}`, `تم إضافة وحدة جديدة رقم ${unit.number}`);
   };
   const updateUnit = (id: string, data: Partial<Unit>) => {

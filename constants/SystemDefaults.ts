@@ -75,11 +75,11 @@ export const DEFAULT_PERMISSIONS: Record<string, RolePermissions> = {
     canManageUsers: false, canAccessReports: false, canAccessBackup: false,
   },
   owner: {
-    canView: true, canAdd: false, canEdit: false, canDelete: false,
+    canView: true, canAdd: true, canEdit: true, canDelete: false,
     canManageUsers: false, canAccessReports: true, canAccessBackup: false,
   },
   مالك: {
-    canView: true, canAdd: false, canEdit: false, canDelete: false,
+    canView: true, canAdd: true, canEdit: true, canDelete: false,
     canManageUsers: false, canAccessReports: true, canAccessBackup: false,
   },
 };
