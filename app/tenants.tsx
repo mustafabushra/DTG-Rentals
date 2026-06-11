@@ -27,9 +27,14 @@ export default function TenantsScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
-  const activeTenantIds = useMemo(() => {
-    return new Set(contracts.filter(c => c.status === 'active').map(c => c.tenantId));
-  }, [contracts]);
+  const activeTenantIds = useMemo(() =>
+    new Set(contracts.filter(c => c.status === 'active').map(c => c.tenantId)),
+  [contracts]);
+
+  // مستأجر له عقد واحد على الأقل (منتهي أو نشط)
+  const tenantWithContractIds = useMemo(() =>
+    new Set(contracts.map(c => c.tenantId)),
+  [contracts]);
 
   // بيانات سريعة لكل مستأجر: عدد العقود + الدفعات المتأخرة/المعلقة
   const tenantStats = useMemo(() => {
@@ -50,11 +55,12 @@ export default function TenantsScreen() {
   const filtered = useMemo(() => {
     return tenants.filter(t => {
       const matchSearch = !search || (t.name ?? '').includes(search) || (t.phone ?? '').includes(search);
-      const isActive = activeTenantIds.has(t.id);
-      const matchFilter = filter === 'all' || (filter === 'active' && isActive) || (filter === 'former' && !isActive);
+      // سابق فقط إذا كان له عقود سابقة وليس لديه عقد نشط حالياً
+      const isFormer = tenantWithContractIds.has(t.id) && !activeTenantIds.has(t.id);
+      const matchFilter = filter === 'all' || (filter === 'active' && !isFormer) || (filter === 'former' && isFormer);
       return matchSearch && matchFilter;
     });
-  }, [tenants, search, filter, activeTenantIds]);
+  }, [tenants, search, filter, activeTenantIds, tenantWithContractIds]);
 
   const filterOptions = [
     { label: 'الكل', value: 'all' },
@@ -95,7 +101,7 @@ export default function TenantsScreen() {
                 </View>
                 <View style={styles.info}>
                   <View style={styles.nameRow}>
-                    <StatusBadge status={isActive ? 'active' : 'former'} size="sm" />
+                    <StatusBadge status={activeTenantIds.has(tenant.id) ? 'active' : tenantWithContractIds.has(tenant.id) ? 'former' : 'active'} size="sm" />
                     <Text style={[styles.name, { color: colors.text }]} numberOfLines={2} ellipsizeMode="tail">{tenant.name}</Text>
                   </View>
                   <View style={styles.row}>
