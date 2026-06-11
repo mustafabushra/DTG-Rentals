@@ -6,6 +6,7 @@ import { Theme } from '../../constants/Theme';
 import { useApp } from '../../context/AppProvider';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { PropertyCard } from '../../components/ui/PropertyCard';
+import { UnitCard } from '../../components/ui/UnitCard';
 import { ContractCard } from '../../components/ui/ContractCard';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { AttachmentPanel } from '../../components/features/AttachmentPanel';
@@ -24,9 +25,13 @@ export default function OwnerDetailScreen() {
   const owner = owners.find(o => o.id === id);
   const ownerProperties = properties.filter(p => p.ownerId === id);
 
+  // الوحدات الخارجية: مُسندة لهذا المالك في عقارات غيره
+  const externalUnits = units.filter(u => u.ownerId === id && !ownerProperties.some(p => p.id === u.propertyId));
+
   const stats = useMemo(() => {
     const propIds = ownerProperties.map(p => p.id);
-    const ownerUnits = units.filter(u => propIds.includes(u.propertyId));
+    const directUnits = units.filter(u => propIds.includes(u.propertyId) && (!u.ownerId || u.ownerId === id));
+    const ownerUnits = [...directUnits, ...externalUnits];
     const ownerUnitIds = new Set(ownerUnits.map(u => u.id));
 
     // Derive rented count from active contracts — unit.status may be stale
@@ -59,13 +64,17 @@ export default function OwnerDetailScreen() {
       totalCollected,
       pendingAmount,
     };
-  }, [ownerProperties, units, contracts, payments, id]);
+  }, [ownerProperties, externalUnits, units, contracts, payments, id]);
 
   const ownerActiveContracts = useMemo(() => {
     const propIds = ownerProperties.map(p => p.id);
-    const ownerUnitIds = new Set(units.filter(u => propIds.includes(u.propertyId)).map(u => u.id));
-    return contracts.filter(c => ownerUnitIds.has(c.unitId) && c.status === 'active');
-  }, [ownerProperties, units, contracts]);
+    const directUnitIds = new Set(
+      units.filter(u => propIds.includes(u.propertyId) && (!u.ownerId || u.ownerId === id)).map(u => u.id)
+    );
+    const externalUnitIds = new Set(externalUnits.map(u => u.id));
+    const allUnitIds = new Set([...directUnitIds, ...externalUnitIds]);
+    return contracts.filter(c => allUnitIds.has(c.unitId) && c.status === 'active');
+  }, [ownerProperties, externalUnits, units, contracts, id]);
 
   const getUnitStats = (propertyId: string) => {
     const propUnits = units.filter(u => u.propertyId === propertyId);
@@ -188,6 +197,22 @@ export default function OwnerDetailScreen() {
             })
           )}
         </View>
+
+        {/* وحدات في عقارات أخرى */}
+        {externalUnits.length > 0 && (
+          <View style={styles.sectionPad}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <Ionicons name="layers-outline" size={16} color="#8E44AD" />
+              <Text style={[styles.sectionTitle, { color: '#8E44AD', marginBottom: 0 }]}>
+                وحدات في عقارات أخرى ({externalUnits.length})
+              </Text>
+            </View>
+            {externalUnits.map(u => (
+              <UnitCard key={u.id} unit={u}
+                propertyName={properties.find(p => p.id === u.propertyId)?.name} />
+            ))}
+          </View>
+        )}
 
         {/* Active Contracts */}
         {ownerActiveContracts.length > 0 && (
