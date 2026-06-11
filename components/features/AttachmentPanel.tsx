@@ -71,7 +71,7 @@ function InlineDatePicker({ value, onChange, colors }: DatePickerProps) {
         activeOpacity={0.8}
       >
         <View style={[dpStyles.calIcon, { backgroundColor: value ? colors.primary : colors.primarySubtle }]}>
-          <Ionicons name="calendar-outline" size={18} color={value ? '#FFF' : colors.primary} />
+          <Ionicons name="calendar-outline" size={18} color={value ? colors.textInverse : colors.primary} />
         </View>
         <Text style={[dpStyles.triggerText, { color: value ? colors.text : colors.textMuted, flex: 1 }]}>
           {value ? `${d} ${MONTHS[m - 1]} ${y}` : 'اختر تاريخاً…'}
@@ -139,7 +139,7 @@ function InlineDatePicker({ value, onChange, colors }: DatePickerProps) {
             onPress={() => setOpen(false)}
             style={[dpStyles.confirmBtn, { backgroundColor: colors.primary }]}
           >
-            <Text style={dpStyles.confirmText}>تأكيد التاريخ</Text>
+            <Text style={[dpStyles.confirmText, { color: colors.textInverse }]}>تأكيد التاريخ</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -166,7 +166,7 @@ const dpStyles = StyleSheet.create({
   spinnerVal:   { fontSize: 22, fontWeight: '700', minWidth: 44, textAlign: 'center' },
   spinnerLabel: { fontSize: 11, marginTop: 2 },
   confirmBtn:   { borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
-  confirmText:  { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  confirmText:  { fontSize: 14, fontWeight: '600' },
 });
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -456,11 +456,11 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
             activeOpacity={0.8}
           >
             {saving ? (
-              <ActivityIndicator size="small" color="#FFF" />
+              <ActivityIndicator size="small" color={colors.textInverse} />
             ) : null}
             <Text style={[
               styles.saveBtnText,
-              { color: !pending || saving ? colors.textMuted : '#FFF' },
+              { color: !pending || saving ? colors.textMuted : colors.textInverse },
             ]}>
               {saving ? 'جارٍ الحفظ…' : 'حفظ المرفق'}
             </Text>
@@ -532,7 +532,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
                 ]}
               >
                 <Text style={{
-                  color:      category === cat.value ? '#FFF' : colors.text,
+                  color:      category === cat.value ? colors.textInverse : colors.text,
                   fontSize:   fontSize.sm,
                   fontWeight: fontWeight.medium,
                 }}>
@@ -619,7 +619,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
               onPress={() => { if (deleteTarget) remove(deleteTarget.id); setDeleteTarget(null); }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.saveBtnText, { color: '#FFF' }]}>حذف</Text>
+              <Text style={[styles.saveBtnText, { color: colors.textInverse }]}>حذف</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.saveBtn, { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}

@@ -27,7 +27,7 @@ export function Badge({ status, size = 'md', variant = 'soft', style }: BadgePro
   const config = getConfig(status, colors);
 
   const bgColor   = variant === 'filled' ? config.text : config.bg;
-  const textColor = variant === 'filled' ? '#FFF'      : config.text;
+  const textColor = variant === 'filled' ? colors.textInverse : config.text;
 
   return (
     <View style={[styles.base, size === 'sm' ? styles.sm : styles.md, { backgroundColor: bgColor }, style]}>
@@ -44,7 +44,7 @@ function getConfig(status: BadgeStatus, colors: Record<string, string>): BadgeCo
     active:        { label: 'نشط',          bg: colors.successSubtle, text: colors.success },
     expired:       { label: 'منتهي',         bg: colors.dangerSubtle,  text: colors.danger },
     cancelled:     { label: 'ملغي',          bg: colors.surface,       text: colors.textMuted },
-    terminated:    { label: 'منتهي إدارياً', bg: '#FDEDEC',            text: '#C0392B' },
+    terminated:    { label: 'منتهي إدارياً', bg: colors.dangerSubtle,  text: colors.danger },
     pending:       { label: 'معلق',          bg: colors.warningSubtle, text: colors.warning },
 
     // Payment
