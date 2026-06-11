@@ -266,12 +266,6 @@ export default function SystemSettingsScreen() {
                       <Ionicons name={(meta?.icon ?? 'person-outline') as any} size={18} color={meta?.color ?? colors.primary} />
                     </View>
                     <Text style={[styles.roleName, { color: meta?.color ?? colors.text }]}>{meta?.label ?? roleKey}</Text>
-                    {isAdminRole && (
-                      <View style={[styles.lockBadge, { backgroundColor: `${meta.color}20` }]}>
-                        <Ionicons name="lock-closed-outline" size={11} color={meta.color} />
-                        <Text style={[styles.lockText, { color: meta.color }]}>محمي</Text>
-                      </View>
-                    )}
                   </View>
 
                   {/* Permission rows */}
@@ -296,10 +290,10 @@ export default function SystemSettingsScreen() {
                         )}
                         <Switch
                           value={val}
-                          onValueChange={v => !isAdminRole && togglePermission(roleKey, row.key, v)}
+                          onValueChange={v => togglePermission(roleKey, row.key, v)}
                           trackColor={{ false: colors.border, true: colors.success }}
                           thumbColor="#FFF"
-                          disabled={isAdminRole}
+                          disabled={false}
                         />
                       </View>
                     );
