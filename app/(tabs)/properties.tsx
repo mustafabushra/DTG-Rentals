@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { Theme } from '../../constants/Theme';
 import { useApp } from '../../context/AppProvider';
 import { PropertyCard } from '../../components/ui/PropertyCard';
+import { UnitCard } from '../../components/ui/UnitCard';
 import { SearchBar } from '../../components/ui/SearchBar';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
@@ -23,7 +24,7 @@ type FilterType = 'all' | PropertyType;
 export default function PropertiesScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { properties, units, propertyPhotos, canWrite, canDelete, dataLoading } = useApp();
+  const { properties, units, propertyPhotos, canWrite, canDelete, dataLoading, externalOwnedUnits, isOwner } = useApp();
   const { isSmallPhone, hPad } = useScreenSize();
 
   useEffect(() => { trackScreen('Properties'); }, []);
@@ -42,16 +43,6 @@ export default function PropertiesScreen() {
   }, [properties, search, activeFilter]);
 
   const getUnitStats = (p: typeof properties[0]) => {
-    // عقار افتراضي: نحسب فقط الوحدة المعنية
-    if (p.isVirtual && p.sourceUnitId) {
-      const u = units.find(u => u.id === p.sourceUnitId);
-      if (!u) return { rented: 0, vacant: 0, total: 1 };
-      return {
-        rented: u.status === 'rented' ? 1 : 0,
-        vacant: u.status === 'vacant' ? 1 : 0,
-        total: 1,
-      };
-    }
     const propUnits = units.filter(u => u.propertyId === p.id);
     return {
       rented: propUnits.filter(u => u.status === 'rented').length,
@@ -186,6 +177,27 @@ export default function PropertiesScreen() {
               />
             );
           })
+        )}
+
+        {/* ── وحداتي في عقارات أخرى (للمالك فقط) ── */}
+        {isOwner && externalOwnedUnits.length > 0 && (
+          <View style={{ marginTop: 16, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: hPad, marginBottom: 10 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6,
+                backgroundColor: 'rgba(142,68,173,0.12)', borderRadius: 20,
+                paddingHorizontal: 12, paddingVertical: 5 }}>
+                <Ionicons name="layers-outline" size={14} color="#8E44AD" />
+                <Text style={{ color: '#8E44AD', fontSize: 13, fontWeight: '700' }}>
+                  وحداتي في عقارات أخرى ({externalOwnedUnits.length})
+                </Text>
+              </View>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+            </View>
+            {externalOwnedUnits.map(u => (
+              <UnitCard key={u.id} unit={u} propertyName={u.parentPropertyName} />
+            ))}
+          </View>
         )}
       </ScrollView>
 

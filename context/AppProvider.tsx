@@ -110,6 +110,8 @@ interface AppContextType extends AppState {
   isAdmin: boolean;
   /** هل المستخدم مالك — يرى عقاراته فقط */
   isOwner: boolean;
+  /** وحدات يملكها المالك الحالي داخل عقارات مملوكة لأشخاص آخرين (مع اسم العقار الأب) */
+  externalOwnedUnits: (Unit & { parentPropertyName?: string })[];
   /** المظهر المحلول الفعلي بعد تطبيق الإعداد (يستخدم بدل useColorScheme) */
   resolvedScheme: 'light' | 'dark';
 }
@@ -545,51 +547,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const visibleProperties = useMemo(() => {
     if (!applyOwnerFilter) return properties;
+    return properties.filter(p => p.ownerId === currentUser.ownerId);
+  }, [applyOwnerFilter, currentUser.ownerId, properties]);
 
-    // عقارات مملوكة مباشرة لهذا المالك
-    const ownedProps = properties.filter(
-      p => p.ownerId === currentUser.ownerId && !p.isVirtual
-    );
-
-    // وحدات مملوكة لهذا المالك في عقارات غيره → تتحول لعقارات افتراضية
-    const virtualProps = units
-      .filter(u => u.ownerId === currentUser.ownerId)
-      .map(u => {
-        const parent = properties.find(p => p.id === u.propertyId);
-        if (!parent || parent.ownerId === currentUser.ownerId) return null;
-        return {
-          ...parent,
-          id: `virtual_${u.id}`,
-          name: u.number ? `وحدة ${u.number}` : parent.name,
-          totalUnits: 1,
-          ownerId: currentUser.ownerId!,
-          isVirtual: true as const,
-          sourceUnitId: u.id,
-          sourcePropertyId: u.propertyId,
-        };
+  // وحدات يملكها هذا المالك داخل عقارات مملوكة لأشخاص آخرين
+  // نضيف parentPropertyName مباشرة للوحدة عشان يظهر الاسم الصحيح
+  const externalOwnedUnits = useMemo(() => {
+    if (!applyOwnerFilter) return [] as (Unit & { parentPropertyName?: string })[];
+    const oid = currentUser.ownerId;
+    if (!oid) return [] as (Unit & { parentPropertyName?: string })[];
+    return units
+      .filter(u => {
+        if (u.ownerId !== oid) return false;
+        const prop = properties.find(p => p.id === u.propertyId);
+        return !!prop && prop.ownerId !== oid;
       })
-      .filter((p): p is NonNullable<typeof p> => p !== null);
+      .map(u => ({
+        ...u,
+        parentPropertyName: properties.find(p => p.id === u.propertyId)?.name,
+      }));
+  }, [applyOwnerFilter, currentUser.ownerId, units, properties]);
 
-    return [...ownedProps, ...virtualProps];
-  }, [applyOwnerFilter, currentUser.ownerId, properties, units]);
-
-  // visiblePropertyIds = العقارات الحقيقية فقط (بدون sourcePropertyId عشان ما نسرب بيانات المالك الأصلي)
   const visiblePropertyIds = useMemo(() =>
-    new Set(visibleProperties.filter(p => !p.isVirtual).map(p => p.id)),
+    new Set(visibleProperties.map(p => p.id)),
   [visibleProperties]);
 
   const visibleUnits = useMemo(() => {
     if (!applyOwnerFilter) return units;
     const oid = currentUser.ownerId;
-    if (!oid) return units; // لا فلترة بدون ownerId
+    if (!oid) return [];
     return units.filter(u => {
-      // وحدة مسندة صراحةً لهذا المالك
+      // وحدة مملوكة له مباشرة (في عقاره أو عقار آخر)
       if (u.ownerId === oid) return true;
-      // وحدة في عقار مملوك له وبدون مالك خاص
-      if (u.ownerId) return false; // لها مالك آخر → لا تظهر
+      // وحدة في عقار مملوك له — تظهر حتى لو كانت لمالك آخر (للعرض فقط)
       const prop = properties.find(p => p.id === u.propertyId);
       return prop?.ownerId === oid;
     });
+  }, [applyOwnerFilter, units, currentUser.ownerId, properties]);
+
+  // الوحدات التي يملكها ملياً (للعقود والمدفوعات فقط — تستثني وحدات الآخرين في عقاراته)
+  const financialUnitIds = useMemo(() => {
+    if (!applyOwnerFilter) return new Set(units.map(u => u.id));
+    const oid = currentUser.ownerId;
+    if (!oid) return new Set<string>();
+    return new Set(
+      units.filter(u => {
+        if (u.ownerId === oid) return true;
+        if (u.ownerId) return false; // وحدة لمالك آخر → لا عقود له عليها
+        const prop = properties.find(p => p.id === u.propertyId);
+        return prop?.ownerId === oid;
+      }).map(u => u.id)
+    );
   }, [applyOwnerFilter, units, currentUser.ownerId, properties]);
 
   const visibleUnitIds = useMemo(() =>
@@ -597,8 +605,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   [visibleUnits]);
 
   const visibleContracts = useMemo(() =>
-    applyOwnerFilter ? contracts.filter(c => visibleUnitIds.has(c.unitId)) : contracts,
-  [applyOwnerFilter, contracts, visibleUnitIds]);
+    applyOwnerFilter ? contracts.filter(c => financialUnitIds.has(c.unitId)) : contracts,
+  [applyOwnerFilter, contracts, financialUnitIds]);
 
   const visibleContractIds = useMemo(() =>
     new Set(visibleContracts.map(c => c.id)),
@@ -653,7 +661,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const totalDue = visiblePayments.reduce((sum, p) => sum + p.amount, 0);
     const collectionRate = totalDue > 0 ? Math.round((paidTotal / totalDue) * 100) : 0;
     return {
-      totalProperties: visibleProperties.filter(p => !p.isVirtual).length,
+      totalProperties: visibleProperties.length,
       rentedUnits,
       vacantUnits,
       monthlyRevenue,
@@ -1645,7 +1653,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       auditLogs:   visibleAuditLogs,
       calendarEvents, attachments: visibleAttachments, isAuthenticated, dataLoading,
       currentUser, kpis,
-      canWrite, canDelete, isAdmin, isOwner, resolvedScheme,
+      canWrite, canDelete, isAdmin, isOwner, resolvedScheme, externalOwnedUnits,
       theme, notificationPrefs, propertyPhotos, unitPhotos,
       systemSettings, updateSystemSettings,
       setTheme, setNotificationPref, resetSystem,

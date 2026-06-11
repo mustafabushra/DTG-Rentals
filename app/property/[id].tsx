@@ -25,15 +25,9 @@ export default function PropertyDetailScreen() {
   const { colors } = useAppTheme();
   const { properties, owners, units, maintenance, contracts, payments,
           propertyPhotos, addPropertyPhoto, removePropertyPhoto, setPropertyMainPhoto,
-          canWrite, canDelete } = useApp();
+          canWrite, canDelete, currentUser } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('units');
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
-
-  // العقارات الافتراضية تُحوَّل فوراً لصفحة الوحدة
-  if (id?.startsWith('virtual_')) {
-    router.replace(`/unit/${id.replace('virtual_', '')}` as any);
-    return null;
-  }
 
   const property = properties.find(p => p.id === id);
   const photos   = id ? (propertyPhotos[id] ?? []) : [];
@@ -156,7 +150,27 @@ export default function PropertyDetailScreen() {
             {propUnits.length === 0 ? (
               <EmptyState icon="home-outline" title="لا توجد وحدات" actionLabel={canWrite && !isSingleUnit ? 'إضافة وحدة' : undefined} onAction={canWrite && !isSingleUnit ? () => router.push('/add-unit') : undefined} />
             ) : (
-              <ResponsiveGrid>{propUnits.map(u => <UnitCard key={u.id} unit={u} />)}</ResponsiveGrid>
+              <ResponsiveGrid>
+                {propUnits.map(u => {
+                  const isExternal = !!u.ownerId && u.ownerId !== currentUser.ownerId && u.ownerId !== property.ownerId;
+                  return (
+                    <View key={u.id}>
+                      {isExternal && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5,
+                          backgroundColor: 'rgba(142,68,173,0.1)', borderRadius: 8,
+                          paddingHorizontal: 10, paddingVertical: 4,
+                          marginHorizontal: 16, marginBottom: 4 }}>
+                          <Ionicons name="lock-closed-outline" size={12} color="#8E44AD" />
+                          <Text style={{ color: '#8E44AD', fontSize: 11, fontWeight: '600' }}>مملوكة لمالك آخر</Text>
+                        </View>
+                      )}
+                      <UnitCard unit={u} onDelete={!isExternal && canDelete
+                        ? () => requestDelete({ id: u.id, entityType: 'unit', label: `وحدة ${u.number}` })
+                        : undefined} />
+                    </View>
+                  );
+                })}
+              </ResponsiveGrid>
             )}
           </View>
         )}

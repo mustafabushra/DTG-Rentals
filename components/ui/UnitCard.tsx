@@ -13,9 +13,11 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 interface UnitCardProps {
   unit: Unit & { photos?: { uri: string; isMain: boolean }[] };
   onDelete?: () => void;
+  /** اسم العقار الأب — يُمرَّر عند عرض وحدات خارجية لا تظهر في visibleProperties */
+  propertyName?: string;
 }
 
-export function UnitCard({ unit, onDelete }: UnitCardProps) {
+export function UnitCard({ unit, onDelete, propertyName }: UnitCardProps) {
   const { colors } = useAppTheme();
   const { properties, contracts } = useApp();
   const property  = properties.find(p => p.id === unit.propertyId);
@@ -45,7 +47,7 @@ export function UnitCard({ unit, onDelete }: UnitCardProps) {
         )}
       </View>
 
-      <Text style={[styles.property, { color: colors.textSecondary }]}>{property?.name}</Text>
+      <Text style={[styles.property, { color: colors.textSecondary }]}>{propertyName ?? property?.name}</Text>
 
       <View style={styles.row}>
         <CurrencyText amount={unit.monthlyRent} color={colors.success} size={14} currency={effectiveCurrency} />
