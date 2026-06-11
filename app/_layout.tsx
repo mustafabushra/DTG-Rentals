@@ -16,6 +16,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { OfflineBanner } from '../components/ui/OfflineBanner';
 import { PWAInstallPrompt } from '../components/ui/PWAInstallPrompt';
+import { OnboardingTour } from '../components/ui/OnboardingTour';
 import { initSessionManager } from '../lib/sessionManager';
 
 SplashScreen.preventAutoHideAsync();
@@ -232,6 +233,7 @@ export default function RootLayout() {
                   <ThemedApp />
                   <OfflineBanner />
                   <PWAInstallPrompt />
+                  <OnboardingTour />
                 </>
               ) : (
                 // شاشة انتظار Auth — تمنع الشاشة البيضاء والـ touch warnings
