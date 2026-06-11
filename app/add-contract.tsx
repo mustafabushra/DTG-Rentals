@@ -16,7 +16,7 @@ import { COUNTRY_CURRENCY_OPTIONS, getCurrency } from '../utils/currency';
 export default function AddContractScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { units, tenants, properties, contracts, addContract, systemSettings, externalOwnedUnits } = useApp();
+  const { units, tenants, properties, contracts, addContract, systemSettings, externalOwnedUnits, financialUnitIds } = useApp();
 
   const [form, setForm] = useState({
     unitId: '', tenantId: '', startDate: '', endDate: '',
@@ -70,7 +70,8 @@ export default function AddContractScreen() {
 
   // فلترة الوحدات بالعقود الفعلية — أدق من unit.status الذي قد يكون stale
   const activeContractUnitIds = new Set(contracts.filter(c => c.status === 'active').map(c => c.unitId));
-  const vacantUnits = units.filter(u => !activeContractUnitIds.has(u.id));
+  // financialUnitIds تضمن عرض وحدات المالك فقط (تستثني وحدات الآخرين في عقاراته)
+  const vacantUnits = units.filter(u => !activeContractUnitIds.has(u.id) && financialUnitIds.has(u.id));
   const externalUnitNames = new Map(externalOwnedUnits.map(u => [u.id, u.parentPropertyName]));
   const unitOptions = vacantUnits.map(u => {
     const prop = properties.find(p => p.id === u.propertyId);

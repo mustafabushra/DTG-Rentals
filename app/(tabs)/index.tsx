@@ -196,20 +196,17 @@ export default function DashboardScreen() {
   // ── Upcoming timeline (next 60 days) ──────────────────────────────────────
   const upcomingTimeline = useMemo(() => {
     const isOwner = currentUser?.role === 'owner' || currentUser?.role === 'مالك';
+    const ownerId = currentUser?.ownerId;
 
-    // Find owner record matching current user (by id or name)
-    const ownerRecord = isOwner
-      ? owners.find(o => o.id === currentUser?.id || o.name === currentUser?.name)
-      : null;
-
-    // IDs of properties/contracts relevant to this owner
-    const ownerPropIds = ownerRecord
-      ? new Set(properties.filter(p => p.ownerId === ownerRecord.id).map(p => p.id))
+    // استخدام ownerId مباشرةً بدل البحث بالاسم (الأكثر دقةً وأماناً)
+    const ownerPropIds = isOwner && ownerId
+      ? new Set(properties.filter(p => p.ownerId === ownerId && !p.id.startsWith('uasprop_')).map(p => p.id))
       : null;
     const ownerContractIds = ownerPropIds
       ? new Set(contracts.filter(c => {
           const u = units.find(u => u.id === c.unitId);
-          return u ? ownerPropIds!.has(u.propertyId) : false;
+          if (!u) return false;
+          return ownerPropIds!.has(u.propertyId) || u.ownerId === ownerId;
         }).map(c => c.id))
       : null;
     const ownerPaymentIds = ownerContractIds

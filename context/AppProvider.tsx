@@ -112,6 +112,8 @@ interface AppContextType extends AppState {
   isOwner: boolean;
   /** وحدات يملكها المالك الحالي داخل عقارات مملوكة لأشخاص آخرين (مع اسم العقار الأب) */
   externalOwnedUnits: (Unit & { parentPropertyName?: string })[];
+  /** IDs الوحدات التي يملك فيها المالك عقوداً ومدفوعات (لفلترة dropdowns) */
+  financialUnitIds: Set<string>;
   /** المظهر المحلول الفعلي بعد تطبيق الإعداد (يستخدم بدل useColorScheme) */
   resolvedScheme: 'light' | 'dark';
 }
@@ -1693,7 +1695,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       auditLogs:   visibleAuditLogs,
       calendarEvents, attachments: visibleAttachments, isAuthenticated, dataLoading,
       currentUser, kpis,
-      canWrite, canDelete, isAdmin, isOwner, resolvedScheme, externalOwnedUnits,
+      canWrite, canDelete, isAdmin, isOwner, resolvedScheme, externalOwnedUnits, financialUnitIds,
       theme, notificationPrefs, propertyPhotos, unitPhotos,
       systemSettings, updateSystemSettings,
       setTheme, setNotificationPref, resetSystem,
