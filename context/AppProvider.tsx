@@ -542,19 +542,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const applyOwnerFilter = isOwner && systemSettings.ownerDataIsolation && !!currentUser.ownerId;
 
   // ─── فلترة البيانات للمالك (مشروطة بإعداد ownerDataIsolation) ──────────────
-  const visibleProperties = useMemo(() =>
+
+  // وحدات مملوكة مباشرة لهذا المالك (حتى لو العقار باسم مالك آخر)
+  const ownerDirectUnitIds = useMemo(() =>
     applyOwnerFilter
-      ? properties.filter(p => p.ownerId === currentUser.ownerId)
-      : properties,
-  [applyOwnerFilter, currentUser.ownerId, properties]);
+      ? new Set(units.filter(u => u.ownerId === currentUser.ownerId).map(u => u.id))
+      : new Set<string>(),
+  [applyOwnerFilter, units, currentUser.ownerId]);
+
+  const visibleProperties = useMemo(() => {
+    if (!applyOwnerFilter) return properties;
+    const directPropIds = new Set(properties.filter(p => p.ownerId === currentUser.ownerId).map(p => p.id));
+    // أضف العقارات التي تحوي وحدات مملوكة لهذا المالك
+    units.filter(u => u.ownerId === currentUser.ownerId).forEach(u => directPropIds.add(u.propertyId));
+    return properties.filter(p => directPropIds.has(p.id));
+  }, [applyOwnerFilter, currentUser.ownerId, properties, units]);
 
   const visiblePropertyIds = useMemo(() =>
     new Set(visibleProperties.map(p => p.id)),
   [visibleProperties]);
 
-  const visibleUnits = useMemo(() =>
-    applyOwnerFilter ? units.filter(u => visiblePropertyIds.has(u.propertyId)) : units,
-  [applyOwnerFilter, units, visiblePropertyIds]);
+  const visibleUnits = useMemo(() => {
+    if (!applyOwnerFilter) return units;
+    return units.filter(u =>
+      // وحدة مملوكة مباشرة لهذا المالك
+      u.ownerId === currentUser.ownerId ||
+      // أو وحدة بدون ownerId خاص وعقارها مملوك لهذا المالك
+      (!u.ownerId && visiblePropertyIds.has(u.propertyId))
+    );
+  }, [applyOwnerFilter, units, currentUser.ownerId, visiblePropertyIds]);
 
   const visibleUnitIds = useMemo(() =>
     new Set(visibleUnits.map(u => u.id)),
