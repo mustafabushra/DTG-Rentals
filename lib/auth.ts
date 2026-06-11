@@ -170,7 +170,12 @@ export async function loginWithGoogle() {
   if (!auth) throw new Error('Auth not available');
 
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
+  provider.setCustomParameters({
+    prompt: 'select_account',
+    ...(process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID
+      ? { client_id: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID }
+      : {}),
+  });
 
   const credential = await signInWithPopup(auth, provider);
   const user = credential.user;

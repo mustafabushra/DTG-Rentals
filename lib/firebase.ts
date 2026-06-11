@@ -1,8 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { initializeAuth, getAuth as fbGetAuth, browserLocalPersistence, Auth } from 'firebase/auth';
+import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY!,
@@ -15,23 +14,11 @@ const firebaseConfig = {
 
 const app = getApps().find(a => a.name === '[DEFAULT]') ?? initializeApp(firebaseConfig);
 
-let _auth: Auth | null = null;
-
-// Returns Auth lazily — safe to call during SSR (returns null) and in browser (returns real instance).
 export function getFirebaseAuth(): Auth | null {
   if (typeof window === 'undefined') return null;
-  if (_auth) return _auth;
-  try {
-    _auth = Platform.OS === 'web'
-      ? initializeAuth(app, { persistence: browserLocalPersistence })
-      : fbGetAuth(app);
-  } catch {
-    _auth = fbGetAuth(app);
-  }
-  return _auth;
+  return getAuth(app);
 }
 
-// Eagerly resolved at module load — null during SSR build, real Auth in browser.
 export const auth    = getFirebaseAuth();
 export const db      = getFirestore(app);
 export const storage = getStorage(app);
@@ -42,5 +29,5 @@ export function getSecondaryAuth(): Auth | null {
   const SECONDARY = 'secondary-user-creation';
   const existing  = getApps().find(a => a.name === SECONDARY);
   const secondApp = existing ?? initializeApp(firebaseConfig, SECONDARY);
-  return fbGetAuth(secondApp);
+  return getAuth(secondApp);
 }
