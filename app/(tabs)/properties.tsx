@@ -24,7 +24,7 @@ type FilterType = 'all' | PropertyType;
 export default function PropertiesScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { properties, units, propertyPhotos, canWrite, canDelete, dataLoading, externalOwnedUnits, isOwner } = useApp();
+  const { properties, units, propertyPhotos, canWrite, canDelete, dataLoading, externalOwnedUnits } = useApp();
   const { isSmallPhone, hPad } = useScreenSize();
 
   useEffect(() => { trackScreen('Properties'); }, []);
@@ -149,6 +149,16 @@ export default function PropertiesScreen() {
           // Grid layout on wide screens
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm }}>
             {filteredProperties.map(p => {
+              const unitId = (p as any)._unitId as string | undefined;
+              if (unitId) {
+                const exUnit = externalOwnedUnits.find(u => u.id === unitId);
+                if (!exUnit) return null;
+                return (
+                  <View key={p.id} style={{ width: cols3 ? '32%' : '48%', flexGrow: 1 }}>
+                    <UnitCard unit={exUnit} propertyName={exUnit.parentPropertyName} />
+                  </View>
+                );
+              }
               const stats = getUnitStats(p);
               return (
                 <View key={p.id} style={{ width: cols3 ? '32%' : '48%', flexGrow: 1 }}>
@@ -165,6 +175,15 @@ export default function PropertiesScreen() {
           </View>
         ) : (
           filteredProperties.map(p => {
+            const unitId = (p as any)._unitId as string | undefined;
+            if (unitId) {
+              // وحدة مملوكة في عقار شخص آخر — تُعرض كعقار مستقل
+              const exUnit = externalOwnedUnits.find(u => u.id === unitId);
+              if (!exUnit) return null;
+              return (
+                <UnitCard key={p.id} unit={exUnit} propertyName={exUnit.parentPropertyName} />
+              );
+            }
             const stats = getUnitStats(p);
             return (
               <PropertyCard
@@ -173,31 +192,10 @@ export default function PropertiesScreen() {
                 photos={propertyPhotos[p.id] ?? []}
                 rentedCount={stats.rented}
                 vacantCount={stats.vacant}
-                onDelete={() => requestDelete({ id: p.id, entityType: 'property', label: p.name })}
+                onDelete={canDelete ? () => requestDelete({ id: p.id, entityType: 'property', label: p.name }) : undefined}
               />
             );
           })
-        )}
-
-        {/* ── وحداتي في عقارات أخرى (للمالك فقط) ── */}
-        {isOwner && externalOwnedUnits.length > 0 && (
-          <View style={{ marginTop: 16, marginBottom: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: hPad, marginBottom: 10 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6,
-                backgroundColor: 'rgba(142,68,173,0.12)', borderRadius: 20,
-                paddingHorizontal: 12, paddingVertical: 5 }}>
-                <Ionicons name="layers-outline" size={14} color="#8E44AD" />
-                <Text style={{ color: '#8E44AD', fontSize: 13, fontWeight: '700' }}>
-                  وحداتي في عقارات أخرى ({externalOwnedUnits.length})
-                </Text>
-              </View>
-              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
-            </View>
-            {externalOwnedUnits.map(u => (
-              <UnitCard key={u.id} unit={u} propertyName={u.parentPropertyName} />
-            ))}
-          </View>
         )}
       </ScrollView>
 

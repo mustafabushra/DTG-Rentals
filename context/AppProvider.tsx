@@ -545,13 +545,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── فلترة البيانات للمالك (مشروطة بإعداد ownerDataIsolation) ──────────────
 
-  const visibleProperties = useMemo(() => {
-    if (!applyOwnerFilter) return properties;
-    return properties.filter(p => p.ownerId === currentUser.ownerId);
-  }, [applyOwnerFilter, currentUser.ownerId, properties]);
-
-  // وحدات يملكها هذا المالك داخل عقارات مملوكة لأشخاص آخرين
-  // نضيف parentPropertyName مباشرة للوحدة عشان يظهر الاسم الصحيح
+  // الوحدات الخارجية المملوكة للمالك — تُحسب كعقارات مستقلة في لوحة التحكم
+  // id مسبوق بـ "uasprop_" يميّزها عن العقارات الحقيقية
   const externalOwnedUnits = useMemo(() => {
     if (!applyOwnerFilter) return [] as (Unit & { parentPropertyName?: string })[];
     const oid = currentUser.ownerId;
@@ -567,6 +562,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         parentPropertyName: properties.find(p => p.id === u.propertyId)?.name,
       }));
   }, [applyOwnerFilter, currentUser.ownerId, units, properties]);
+
+  const visibleProperties = useMemo(() => {
+    if (!applyOwnerFilter) return properties;
+    const ownedProps = properties.filter(p => p.ownerId === currentUser.ownerId);
+    // كل وحدة خارجية تظهر كعقار مستقل في القائمة والإحصائيات
+    const synthProps = externalOwnedUnits.map(u => ({
+      id: `uasprop_${u.id}`,
+      name: `وحدة ${u.number}`,
+      location: u.parentPropertyName ?? '',
+      type: 'residential' as const,
+      ownerId: currentUser.ownerId!,
+      unitStructure: 'single' as const,
+      _unitId: u.id,
+    } as Property & { _unitId: string }));
+    return [...ownedProps, ...synthProps];
+  }, [applyOwnerFilter, currentUser.ownerId, properties, externalOwnedUnits]);
 
   const visiblePropertyIds = useMemo(() =>
     new Set(visibleProperties.map(p => p.id)),
