@@ -33,7 +33,7 @@ service cloud.firestore {
 
     function canWrite() {
       return isSignedIn() && isActive() &&
-             userRole() in ['admin', 'مدير عام', 'مدير النظام', 'manager', 'مدير'];
+             userRole() in ['admin', 'مدير عام', 'مدير النظام', 'manager', 'مدير', 'owner', 'مالك'];
     }
 
     function canRead() {
