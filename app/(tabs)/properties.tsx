@@ -41,8 +41,18 @@ export default function PropertiesScreen() {
     });
   }, [properties, search, activeFilter]);
 
-  const getUnitStats = (propertyId: string) => {
-    const propUnits = units.filter(u => u.propertyId === propertyId);
+  const getUnitStats = (p: typeof properties[0]) => {
+    // عقار افتراضي: نحسب فقط الوحدة المعنية
+    if (p.isVirtual && p.sourceUnitId) {
+      const u = units.find(u => u.id === p.sourceUnitId);
+      if (!u) return { rented: 0, vacant: 0, total: 1 };
+      return {
+        rented: u.status === 'rented' ? 1 : 0,
+        vacant: u.status === 'vacant' ? 1 : 0,
+        total: 1,
+      };
+    }
+    const propUnits = units.filter(u => u.propertyId === p.id);
     return {
       rented: propUnits.filter(u => u.status === 'rented').length,
       vacant: propUnits.filter(u => u.status === 'vacant').length,
@@ -148,7 +158,7 @@ export default function PropertiesScreen() {
           // Grid layout on wide screens
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm }}>
             {filteredProperties.map(p => {
-              const stats = getUnitStats(p.id);
+              const stats = getUnitStats(p);
               return (
                 <View key={p.id} style={{ width: cols3 ? '32%' : '48%', flexGrow: 1 }}>
                   <PropertyCard
@@ -164,7 +174,7 @@ export default function PropertiesScreen() {
           </View>
         ) : (
           filteredProperties.map(p => {
-            const stats = getUnitStats(p.id);
+            const stats = getUnitStats(p);
             return (
               <PropertyCard
                 key={p.id}

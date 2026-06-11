@@ -573,16 +573,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [...ownedProps, ...virtualProps];
   }, [applyOwnerFilter, currentUser.ownerId, properties, units]);
 
+  // visiblePropertyIds = العقارات الحقيقية فقط (بدون sourcePropertyId عشان ما نسرب بيانات المالك الأصلي)
   const visiblePropertyIds = useMemo(() =>
-    new Set(visibleProperties.map(p => p.isVirtual ? p.sourcePropertyId! : p.id)),
+    new Set(visibleProperties.filter(p => !p.isVirtual).map(p => p.id)),
   [visibleProperties]);
 
   const visibleUnits = useMemo(() => {
     if (!applyOwnerFilter) return units;
+    const oid = currentUser.ownerId;
+    if (!oid) return units; // لا فلترة بدون ownerId
     return units.filter(u => {
-      if (u.ownerId === currentUser.ownerId) return true;
+      // وحدة مسندة صراحةً لهذا المالك
+      if (u.ownerId === oid) return true;
+      // وحدة في عقار مملوك له وبدون مالك خاص
+      if (u.ownerId) return false; // لها مالك آخر → لا تظهر
       const prop = properties.find(p => p.id === u.propertyId);
-      return !u.ownerId && prop?.ownerId === currentUser.ownerId;
+      return prop?.ownerId === oid;
     });
   }, [applyOwnerFilter, units, currentUser.ownerId, properties]);
 
@@ -603,8 +609,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   [applyOwnerFilter, payments, visibleContractIds]);
 
   const visibleMaintenance = useMemo(() =>
-    applyOwnerFilter ? maintenance.filter(m => visiblePropertyIds.has(m.propertyId)) : maintenance,
-  [applyOwnerFilter, maintenance, visiblePropertyIds]);
+    applyOwnerFilter
+      ? maintenance.filter(m =>
+          visiblePropertyIds.has(m.propertyId) ||
+          (m.unitId ? visibleUnitIds.has(m.unitId) : false)
+        )
+      : maintenance,
+  [applyOwnerFilter, maintenance, visiblePropertyIds, visibleUnitIds]);
 
   const visibleOwners    = applyOwnerFilter ? owners.filter(o => o.id === currentUser.ownerId) : owners;
   const visibleAuditLogs = applyOwnerFilter ? [] : auditLogs;
