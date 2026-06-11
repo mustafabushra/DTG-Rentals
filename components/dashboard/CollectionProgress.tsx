@@ -22,8 +22,8 @@ export function CollectionProgress({ collected, totalDue, currency = 'ريال' 
   const pct = totalDue > 0 ? Math.min(100, Math.round((collected / totalDue) * 100)) : 0;
   const remaining = Math.max(0, totalDue - collected);
 
-  const barColor = pct >= 80 ? '#27AE60' : pct >= 50 ? '#F39C12' : '#E74C3C';
-  const badgeBg  = pct >= 80 ? '#E8F8F0' : pct >= 50 ? '#FEF9E7' : '#FDEDEC';
+  const barColor = pct >= 80 ? colors.success : pct >= 50 ? colors.warning : colors.danger;
+  const badgeBg  = pct >= 80 ? colors.successSubtle : pct >= 50 ? colors.warningSubtle : colors.dangerSubtle;
 
   const now = new Date();
   const monthLabel = ARABIC_MONTHS[now.getMonth()];
@@ -58,12 +58,12 @@ export function CollectionProgress({ collected, totalDue, currency = 'ريال' 
       <View style={styles.row}>
         <View style={styles.stat}>
           <Text style={[styles.statLbl, { color: colors.textMuted }]}>متبقي</Text>
-          <Text style={[styles.statVal, { color: '#E74C3C' }]}>{fmt(remaining)} {currency}</Text>
+          <Text style={[styles.statVal, { color: colors.danger }]}>{fmt(remaining)} {currency}</Text>
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={[styles.stat, { alignItems: 'flex-end' }]}>
           <Text style={[styles.statLbl, { color: colors.textMuted }]}>محصّل</Text>
-          <Text style={[styles.statVal, { color: '#27AE60' }]}>{fmt(collected)} {currency}</Text>
+          <Text style={[styles.statVal, { color: colors.success }]}>{fmt(collected)} {currency}</Text>
         </View>
       </View>
     </TouchableOpacity>

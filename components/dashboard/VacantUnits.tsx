@@ -27,9 +27,9 @@ export function VacantUnits({ units }: Props) {
 
   if (units.length === 0) {
     return (
-      <View style={[styles.card, styles.allRented, { backgroundColor: '#F0FFF4', borderColor: '#27AE60' }]}>
-        <Ionicons name="checkmark-circle-outline" size={28} color="#27AE60" />
-        <Text style={styles.allRentedTxt}>جميع الوحدات مؤجرة</Text>
+      <View style={[styles.card, styles.allRented, { backgroundColor: colors.successSubtle, borderColor: colors.success }]}>
+        <Ionicons name="checkmark-circle-outline" size={28} color={colors.success} />
+        <Text style={[styles.allRentedTxt, { color: colors.success }]}>جميع الوحدات مؤجرة</Text>
       </View>
     );
   }
@@ -39,32 +39,32 @@ export function VacantUnits({ units }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <View style={[styles.countBadge, { backgroundColor: '#FDEDEC' }]}>
-            <Text style={[styles.countTxt, { color: '#E74C3C' }]}>{units.length}</Text>
+          <View style={[styles.countBadge, { backgroundColor: colors.dangerSubtle }]}>
+            <Text style={[styles.countTxt, { color: colors.danger }]}>{units.length}</Text>
           </View>
           <Text style={[styles.title, { color: colors.text }]}>الوحدات الشاغرة</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/(tabs)/units' as any)}>
-          <Text style={[styles.seeAll, { color: '#C3AF76' }]}>عرض الكل</Text>
+          <Text style={[styles.seeAll, { color: colors.accentGold }]}>عرض الكل</Text>
         </TouchableOpacity>
       </View>
 
       {/* Rows */}
       {shown.map((u, idx) => {
         const isLast = idx === shown.length - 1;
-        const dotColor = u.status === 'maintenance' ? '#F39C12' : '#E74C3C';
-        const rowBg    = u.status === 'maintenance' ? '#FFFBF0' : '#FFF5F5';
+        const dotColor = u.status === 'maintenance' ? colors.warning : colors.danger;
+        const rowBg    = u.status === 'maintenance' ? colors.warningSubtle : colors.dangerSubtle;
         return (
           <View
             key={u.id}
             style={[styles.row, { backgroundColor: rowBg }, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
           >
             <TouchableOpacity
-              style={[styles.addBtn, { backgroundColor: '#C3AF76' }]}
+              style={[styles.addBtn, { backgroundColor: colors.accentGold }]}
               onPress={() => router.push('/add-contract' as any)}
             >
-              <Ionicons name="add" size={14} color="#021C36" />
-              <Text style={styles.addTxt}>إضافة عقد</Text>
+              <Ionicons name="add" size={14} color={colors.primary} />
+              <Text style={[styles.addTxt, { color: colors.primary }]}>إضافة عقد</Text>
             </TouchableOpacity>
 
             <View style={styles.info}>
@@ -89,7 +89,7 @@ export function VacantUnits({ units }: Props) {
 const styles = StyleSheet.create({
   card: { borderRadius: Theme.radius.xl, borderWidth: 1, overflow: 'hidden' },
   allRented: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: Theme.spacing.md },
-  allRentedTxt: { color: '#27AE60', fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
+  allRentedTxt: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: Theme.spacing.base, paddingTop: Theme.spacing.base, paddingBottom: 10,
@@ -114,5 +114,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6,
     borderRadius: Theme.radius.md,
   },
-  addTxt: { fontSize: 11, fontWeight: Theme.fontWeight.bold, color: '#021C36' },
+  addTxt: { fontSize: 11, fontWeight: Theme.fontWeight.bold },
 });

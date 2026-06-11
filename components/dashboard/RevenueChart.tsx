@@ -57,7 +57,7 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
   const first = values[0];
   const trendUp = last >= first;
   const trendPct = first > 0 ? Math.round(Math.abs((last - first) / first) * 100) : 0;
-  const trendColor = trendUp ? '#27AE60' : '#E74C3C';
+  const trendColor = trendUp ? colors.success : colors.danger;
 
   // Y-axis grid: 4 lines
   const gridLines = [0, 0.33, 0.66, 1].map(r => ({
@@ -81,11 +81,11 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
 
       {/* Tooltip */}
       {sel && (
-        <View style={[styles.tooltip, { backgroundColor: '#021C36' }]}>
-          <Text style={styles.tooltipMonth}>
+        <View style={[styles.tooltip, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.tooltipMonth, { color: colors.text }]}>
             {ARABIC_MONTHS[Number(sel.month.split('-')[1]) - 1]} {sel.month.split('-')[0]}
           </Text>
-          <Text style={styles.tooltipAmt}>{sel.revenue.toLocaleString('en-US')} {currency}</Text>
+          <Text style={[styles.tooltipAmt, { color: colors.text }]}>{sel.revenue.toLocaleString('en-US')} {currency}</Text>
         </View>
       )}
 
@@ -93,8 +93,8 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
       <Svg width={chartW + PAD_LEFT + PAD_RIGHT} height={totalH}>
         <Defs>
           <LinearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#C3AF76" stopOpacity="0.25" />
-            <Stop offset="1" stopColor="#C3AF76" stopOpacity="0" />
+            <Stop offset="0" stopColor={colors.accentGold} stopOpacity="0.25" />
+            <Stop offset="1" stopColor={colors.accentGold} stopOpacity="0" />
           </LinearGradient>
         </Defs>
 
@@ -118,7 +118,7 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
         <Polygon points={areaPoints} fill="url(#areaGrad)" />
 
         {/* Line */}
-        <Polyline points={points} fill="none" stroke="#C3AF76" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        <Polyline points={points} fill="none" stroke={colors.accentGold} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
 
         {/* Data points + labels */}
         {values.map((v, i) => {
@@ -140,8 +140,8 @@ export function RevenueChart({ data, currency = 'ريال' }: Props) {
               <Circle cx={x} cy={y} r={14} fill="transparent" onPress={() => setSelected(selected === i ? null : i)} />
               <Circle
                 cx={x} cy={y} r={isSel ? 6 : 4}
-                fill={isSel ? '#C3AF76' : colors.card}
-                stroke="#C3AF76" strokeWidth={isSel ? 3 : 2}
+                fill={isSel ? colors.accentGold : colors.card}
+                stroke={colors.accentGold} strokeWidth={isSel ? 3 : 2}
               />
             </React.Fragment>
           );
@@ -161,6 +161,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     borderRadius: Theme.radius.md, paddingHorizontal: 12, paddingVertical: 8,
   },
-  tooltipMonth: { color: 'rgba(255,255,255,0.7)', fontSize: Theme.fontSize.sm },
-  tooltipAmt:   { color: '#FFF', fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
+  tooltipMonth: { fontSize: Theme.fontSize.sm },
+  tooltipAmt:   { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
 });

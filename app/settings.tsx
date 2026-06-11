@@ -102,8 +102,8 @@ export default function SettingsScreen() {
           <Switch
             value={switchVal}
             onValueChange={onSwitch}
-            trackColor={{ false: colors.border, true: color || '#03284C' }}
-            thumbColor="#FFF"
+            trackColor={{ false: colors.border, true: color || colors.primary }}
+            thumbColor={colors.textInverse}
           />
         ) : (
           <>
@@ -199,14 +199,14 @@ export default function SettingsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: '#021C36' }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.primary }]}>
         <View style={styles.headerRow}>
           {Platform.OS === 'web' && !isDesktop && (
             <TouchableOpacity onPress={toggleSidebar} style={styles.menuBtn}>
-              <Ionicons name="menu-outline" size={26} color="#FFF" />
+              <Ionicons name="menu-outline" size={26} color={colors.textInverse} />
             </TouchableOpacity>
           )}
-          <Text style={styles.headerTitle}>الإعدادات</Text>
+          <Text style={[styles.headerTitle, { color: colors.textInverse }]}>الإعدادات</Text>
           <View style={{ width: Platform.OS === 'web' && !isDesktop ? 34 : 0 }} />
         </View>
       </View>
@@ -233,8 +233,8 @@ export default function SettingsScreen() {
               <Text style={[styles.profileEmail, { color: colors.textMuted }]}>{currentUser.phone}</Text>
             ) : null}
           </View>
-          <View style={[styles.avatar, { backgroundColor: '#C3AF76' }]}>
-            <Text style={[styles.avatarText, { color: '#021C36' }]}>{initials}</Text>
+          <View style={[styles.avatar, { backgroundColor: colors.accentGold }]}>
+            <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
           </View>
         </TouchableOpacity>
 
@@ -279,8 +279,8 @@ export default function SettingsScreen() {
           {/* Theme Selector */}
           <View style={[styles.themeRow, { borderBottomColor: colors.border }]}>
             <View style={styles.itemLeft}>
-              <View style={[styles.itemIcon, { backgroundColor: '#03284C18' }]}>
-                <Ionicons name="color-palette-outline" size={18} color="#03284C" />
+              <View style={[styles.itemIcon, { backgroundColor: `${colors.primary}18` }]}>
+                <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
               </View>
               <Text style={[styles.itemLabel, { color: colors.text }]}>المظهر</Text>
             </View>
@@ -295,12 +295,12 @@ export default function SettingsScreen() {
                   style={[
                     styles.themeChip,
                     { borderColor: colors.border, backgroundColor: colors.surface },
-                    theme === opt.key && { borderColor: '#C3AF76', backgroundColor: '#03284C' },
+                    theme === opt.key && { borderColor: colors.accentGold, backgroundColor: colors.primary },
                   ]}
                   onPress={() => handleTheme(opt.key)}
                 >
-                  <Ionicons name={opt.icon as any} size={14} color={theme === opt.key ? '#C3AF76' : colors.textMuted} />
-                  <Text style={[styles.themeChipText, { color: theme === opt.key ? '#C3AF76' : colors.textMuted }]}>
+                  <Ionicons name={opt.icon as any} size={14} color={theme === opt.key ? colors.accentGold : colors.textMuted} />
+                  <Text style={[styles.themeChipText, { color: theme === opt.key ? colors.accentGold : colors.textMuted }]}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -359,11 +359,11 @@ export default function SettingsScreen() {
                   style={[
                     styles.themeChip,
                     { borderColor: colors.border, backgroundColor: colors.surface },
-                    opt.key === 'ar' && { borderColor: '#C3AF76', backgroundColor: '#03284C' },
+                    opt.key === 'ar' && { borderColor: colors.accentGold, backgroundColor: colors.primary },
                   ]}
                   onPress={() => handleLanguage(opt.key as 'ar' | 'en')}
                 >
-                  <Text style={[styles.themeChipText, { color: opt.key === 'ar' ? '#C3AF76' : colors.textMuted }]}>
+                  <Text style={[styles.themeChipText, { color: opt.key === 'ar' ? colors.accentGold : colors.textMuted }]}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -408,7 +408,7 @@ export default function SettingsScreen() {
               </View>
               <View>
                 <Text style={[styles.integrationTitle, { color: colors.text }]}>Google Calendar</Text>
-                <Text style={[styles.integrationSub, { color: calConnected ? '#27AE60' : colors.textMuted }]}>
+                <Text style={[styles.integrationSub, { color: calConnected ? colors.success : colors.textMuted }]}>
                   {calConnected ? 'مرتبط ✓' : 'غير مرتبط'}
                 </Text>
               </View>
@@ -423,16 +423,16 @@ export default function SettingsScreen() {
                     disabled={calSyncing}
                   >
                     {calSyncing
-                      ? <ActivityIndicator size="small" color="#FFF" />
-                      : <Ionicons name="sync-outline" size={16} color="#FFF" />}
-                    <Text style={styles.integrationBtnText}>مزامنة</Text>
+                      ? <ActivityIndicator size="small" color={colors.textInverse} />
+                      : <Ionicons name="sync-outline" size={16} color={colors.textInverse} />}
+                    <Text style={[styles.integrationBtnText, { color: colors.textInverse }]}>مزامنة</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.integrationBtn, { backgroundColor: '#FDEDEC', borderWidth: 1, borderColor: '#E74C3C' }]}
+                    style={[styles.integrationBtn, { backgroundColor: colors.dangerSubtle, borderWidth: 1, borderColor: colors.danger }]}
                     onPress={handleDisconnectCalendar}
                   >
-                    <Ionicons name="unlink-outline" size={16} color="#E74C3C" />
-                    <Text style={[styles.integrationBtnText, { color: '#E74C3C' }]}>قطع</Text>
+                    <Ionicons name="unlink-outline" size={16} color={colors.danger} />
+                    <Text style={[styles.integrationBtnText, { color: colors.danger }]}>قطع</Text>
                   </TouchableOpacity>
                 </>
               ) : (
@@ -442,9 +442,9 @@ export default function SettingsScreen() {
                   disabled={calLoading}
                 >
                   {calLoading
-                    ? <ActivityIndicator size="small" color="#FFF" />
-                    : <Ionicons name="link-outline" size={16} color="#FFF" />}
-                  <Text style={styles.integrationBtnText}>ربط</Text>
+                    ? <ActivityIndicator size="small" color={colors.textInverse} />
+                    : <Ionicons name="link-outline" size={16} color={colors.textInverse} />}
+                  <Text style={[styles.integrationBtnText, { color: colors.textInverse }]}>ربط</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -511,7 +511,7 @@ export default function SettingsScreen() {
 
         {/* ── Logout ── */}
         <TouchableOpacity
-          style={[styles.logoutBtn, { backgroundColor: '#FDEDEC', borderColor: colors.danger }]}
+          style={[styles.logoutBtn, { backgroundColor: colors.dangerSubtle, borderColor: colors.danger }]}
           onPress={handleLogout}
           activeOpacity={0.85}
         >
@@ -548,14 +548,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   menuBtn: { padding: 4 },
-  headerTitle: { color: '#FFF', fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold, flex: 1, textAlign: 'center' },
+  headerTitle: { fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold, flex: 1, textAlign: 'center' },
 
   profileCard: {
     flexDirection: 'row', alignItems: 'center', margin: Theme.spacing.base,
     padding: Theme.spacing.md, borderRadius: Theme.radius.lg, borderWidth: 1, gap: 12,
   },
   avatar:      { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
-  avatarText:  { color: '#FFF', fontSize: 20, fontWeight: '700' },
+  avatarText:  { fontSize: 20, fontWeight: '700' },
   profileInfo: { flex: 1 },
   profileName: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
   profileRole: { fontSize: Theme.fontSize.md, marginTop: 2, textAlign: 'right' },
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: Theme.radius.full, minHeight: 36,
   },
-  integrationBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  integrationBtnText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
 
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

@@ -24,7 +24,7 @@ function fmt(n: number) { return n.toLocaleString('en-US'); }
 
 function PaymentRow({ p, colors }: { p: DuePayment; colors: any }) {
   const isOverdue = p.status === 'overdue';
-  const amtColor  = isOverdue ? '#E74C3C' : '#F39C12';
+  const amtColor  = isOverdue ? colors.danger : colors.warning;
   return (
     <TouchableOpacity
       style={[styles.row, { borderBottomColor: colors.border }]}
@@ -35,8 +35,8 @@ function PaymentRow({ p, colors }: { p: DuePayment; colors: any }) {
         <Text style={[styles.amt, { color: amtColor }]}>{fmt(p.amount)}</Text>
         <Text style={[styles.cur, { color: colors.textMuted }]}>{p.currency ?? 'ريال'}</Text>
         {isOverdue && (
-          <View style={styles.overdueBadge}>
-            <Text style={styles.overdueTxt}>متأخر</Text>
+          <View style={[styles.overdueBadge, { backgroundColor: colors.dangerSubtle }]}>
+            <Text style={[styles.overdueTxt, { color: colors.danger }]}>متأخر</Text>
           </View>
         )}
       </View>
@@ -65,10 +65,10 @@ export function DuePayments({ todayPayments, weekPayments }: Props) {
           {(['today', 'week'] as const).map(t => (
             <TouchableOpacity
               key={t}
-              style={[styles.tab, tab === t && { borderBottomWidth: 2, borderBottomColor: '#C3AF76' }]}
+              style={[styles.tab, tab === t && { borderBottomWidth: 2, borderBottomColor: colors.accentGold }]}
               onPress={() => setTab(t)}
             >
-              <Text style={[styles.tabTxt, { color: tab === t ? '#021C36' : colors.textMuted }]}>
+              <Text style={[styles.tabTxt, { color: tab === t ? colors.primary : colors.textMuted }]}>
                 {t === 'today' ? 'اليوم' : 'هذا الأسبوع'}
               </Text>
             </TouchableOpacity>
@@ -80,7 +80,7 @@ export function DuePayments({ todayPayments, weekPayments }: Props) {
       {/* Empty */}
       {shown.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="checkmark-circle-outline" size={28} color="#27AE60" />
+          <Ionicons name="checkmark-circle-outline" size={28} color={colors.success} />
           <Text style={[styles.emptyTxt, { color: colors.textMuted }]}>لا توجد دفعات مستحقة</Text>
         </View>
       ) : (
@@ -89,13 +89,13 @@ export function DuePayments({ todayPayments, weekPayments }: Props) {
 
           {/* Total */}
           <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.totalAmt, { color: '#F39C12' }]}>{fmt(total)}</Text>
+            <Text style={[styles.totalAmt, { color: colors.warning }]}>{fmt(total)}</Text>
             <Text style={[styles.totalLbl, { color: colors.textMuted }]}>الإجمالي</Text>
           </View>
 
           {list.length > 5 && (
             <TouchableOpacity style={styles.moreBtn} onPress={() => router.push('/payments' as any)}>
-              <Text style={[styles.moreTxt, { color: '#C3AF76' }]}>عرض {list.length - 5} دفعة إضافية</Text>
+              <Text style={[styles.moreTxt, { color: colors.accentGold }]}>عرض {list.length - 5} دفعة إضافية</Text>
             </TouchableOpacity>
           )}
         </>
@@ -124,8 +124,8 @@ const styles = StyleSheet.create({
   amtCol: { minWidth: 64 },
   amt:    { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
   cur:    { fontSize: 10 },
-  overdueBadge: { backgroundColor: '#FDEDEC', borderRadius: 99, paddingHorizontal: 5, paddingVertical: 1, marginTop: 2 },
-  overdueTxt:   { color: '#E74C3C', fontSize: 9, fontWeight: '700' },
+  overdueBadge: { borderRadius: 99, paddingHorizontal: 5, paddingVertical: 1, marginTop: 2 },
+  overdueTxt:   { fontSize: 9, fontWeight: '700' },
   totalRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     borderTopWidth: 1, paddingHorizontal: Theme.spacing.base, paddingVertical: 12,

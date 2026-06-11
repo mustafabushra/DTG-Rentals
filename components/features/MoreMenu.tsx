@@ -58,9 +58,9 @@ export function MoreMenu({ visible, onClose }: MoreMenuProps) {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.primary }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color="#FFF" />
+            <Ionicons name="close" size={24} color={colors.textInverse} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>القائمة الرئيسية</Text>
+          <Text style={[styles.headerTitle, { color: colors.textInverse }]}>القائمة الرئيسية</Text>
           <View style={styles.closePlaceholder} />
         </View>
 
@@ -77,7 +77,7 @@ export function MoreMenu({ visible, onClose }: MoreMenuProps) {
                 <Ionicons name={item.icon as any} size={26} color={colors.primary} />
                 {item.route === '/notifications' && unread > 0 && (
                   <View style={[styles.badge, { backgroundColor: colors.danger }]}>
-                    <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+                    <Text style={[styles.badgeText, { color: colors.textInverse }]}>{unread > 9 ? '9+' : unread}</Text>
                   </View>
                 )}
               </View>
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
   },
-  headerTitle:      { color: '#FFF', fontSize: fontSize.xl, fontWeight: fontWeight.bold, textAlign: 'center' },
+  headerTitle:      { fontSize: fontSize.xl, fontWeight: fontWeight.bold, textAlign: 'center' },
   closeBtn:         { padding: spacing[2] },
   closePlaceholder: { width: 40 },
   grid: {
@@ -136,5 +136,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 3,
   },
-  badgeText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+  badgeText: { fontSize: 10, fontWeight: '700' },
 });

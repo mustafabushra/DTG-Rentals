@@ -15,7 +15,7 @@ function fmt(n: number) { return n.toLocaleString('en-US'); }
 
 export function TenantStats({ activeTenants, avgTenancyMonths, topTenant, currency = 'ريال' }: Props) {
   const { colors } = useAppTheme();
-  const avgColor = avgTenancyMonths < 12 ? '#E74C3C' : '#27AE60';
+  const avgColor = avgTenancyMonths < 12 ? colors.danger : colors.success;
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -41,11 +41,11 @@ export function TenantStats({ activeTenants, avgTenancyMonths, topTenant, curren
         {/* Top payer */}
         {topTenant ? (
           <TouchableOpacity style={styles.cell} onPress={() => router.push(`/tenant/${topTenant.id}` as any)}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarTxt}>{topTenant.name[0]}</Text>
+            <View style={[styles.avatar, { backgroundColor: colors.accentGold }]}>
+              <Text style={[styles.avatarTxt, { color: colors.primary }]}>{topTenant.name[0]}</Text>
             </View>
             <Text style={[styles.topName, { color: colors.text }]} numberOfLines={1}>{topTenant.name}</Text>
-            <Text style={[styles.topAmt, { color: '#27AE60' }]}>{fmt(topTenant.totalPaid)}</Text>
+            <Text style={[styles.topAmt, { color: colors.success }]}>{fmt(topTenant.totalPaid)}</Text>
             <Text style={[styles.lbl, { color: colors.textMuted }]}>{currency}</Text>
           </TouchableOpacity>
         ) : (
@@ -68,14 +68,13 @@ const styles = StyleSheet.create({
   strip: { flexDirection: 'row', alignItems: 'center' },
   cell:  { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
   val:   { fontSize: 22, fontWeight: Theme.fontWeight.bold },
-  lbl:   { fontSize: 10, textAlign: 'center', color: '#9CA3AF', lineHeight: 14 },
+  lbl:   { fontSize: 10, textAlign: 'center', lineHeight: 14 },
   vDiv:  { width: 1, height: 44, marginHorizontal: 4 },
   avatar: {
     width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#C3AF76',
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarTxt: { color: '#021C36', fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
+  avatarTxt: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
   topName:   { fontSize: 11, fontWeight: Theme.fontWeight.semibold, maxWidth: 70, textAlign: 'center' },
   topAmt:    { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
 });

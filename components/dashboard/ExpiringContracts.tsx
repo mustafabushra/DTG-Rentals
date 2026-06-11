@@ -18,10 +18,10 @@ interface Props {
   contracts: ExpiringContract[];
 }
 
-function urgency(days: number) {
-  if (days <= 7)  return { color: '#E74C3C', bg: '#FFF5F5', label: `${days} أيام` };
-  if (days <= 14) return { color: '#F39C12', bg: '#FFFBF0', label: `${days} يوم` };
-  return               { color: '#27AE60', bg: '#F0FFF4', label: `${days} يوم` };
+function urgency(days: number, colors: any) {
+  if (days <= 7)  return { color: colors.danger,  bg: colors.dangerSubtle,  label: `${days} أيام` };
+  if (days <= 14) return { color: colors.warning, bg: colors.warningSubtle, label: `${days} يوم` };
+  return               { color: colors.success, bg: colors.successSubtle, label: `${days} يوم` };
 }
 
 export function ExpiringContracts({ contracts }: Props) {
@@ -35,20 +35,20 @@ export function ExpiringContracts({ contracts }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <View style={[styles.countBadge, { backgroundColor: '#FDEDEC' }]}>
-            <Text style={[styles.countTxt, { color: '#E74C3C' }]}>{contracts.length}</Text>
+          <View style={[styles.countBadge, { backgroundColor: colors.dangerSubtle }]}>
+            <Text style={[styles.countTxt, { color: colors.danger }]}>{contracts.length}</Text>
           </View>
-          <Ionicons name="time-outline" size={16} color="#F39C12" />
+          <Ionicons name="time-outline" size={16} color={colors.warning} />
           <Text style={[styles.title, { color: colors.text }]}>العقود المنتهية خلال 30 يوم</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/(tabs)/contracts' as any)}>
-          <Text style={[styles.seeAll, { color: '#C3AF76' }]}>عرض الكل</Text>
+          <Text style={[styles.seeAll, { color: colors.accentGold }]}>عرض الكل</Text>
         </TouchableOpacity>
       </View>
 
       {/* List */}
       {shown.map((c, idx) => {
-        const u = urgency(c.daysLeft);
+        const u = urgency(c.daysLeft, colors);
         const isLast = idx === shown.length - 1;
         return (
           <TouchableOpacity

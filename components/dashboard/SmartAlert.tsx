@@ -20,9 +20,9 @@ interface Props {
 }
 
 const CONFIG = {
-  danger:  { bg: '#FFF5F5', border: '#E74C3C', icon: 'alert-circle-outline'  as const, iconColor: '#E74C3C' },
-  warning: { bg: '#FFFBF0', border: '#F39C12', icon: 'information-circle-outline' as const, iconColor: '#F39C12' },
-  success: { bg: '#F0FFF4', border: '#27AE60', icon: 'checkmark-circle-outline' as const, iconColor: '#27AE60' },
+  danger:  { icon: 'alert-circle-outline'  as const },
+  warning: { icon: 'information-circle-outline' as const },
+  success: { icon: 'checkmark-circle-outline' as const },
 };
 
 export function SmartAlert({ alert, onDismiss }: Props) {
@@ -30,6 +30,17 @@ export function SmartAlert({ alert, onDismiss }: Props) {
   const translateY = useRef(new Animated.Value(-20)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
   const cfg = CONFIG[alert.type];
+
+  const alertBg: Record<string, string> = {
+    danger:  colors.dangerSubtle,
+    warning: colors.warningSubtle,
+    success: colors.successSubtle,
+  };
+  const alertBorder: Record<string, string> = {
+    danger:  colors.danger,
+    warning: colors.warning,
+    success: colors.success,
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -55,7 +66,7 @@ export function SmartAlert({ alert, onDismiss }: Props) {
   return (
     <Animated.View style={[
       styles.card,
-      { backgroundColor: cfg.bg, borderRightColor: cfg.border, transform: [{ translateY }], opacity },
+      { backgroundColor: alertBg[alert.type], borderRightColor: alertBorder[alert.type], transform: [{ translateY }], opacity },
     ]}>
       <View style={styles.top}>
         <TouchableOpacity onPress={handleDismiss} style={styles.dismissBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -63,12 +74,12 @@ export function SmartAlert({ alert, onDismiss }: Props) {
         </TouchableOpacity>
         <View style={styles.msgRow}>
           <Text style={[styles.msg, { color: colors.text }]}>{alert.message}</Text>
-          <Ionicons name={cfg.icon} size={20} color={cfg.iconColor} />
+          <Ionicons name={cfg.icon} size={20} color={alertBorder[alert.type]} />
         </View>
       </View>
       {alert.actionLabel && (
-        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#021C36' }]} onPress={handleAction}>
-          <Text style={styles.actionText}>{alert.actionLabel}</Text>
+        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={handleAction}>
+          <Text style={[styles.actionText, { color: colors.textInverse }]}>{alert.actionLabel}</Text>
         </TouchableOpacity>
       )}
     </Animated.View>
@@ -151,5 +162,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  actionText: { color: '#FFF', fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
+  actionText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
 });

@@ -25,20 +25,21 @@ import { RevenueChart } from '../../components/dashboard/RevenueChart';
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                        'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
-const TL_CFG = {
-  payment:         { color: '#2E86C1', icon: 'cash-outline',            label: 'دفعة',         bg: '#EBF5FB' },
-  contract_expiry: { color: '#E74C3C', icon: 'document-text-outline',   label: 'انتهاء عقد',   bg: '#FDEDEC' },
-  file_expiry:     { color: '#8E44AD', icon: 'document-attach-outline', label: 'انتهاء مرفق',  bg: '#F5EEF8' },
-  maintenance:     { color: '#F39C12', icon: 'construct-outline',       label: 'صيانة',        bg: '#FEF9E7' },
-  manual:          { color: '#27AE60', icon: 'calendar-outline',        label: 'حدث',          bg: '#E8F8F0' },
-} as const;
+function getTlCfg(colors: any) {
+  return {
+    payment:         { color: colors.secondary ?? '#2E86C1', icon: 'cash-outline',            label: 'دفعة',         bg: colors.primarySubtle },
+    contract_expiry: { color: colors.danger,                 icon: 'document-text-outline',   label: 'انتهاء عقد',   bg: colors.dangerSubtle },
+    file_expiry:     { color: colors.purple,                 icon: 'document-attach-outline', label: 'انتهاء مرفق',  bg: colors.purpleSubtle },
+    maintenance:     { color: colors.warning,                icon: 'construct-outline',       label: 'صيانة',        bg: colors.warningSubtle },
+    manual:          { color: colors.success,                icon: 'calendar-outline',        label: 'حدث',          bg: colors.successSubtle },
+  };
+}
 
-function tlUrgencyColor(days: number): string {
-  if (days < 0)  return '#E74C3C';
-  if (days <= 3) return '#E74C3C';
-  if (days <= 7) return '#F39C12';
-  if (days <= 14) return '#8E44AD';
-  return '#2E86C1';
+function tlUrgencyColor(days: number, colors: any): string {
+  if (days <= 3)  return colors.danger;
+  if (days <= 7)  return colors.warning;
+  if (days <= 14) return colors.purple;
+  return colors.secondary ?? '#2E86C1';
 }
 
 function tlUrgencyLabel(days: number): string {
@@ -475,10 +476,10 @@ export default function DashboardScreen() {
           </View>
 
           <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color="#FFFFFF" />
+            <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color={colors.textInverse} />
             {kpis.overduePayments > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>{kpis.overduePayments}</Text>
+              <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
+                <Text style={[styles.notifBadgeText, { color: colors.textInverse }]}>{kpis.overduePayments}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -502,7 +503,7 @@ export default function DashboardScreen() {
             <View style={[styles.kpiRow, { gap: 16 }]}>
               <KPICard label="إجمالي العقارات" value={kpis.totalProperties} icon="business-outline" color={colors.primary} />
               <KPICard label="الوحدات المؤجرة" value={kpis.rentedUnits} icon="home" color={colors.success} trend={rentedTrend ? 'up' : undefined} trendValue={rentedTrend} />
-              <KPICard label="الإيرادات الشهرية" value={formatCurrency(kpis.monthlyRevenue)} icon="cash-outline" color="#8E44AD" />
+              <KPICard label="الإيرادات الشهرية" value={formatCurrency(kpis.monthlyRevenue)} icon="cash-outline" color={colors.purple} />
               <KPICard label="طلبات مفتوحة" value={kpis.openMaintenanceRequests} icon="construct-outline" color={colors.warning} />
             </View>
           ) : (
@@ -512,7 +513,7 @@ export default function DashboardScreen() {
                 <KPICard label="الوحدات المؤجرة" value={kpis.rentedUnits} icon="home" color={colors.success} trend={rentedTrend ? 'up' : undefined} trendValue={rentedTrend} />
               </View>
               <View style={[styles.kpiRow, { gap: isSmallPhone ? 8 : 12 }]}>
-                <KPICard label="الإيرادات الشهرية" value={formatCurrency(kpis.monthlyRevenue)} icon="cash-outline" color="#8E44AD" />
+                <KPICard label="الإيرادات الشهرية" value={formatCurrency(kpis.monthlyRevenue)} icon="cash-outline" color={colors.purple} />
                 <KPICard label="طلبات مفتوحة" value={kpis.openMaintenanceRequests} icon="construct-outline" color={colors.warning} />
               </View>
             </>
@@ -724,9 +725,10 @@ export default function DashboardScreen() {
 
             <View style={[styles.tlCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {upcomingTimeline.map((ev, idx) => {
-                const cfg  = TL_CFG[ev.type] ?? TL_CFG.manual;
+                const tlCfg = getTlCfg(colors);
+                const cfg  = tlCfg[ev.type] ?? tlCfg.manual;
                 const days = daysFromNow(ev.date);
-                const uc   = tlUrgencyColor(days);
+                const uc   = tlUrgencyColor(days, colors);
                 const ul   = tlUrgencyLabel(days);
                 const isLast = idx === upcomingTimeline.length - 1;
 
@@ -767,9 +769,9 @@ export default function DashboardScreen() {
                           <Text style={[styles.tlTypeText, { color: cfg.color }]}>{cfg.label}</Text>
                         </View>
                         {(ev as any).overdue && (
-                          <View style={[styles.tlTypeBadge, { backgroundColor: '#FDEDEC', marginRight: 4 }]}>
-                            <Ionicons name="warning-outline" size={11} color="#E74C3C" />
-                            <Text style={[styles.tlTypeText, { color: '#E74C3C' }]}>متأخرة</Text>
+                          <View style={[styles.tlTypeBadge, { backgroundColor: colors.dangerSubtle, marginRight: 4 }]}>
+                            <Ionicons name="warning-outline" size={11} color={colors.danger} />
+                            <Text style={[styles.tlTypeText, { color: colors.danger }]}>متأخرة</Text>
                           </View>
                         )}
                       </View>
@@ -801,7 +803,7 @@ export default function DashboardScreen() {
             {alerts.overduePayments.map(p => (
               <TouchableOpacity
                 key={p.id}
-                style={[styles.alertCard, { backgroundColor: '#FDEDEC', borderColor: colors.danger }]}
+                style={[styles.alertCard, { backgroundColor: colors.dangerSubtle, borderColor: colors.danger }]}
                 onPress={() => router.push(`/payment/${p.id}`)}
               >
                 <View style={styles.alertContent}>
@@ -816,7 +818,7 @@ export default function DashboardScreen() {
             {alerts.expiringContracts.map(c => (
               <TouchableOpacity
                 key={c.id}
-                style={[styles.alertCard, { backgroundColor: '#FEF9E7', borderColor: colors.warning }]}
+                style={[styles.alertCard, { backgroundColor: colors.warningSubtle, borderColor: colors.warning }]}
                 onPress={() => router.push(`/contract/${c.id}`)}
               >
                 <View style={styles.alertContent}>

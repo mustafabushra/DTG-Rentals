@@ -156,7 +156,7 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
             {/* Right — close (RTL: right = start) */}
             <TouchableOpacity onPress={close} style={styles.headerBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <View style={styles.closeCircle}>
-                <Ionicons name="close" size={18} color="#FFF" />
+                <Ionicons name="close" size={18} color={colors.textInverse} />
               </View>
             </TouchableOpacity>
 
@@ -181,7 +181,7 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
             {/* Left — share */}
             <TouchableOpacity onPress={handleShare} style={styles.headerBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <View style={styles.shareCircle}>
-                <Ionicons name="share-outline" size={18} color="#FFF" />
+                <Ionicons name="share-outline" size={18} color={colors.textInverse} />
               </View>
             </TouchableOpacity>
           </View>
@@ -192,7 +192,7 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
             {/* Loading overlay */}
             {loading && !error && (
               <View style={styles.loaderBox}>
-                <ActivityIndicator size="large" color="#FFF" />
+                <ActivityIndicator size="large" color={colors.textInverse} />
                 <Text style={styles.loaderText}>جارٍ التحميل…</Text>
               </View>
             )}
@@ -210,7 +210,7 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
                   onPress={handleShare}
                 >
                   <Text style={styles.openExtText}>فتح بالتطبيق الافتراضي</Text>
-                  <Ionicons name="open-outline" size={16} color="#FFF" />
+                  <Ionicons name="open-outline" size={16} color={colors.textInverse} />
                 </TouchableOpacity>
               </View>
             )}
@@ -268,7 +268,7 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
                   onPress={handleShare}
                 >
                   <Text style={styles.openExtText}>فتح بالتطبيق الافتراضي</Text>
-                  <Ionicons name="open-outline" size={16} color="#FFF" />
+                  <Ionicons name="open-outline" size={16} color={colors.textInverse} />
                 </TouchableOpacity>
               </View>
             )}
@@ -288,9 +288,9 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
                 <Text style={[
                   styles.footerText,
                   {
-                    color: attachment.expiryStatus === 'expired'       ? '#E74C3C'
-                         : attachment.expiryStatus === 'expiring_soon' ? '#F5A623'
-                         : '#2ECC71',
+                    color: attachment.expiryStatus === 'expired'       ? colors.danger
+                         : attachment.expiryStatus === 'expiring_soon' ? colors.warning
+                         : colors.success,
                   },
                 ]}>
                   {attachment.expiryStatus === 'expired'       ? '⚠ منتهية'
