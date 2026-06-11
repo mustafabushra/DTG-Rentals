@@ -43,6 +43,17 @@ jobs:
           path: dist
           retention-days: 1
 
+  deploy-firestore-rules:
+    name: Deploy Firestore Rules
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Deploy Firestore Rules
+        run: firebase deploy --only firestore:rules --project dtg-rentals --token "${{ secrets.FIREBASE_TOKEN }}"
 
   deploy-staging:
     name: Deploy to Staging
