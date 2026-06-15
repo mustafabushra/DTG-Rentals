@@ -30,6 +30,7 @@ const MORE_ITEMS: NavItem[] = [
   { icon: 'cash-outline',          label: 'الدفعات',          route: '/payments',            moduleKey: 'payments' },
   { icon: 'receipt-outline',       label: 'سجل المدفوعات',    route: '/ledger',              moduleKey: 'ledger' },
   { icon: 'construct-outline',     label: 'الصيانة',          route: '/maintenance',         moduleKey: 'maintenance' },
+  { icon: 'document-outline',      label: 'المرفقات',         route: '/attachments',         moduleKey: null },
   { icon: 'bar-chart-outline',     label: 'التقارير المالية', route: '/financial-reports',   moduleKey: 'reports' },
   { icon: 'calendar-outline',      label: 'التقويم',          route: '/calendar',            moduleKey: 'calendar' },
   { icon: 'list-outline',          label: 'سجل الإجراءات',   route: '/audit-log',           moduleKey: 'auditLog' },
