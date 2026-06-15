@@ -17,6 +17,8 @@ import { ListSkeleton } from '../components/ui/Skeleton';
 import { useDelete } from '../hooks/useDelete';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { FileService } from '../domain/services/FileService';
+import { FileViewer } from '../components/features/FileViewer';
+import type { Attachment } from '../domain/models';
 
 type CategoryFilter = 'all' | string;
 
@@ -26,6 +28,7 @@ export default function AttachmentsScreen() {
   const { attachments, dataLoading, deleteAttachment } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CategoryFilter>('all');
+  const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
   const categories = useMemo(() => {
@@ -93,12 +96,7 @@ export default function AttachmentsScreen() {
               <TouchableOpacity
                 key={att.id}
                 style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => {
-                  if (att.uri) {
-                    // In a real app, we'd use Linking.openURL(att.uri) or a FileViewer
-                    router.push(`/file-viewer?id=${att.id}`);
-                  }
-                }}
+                onPress={() => setSelectedAttachment(att)}
                 activeOpacity={0.85}
               >
                 <View style={[styles.iconBox, { backgroundColor: colors.primary + '15' }]}>
@@ -132,6 +130,11 @@ export default function AttachmentsScreen() {
           })}</ResponsiveGrid>
         )}
       </ScrollView>
+
+      <FileViewer
+        attachment={selectedAttachment}
+        onClose={() => setSelectedAttachment(null)}
+      />
 
       <ConfirmModal
         visible={!!pending}
