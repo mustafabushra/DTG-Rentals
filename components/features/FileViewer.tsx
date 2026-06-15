@@ -29,7 +29,19 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const WebPDFViewer = ({ uri, onLoadEnd, onError }: { uri: string, onLoadEnd: () => void, onError: () => void }) => {
+  return (
+    <View style={styles.fill}>
+      {React.createElement('iframe', {
+        src: uri,
+        style: { width: '100%', height: '100%', border: 'none' },
+        title: 'PDF Viewer',
+        onLoad: onLoadEnd,
+        onError: onError,
+      })}
+    </View>
+  );
+};
 
 const isRemote = (uri: string) =>
   uri.startsWith('http://') || uri.startsWith('https://');
@@ -240,19 +252,27 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
 
             {/* ── PDF ── */}
             {isPdf && !error && (
-              <WebView
-                style={styles.fill}
-                source={{ uri: pdfSource(attachment.uri) }}
-                originWhitelist={['*']}
-                allowFileAccess
-                allowFileAccessFromFileURLs
-                allowUniversalAccessFromFileURLs
-                javaScriptEnabled
-                domStorageEnabled
-                onLoadStart={() => setLoading(true)}
-                onLoadEnd={() => setLoading(false)}
-                onError={() => { setLoading(false); setError(true); }}
-              />
+              Platform.OS === 'web' ? (
+                <WebPDFViewer
+                  uri={pdfSource(attachment.uri)}
+                  onLoadEnd={() => setLoading(false)}
+                  onError={() => { setLoading(false); setError(true); }}
+                />
+              ) : (
+                <WebView
+                  style={styles.fill}
+                  source={{ uri: pdfSource(attachment.uri) }}
+                  originWhitelist={['*']}
+                  allowFileAccess
+                  allowFileAccessFromFileURLs
+                  allowUniversalAccessFromFileURLs
+                  javaScriptEnabled
+                  domStorageEnabled
+                  onLoadStart={() => setLoading(true)}
+                  onLoadEnd={() => setLoading(false)}
+                  onError={() => { setLoading(false); setError(true); }}
+                />
+              )
             )}
 
             {/* ── Unsupported ── */}
