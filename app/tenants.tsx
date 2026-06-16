@@ -22,7 +22,7 @@ type Filter = 'all' | 'active' | 'former';
 export default function TenantsScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { tenants, contracts, payments, dataLoading } = useApp();
+  const { tenants, contracts, payments, dataLoading, secondaryLoading } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
@@ -68,7 +68,7 @@ export default function TenantsScreen() {
     { label: 'سابق', value: 'former' },
   ];
 
-  if (dataLoading) return <ListSkeleton count={5} />;
+  if (dataLoading || secondaryLoading) return <ListSkeleton count={5} />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

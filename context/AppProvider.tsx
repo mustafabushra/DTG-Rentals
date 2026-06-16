@@ -40,6 +40,7 @@ interface AppState {
   attachments: Attachment[];
   isAuthenticated: boolean;
   dataLoading: boolean;
+  secondaryLoading: boolean;
   refreshData: () => void;
   currentUser: { id: string; name: string; email: string; phone: string; role: string; ownerId?: string };
   theme: ThemeMode;
@@ -135,6 +136,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [unitPhotos,     setUnitPhotos]     = useState<Record<string, PropertyPhoto[]>>({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [dataLoading, setDataLoading]     = useState(true);
+  const [secondaryLoading, setSecondaryLoading] = useState(true);
   const [userId, setUserId]               = useState<string | null>(null);
   // Tracks whether initial hydration is complete — prevents overwriting cache with empty state
   const hydrated = useRef(false);
@@ -375,10 +377,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (gen !== loadGenRef.current) return; // stale — skip
         try {
           const today = new Date().toISOString().split('T')[0];
-          const [tenantsData, paymentsData, maintenanceData] = await Promise.all([
+          const [tenantsData, paymentsData, maintenanceData, auditData, calendarData, attachmentsData, allPhotosData] = await Promise.all([
             getAll(ORG_ID, 'tenants'),
             getAll(ORG_ID, 'payments'),
             getAll(ORG_ID, 'maintenance'),
+            getAll(ORG_ID, 'auditLogs'),
+            getAll(ORG_ID, 'calendarEvents'),
+            getAll(ORG_ID, 'attachments'),
+            getAll(ORG_ID, 'photos'),
           ]);
           if (gen !== loadGenRef.current) return;
           const resolvedTenants     = tenantsData     as Tenant[];
@@ -417,15 +423,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }).catch(() => {});
 
-          await new Promise(r => setTimeout(r, 200));
-          if (gen !== loadGenRef.current) return;
-          const [auditData, calendarData, attachmentsData, allPhotosData] = await Promise.all([
-            getAll(ORG_ID, 'auditLogs'),
-            getAll(ORG_ID, 'calendarEvents'),
-            getAll(ORG_ID, 'attachments'),
-            getAll(ORG_ID, 'photos'),
-          ]);
-          if (gen !== loadGenRef.current) return;
           setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
           setCalendarEvents(calendarData as CalendarEvent[]);
           setAttachments(FileService.syncExpiryStatuses(attachmentsData as Attachment[]));
@@ -450,6 +447,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setUnitPhotos(unitPhotosMap);
         } catch (e) {
           console.error('Secondary load error:', e);
+        } finally {
+          if (gen === loadGenRef.current) {
+            setSecondaryLoading(false);
+            console.log('[UI_READY] secondaryLoading cleared');
+          }
         }
       }, 100);
     });
@@ -1693,7 +1695,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       payments:    visiblePayments,
       maintenance: visibleMaintenance,
       auditLogs:   visibleAuditLogs,
-      calendarEvents, attachments: visibleAttachments, isAuthenticated, dataLoading,
+      calendarEvents, attachments: visibleAttachments, isAuthenticated, dataLoading, secondaryLoading,
       currentUser, kpis,
       canWrite, canDelete, isAdmin, isOwner, resolvedScheme, externalOwnedUnits, financialUnitIds,
       theme, notificationPrefs, propertyPhotos, unitPhotos,

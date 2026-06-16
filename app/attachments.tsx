@@ -18,6 +18,7 @@ import { useDelete } from '../hooks/useDelete';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { FileService } from '../domain/services/FileService';
 import { FileViewer } from '../components/features/FileViewer';
+import { AddAttachmentModal } from '../components/features/AddAttachmentModal';
 import type { Attachment } from '../domain/models';
 
 type CategoryFilter = 'all' | string;
@@ -25,10 +26,11 @@ type CategoryFilter = 'all' | string;
 export default function AttachmentsScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { attachments, dataLoading, deleteAttachment } = useApp();
+  const { attachments, dataLoading, secondaryLoading, deleteAttachment } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CategoryFilter>('all');
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
   const categories = useMemo(() => {
@@ -68,7 +70,7 @@ export default function AttachmentsScreen() {
     });
   }, [attachments, search, filter]);
 
-  if (dataLoading) return <ListSkeleton count={5} />;
+  if (dataLoading || secondaryLoading) return <ListSkeleton count={5} />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -131,9 +133,24 @@ export default function AttachmentsScreen() {
         )}
       </ScrollView>
 
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => setIsAdding(true)}
+      >
+        <Ionicons name="add" size={30} color="#fff" />
+      </TouchableOpacity>
+
       <FileViewer
         attachment={selectedAttachment}
         onClose={() => setSelectedAttachment(null)}
+      />
+
+      <AddAttachmentModal
+        visible={isAdding}
+        onClose={() => setIsAdding(false)}
+        onSave={() => {
+          // Refreshing the list is handled by useApp state updates
+        }}
       />
 
       <ConfirmModal
@@ -171,4 +188,19 @@ const styles = StyleSheet.create({
   sub: { fontSize: Theme.fontSize.sm, textAlign: 'right' },
   separator: { fontSize: Theme.fontSize.sm, textAlign: 'right' },
   cardTrailing: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    left: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
 });

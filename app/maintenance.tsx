@@ -22,7 +22,7 @@ type PriorityFilter = 'all' | MaintenancePriority;
 
 export default function MaintenanceScreen() {
   const { colors } = useAppTheme();
-  const { maintenance, properties, units, dataLoading } = useApp();
+  const { maintenance, properties, units, dataLoading, secondaryLoading } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
@@ -43,7 +43,7 @@ export default function MaintenanceScreen() {
     completed: maintenance.filter(m => m.status === 'completed').length,
   }), [maintenance]);
 
-  if (dataLoading) return <ListSkeleton count={5} />;
+  if (dataLoading || secondaryLoading) return <ListSkeleton count={5} />;
 
   const statusOptions = MAINTENANCE_FILTERS;
 

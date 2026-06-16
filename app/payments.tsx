@@ -23,7 +23,7 @@ interface CountryStat { code: string; paid: number; pending: number; overdue: nu
 
 export default function PaymentsScreen() {
   const { colors } = useAppTheme();
-  const { payments, contracts, tenants, units, properties, deletePayment, confirmPayment, dataLoading } = useApp();
+  const { payments, contracts, tenants, units, properties, deletePayment, confirmPayment, dataLoading, secondaryLoading } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [filterCountry, setFilterCountry] = useState('');
@@ -92,7 +92,7 @@ export default function PaymentsScreen() {
     };
   }, [payments, contracts, units, properties, filterCountry]);
 
-  if (dataLoading) return <ListSkeleton count={5} />;
+  if (dataLoading || secondaryLoading) return <ListSkeleton count={5} />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

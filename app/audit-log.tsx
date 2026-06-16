@@ -21,7 +21,7 @@ const actionConfig: Record<AuditAction, { label: string; color: string; bg: stri
 
 export default function AuditLogScreen() {
   const { colors } = useAppTheme();
-  const { auditLogs } = useApp();
+  const { auditLogs, dataLoading, secondaryLoading } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -52,6 +52,8 @@ export default function AuditLogScreen() {
     if (dateStr === yesterday) return 'الأمس';
     return new Date(dateStr).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
+
+  if (dataLoading || secondaryLoading) return <ListSkeleton count={5} />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
