@@ -18,21 +18,41 @@ export async function toPersistentUri(uri: string): Promise<string> {
 
   try {
     if (Platform.OS === 'web') {
-      const blob      = await fetchBlob(uri);
-      const blobUrl   = URL.createObjectURL(blob);
-      const dataUri   = await compressViaCanvas(blobUrl);
-      URL.revokeObjectURL(blobUrl);
-      return dataUri;
+      // 1. Fetch the data
+      const blob = await fetchBlob(uri);
+
+      // 2. If it's an image, try to compress it to stay under 1MB limit
+      if (blob.type.startsWith('image/')) {
+        try {
+          const blobUrl = URL.createObjectURL(blob);
+          const dataUri = await compressViaCanvas(blobUrl);
+          URL.revokeObjectURL(blobUrl);
+          return dataUri;
+        } catch (err) {
+          console.warn('[imageUtils] Image compression failed, using raw base64:', err);
+        }
+      }
+
+      // 3. Fallback for PDFs or failed image compression: raw Base64
+      return await blobToDataUri(blob);
     } else {
-      // Native: Fetch then convert to base64
-      // NOTE: We don't have canvas on native, so we return raw base64 or could use expo-image-manipulator if available.
-      // For now, raw base64 via fetch + reader is the fallback.
+      // Native: Fetch then convert to base64 fallback
       return await rawToDataUri(uri);
     }
   } catch (e) {
-    console.warn('[imageUtils] conversion failed:', e);
-    return uri;
+    console.error('[imageUtils] conversion failed entirely:', e);
+    return uri; // Last resort fallback
   }
+}
+
+/** Internal: Convert Blob to Data URI (Base64) */
+function blobToDataUri(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror   = () => reject(new Error('FileReader failed'));
+    reader.readAsDataURL(blob);
+  });
 }
 
 /**
