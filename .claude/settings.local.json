@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(Stop-Process -Id 33272 -Force; Start-Sleep 2; Set-Location \"C:\\\\Users\\\\DTG\\\\REPO\\\\misbar-web\"; npm run dev -- --port 3002)"
-    ]
-  }
-}
