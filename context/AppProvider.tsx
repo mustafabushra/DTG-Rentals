@@ -110,6 +110,7 @@ interface AppContextType extends AppState {
     rentedByCity?: Record<string, number>;
     rentedUnitsByCity?: Record<string, number>;
     totalUnitsByCity?: Record<string, number>;
+    cityDisplayNames?: Record<string, string>;
   };
   canWrite: boolean;
   canDelete: boolean;
@@ -697,18 +698,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const collectionRate = totalDue > 0 ? Math.round((paidTotal / totalDue) * 100) : 0;
 
     // ── Rented properties & units by city ────────────────────────────────
-    // A property is "rented" if it has at least one active contract on any of its units
+    // دالة لتوحيد أسماء المدن (مكة المكرمة = مكة المكرمه، الشارقة = الشارقہ)
+    const normCity = (raw: string): string => {
+      let s = raw.trim();
+      // توحيد التاء المربوطة (ة) والهاء (ه) في نهاية الكلمة
+      s = s.replace(/ة$/g, 'ه');
+      // توحيد الألف بأشكالها (أ, إ, آ) إلى (ا)
+      s = s.replace(/[أإآ]/g, 'ا');
+      // إزالة الـ "ال" التعريفية للتوحيد (اختياري - قد يكون دقيقاً جداً)
+      // s = s.replace(/^ال/g, '');
+      // إزالة المسافات المتعددة
+      s = s.replace(/\s+/g, ' ');
+      return s;
+    };
+
     const rentedPropIds = new Set<string>();
     const rentedUnitIdsByCity = new Map<string, number>();
     const rentedPropIdsByCity = new Map<string, Set<string>>();
     const totalUnitsByCity = new Map<string, number>();
+    // تخزين الاسم الأصلي (الأكثر شيوعاً) لكل مدينة موحدة
+    const originalCityNames = new Map<string, string>();
 
     // First pass: count ALL units per city (for totalUnitsByCity)
     visibleUnits.forEach(u => {
       const prop = visibleProperties.find(p => p.id === u.propertyId);
       if (!prop) return;
-      const city = (prop as any).city || prop.location || 'أخرى';
-      totalUnitsByCity.set(city, (totalUnitsByCity.get(city) ?? 0) + 1);
+      const rawCity = (prop as any).city || prop.location || 'أخرى';
+      const normalized = normCity(rawCity);
+      totalUnitsByCity.set(normalized, (totalUnitsByCity.get(normalized) ?? 0) + 1);
+      // احتفظ بأول اسم أصلي نصادفه
+      if (!originalCityNames.has(normalized)) originalCityNames.set(normalized, rawCity);
     });
 
     // Second pass: count rented units per city from active contracts
@@ -717,22 +736,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!unit) return;
       const prop = visibleProperties.find(p => p.id === unit.propertyId);
       if (!prop) return;
-      const city = (prop as any).city || prop.location || 'أخرى';
+      const rawCity = (prop as any).city || prop.location || 'أخرى';
+      const normalized = normCity(rawCity);
 
       // Track units
-      rentedUnitIdsByCity.set(city, (rentedUnitIdsByCity.get(city) ?? 0) + 1);
+      rentedUnitIdsByCity.set(normalized, (rentedUnitIdsByCity.get(normalized) ?? 0) + 1);
 
       // Track unique properties
-      if (!rentedPropIdsByCity.has(city)) {
-        rentedPropIdsByCity.set(city, new Set());
+      if (!rentedPropIdsByCity.has(normalized)) {
+        rentedPropIdsByCity.set(normalized, new Set());
       }
-      rentedPropIdsByCity.get(city)!.add(prop.id);
+      rentedPropIdsByCity.get(normalized)!.add(prop.id);
       rentedPropIds.add(prop.id);
+      // احتفظ بأول اسم أصلي نصادفه
+      if (!originalCityNames.has(normalized)) originalCityNames.set(normalized, rawCity);
     });
+
+    // استخدم الاسم الأصلي الأكثر شيوعاً للعرض بدلاً من الاسم المُطبع
+    const getDisplayName = (normalized: string): string => {
+      return originalCityNames.get(normalized) ?? normalized;
+    };
 
     const rentedByCity: Record<string, number> = {};
     const rentedUnitsByCity: Record<string, number> = {};
     const totalUnitsByCityObj: Record<string, number> = {};
+    const cityDisplayNames: Record<string, string> = {};
     rentedPropIdsByCity.forEach((propSet, city) => {
       rentedByCity[city] = propSet.size;
     });
@@ -741,6 +769,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     totalUnitsByCity.forEach((count, city) => {
       totalUnitsByCityObj[city] = count;
+    });
+    originalCityNames.forEach((orig, norm) => {
+      cityDisplayNames[norm] = orig;
     });
 
     return {
@@ -756,6 +787,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       rentedByCity,
       rentedUnitsByCity,
       totalUnitsByCity: totalUnitsByCityObj,
+      cityDisplayNames,
     };
   }, [visibleUnits, visibleContracts, visiblePayments, visibleMaintenance, visibleProperties]);
 

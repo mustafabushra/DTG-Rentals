@@ -50,11 +50,18 @@ export default function FilterPropertiesScreen() {
   ];
 
   const handleApply = () => {
-    router.back();
+    // العودة إلى صفحة العقارات مع باراميترات الفلتر
+    const qs = [
+      selectedCity ? `city=${encodeURIComponent(selectedCity)}` : '',
+      selectedTypes.length > 0 ? `types=${encodeURIComponent(selectedTypes.join(','))}` : '',
+      status !== 'all' ? `status=${status}` : '',
+    ].filter(Boolean).join('&');
+    router.replace(`/(tabs)/properties${qs ? `?${qs}` : ''}` as any);
   };
 
   const handleReset = () => {
     setSelectedTypes([]);
+    setSelectedCity('');
     setStatus('all');
     setSort('newest');
   };

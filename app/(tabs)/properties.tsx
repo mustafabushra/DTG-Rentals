@@ -4,7 +4,7 @@ import { useScreenSize } from '../../hooks/useScreenSize';
 import { useSidebar } from '../../context/SidebarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { router, useGlobalSearchParams } from 'expo-router';
 import { Theme } from '../../constants/Theme';
 import { useApp } from '../../context/AppProvider';
 import { PropertyCard } from '../../components/ui/PropertyCard';
@@ -28,6 +28,11 @@ export default function PropertiesScreen() {
   const { isSmallPhone, hPad } = useScreenSize();
 
   useEffect(() => { trackScreen('Properties'); }, []);
+  const searchParams = useGlobalSearchParams<{ city?: string; types?: string; status?: string }>();
+  const filterCity = searchParams.city ?? '';
+  const filterTypes = searchParams.types ? searchParams.types.split(',') : [];
+  const filterStatus = searchParams.status ?? '';
+
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
@@ -38,9 +43,11 @@ export default function PropertiesScreen() {
     return properties.filter(p => {
       const matchSearch = !search || (p.name ?? '').includes(search) || (p.location ?? '').includes(search);
       const matchFilter = activeFilter === 'all' || p.type === activeFilter;
-      return matchSearch && matchFilter;
+      const matchCity = !filterCity || (p as any).city === filterCity || p.location === filterCity;
+      const matchType = filterTypes.length === 0 || filterTypes.includes(p.type);
+      return matchSearch && matchFilter && matchCity && matchType;
     });
-  }, [properties, search, activeFilter]);
+  }, [properties, search, activeFilter, filterCity, filterTypes]);
 
   const getUnitStats = (p: typeof properties[0]) => {
     const propUnits = units.filter(u => u.propertyId === p.id);
