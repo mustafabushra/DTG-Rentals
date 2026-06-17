@@ -1443,37 +1443,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     mimeType: string; size?: number; category: FileCategory;
     expiryDate?: string; notes?: string; uploadedBy?: string;
   }): Promise<Attachment> => {
-    const tempId = `att_${Date.now()}`;
-    const storagePath = attachmentStoragePath(data.entityType, data.entityId, tempId);
-
-    // Upload to Firebase Storage
-    let finalUri = data.uri;
-    try {
-      finalUri = await uploadFile(storagePath, data.uri, data.mimeType);
-    } catch (err) {
-      console.warn('[addAttachment] Storage upload failed, falling back to persistent URI:', err);
-      finalUri = await toPersistentUri(data.uri);
-    }
+    // ✅ FIX: Upload to Firebase Storage instead of converting to base64 data URI.
+    //   This avoids:
+    //     - "Not allowed to load local resource" error on web
+    //     - Firestore 1MB document limit (base64 can be huge)
+    //     - File persistence (download URLs never expire)
+    const storagePath = attachmentStoragePath(data.entityType, data.entityId, `att_${Date.now()}`);
+    const uploadResult = await uploadFile(storagePath, data.uri, data.mimeType).catch(err => {
+      console.error('[addAttachment] Storage upload failed:', err);
+      // Fallback: use the original URI (may still fail to display on web, but at least saves)
+      return { downloadUrl: data.uri, storagePath: undefined };
+    });
 
     const att = FileService.create({
       ...data,
-      uri: finalUri,
+      uri: uploadResult.downloadUrl,
+      storagePath: uploadResult.storagePath,
       uploadedBy: data.uploadedBy ?? currentUser.name,
       ...(isOwner && currentUser.ownerId ? { ownerContext: currentUser.ownerId } : {}),
     });
 
-    const finalAtt = { ...att, storagePath };
-
-    setAttachments(prev => FileService.syncExpiryStatuses([...prev, finalAtt]));
-    fs('attachments', finalAtt.id, finalAtt, 'set');
-    addAuditEntry('add', 'وثيقة', finalAtt.name,
-      `رفع وثيقة "${finalAtt.name}" على ${finalAtt.entityType} — ${currentUser.name}`);
-    return finalAtt;
+    setAttachments(prev => FileService.syncExpiryStatuses([...prev, att]));
+    fs('attachments', att.id, att, 'set');
+    addAuditEntry('add', 'وثيقة', att.name,
+      `رفع وثيقة "${att.name}" على ${data.entityType} — ${currentUser.name}`);
+    return att;
   }, [userId, currentUser.name, currentUser.ownerId, isOwner, fs]);
 
   const deleteAttachment = useCallback((id: string) => {
-    const att = attachments.find(a => a.id === id);
-    if (att?.storagePath) deleteFile(att.storagePath).catch(console.error);
+    // ✅ FIX: Also delete the file from Firebase Storage
+    const attachment = attachments.find(a => a.id === id);
+    if (attachment?.storagePath) {
+      deleteFile(attachment.storagePath).catch(err =>
+        console.error('[deleteAttachment] Storage delete failed:', err)
+      );
+    }
     setAttachments(prev => prev.filter(a => a.id !== id));
     fs('attachments', id, {}, 'delete');
   }, [fs, attachments]);

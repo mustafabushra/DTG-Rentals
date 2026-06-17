@@ -3,26 +3,38 @@ import { storage } from './firebase';
 import { toBlob } from './imageUtils';
 
 /**
- * Upload any file (image or document) to Firebase Storage and return the download URL.
+ * Upload result containing both the download URL and the storage path.
+ */
+export interface UploadResult {
+  downloadUrl: string;
+  storagePath: string;
+}
+
+/**
+ * Upload any file (image or document) to Firebase Storage and return the download URL + storage path.
+ *
+ * ✅ FIX: Uses expo-file-system on native to read file:// URIs (avoids "Not allowed to load local resource").
+ *   Returns both the permanent download URL and the storage path for cleanup on delete.
  */
 export async function uploadFile(
   path: string,
   uri: string,
   mimeType: string = 'application/octet-stream'
-): Promise<string> {
+): Promise<UploadResult> {
   const blob = await toBlob(uri);
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, blob, { contentType: mimeType || blob.type });
-  return getDownloadURL(storageRef);
+  const downloadUrl = await getDownloadURL(storageRef);
+  return { downloadUrl, storagePath: path };
 }
 
 /**
- * Upload an image URI to Firebase Storage and return the permanent download URL.
+ * Upload an image URI to Firebase Storage and return the permanent download URL + storage path.
  */
 export async function uploadPhoto(
   path: string,
   uri:  string,
-): Promise<string> {
+): Promise<UploadResult> {
   return uploadFile(path, uri, 'image/jpeg');
 }
 
@@ -56,4 +68,3 @@ export function attachmentStoragePath(
 ): string {
   return `orgs/main/attachments/${entityType}/${entityId}/${attachmentId}`;
 }
-

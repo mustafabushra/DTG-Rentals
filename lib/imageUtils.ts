@@ -8,9 +8,8 @@ const JPEG_QUALITY  = 0.72;  // 0–1 JPEG quality
 /**
  * Convert a local image URI to a compressed, persistent data: URI.
  *
- * On web  : blob: URLs from expo-image-picker are temporary and revoked after use.
- * Native  : file: URIs are local and not accessible across devices.
- * Solution: Convert to compressed JPEG data: URI (~30–150 KB) for Firestore storage.
+ * Now we NO LONGER use this for attachments — instead we upload to Firebase Storage.
+ * This is kept for property/unit photos which are small enough for Firestore.
  */
 export async function toPersistentUri(uri: string): Promise<string> {
   if (!uri) return uri;
@@ -57,11 +56,60 @@ function blobToDataUri(blob: Blob): Promise<string> {
 
 /**
  * Convert any URI (blob:, data:, file:) to a Blob for Firebase Storage upload.
+ *
+ * ✅ FIX: On native, `file://` URIs cannot be fetched directly (Not allowed to load local resource).
+ *   Instead we use expo-file-system to read the file as base64 then convert to Blob.
+ *   On web, regular fetch() works for blob:/data: URIs.
  */
 export async function toBlob(uri: string): Promise<Blob> {
+  if (Platform.OS !== 'web') {
+    // Native path: use expo-file-system to read the file
+    const normalizedUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+    try {
+      // Use the legacy API from expo-file-system/legacy
+      const { readAsStringAsync } = await import('expo-file-system/legacy');
+      const base64 = await readAsStringAsync(normalizedUri, {
+        encoding: 'base64' as any,
+      });
+      // Determine MIME type from extension (default to octet-stream)
+      const ext = uri.split('.').pop()?.toLowerCase() ?? '';
+      const mimeMap: Record<string, string> = {
+        jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+        pdf: 'application/pdf', gif: 'image/gif', webp: 'image/webp',
+        doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      };
+      const mimeType = mimeMap[ext] || 'application/octet-stream';
+      return base64ToBlob(base64, mimeType);
+    } catch (err) {
+      console.error('[toBlob: native] Failed, falling back to fetch:', err);
+      // Fallback to fetch (may fail on some devices)
+      const res = await fetch(uri);
+      if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
+      return res.blob();
+    }
+  }
+
+  // Web: blob:/data: URIs work fine with fetch
   const res = await fetch(uri);
-  if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
   return res.blob();
+}
+
+/** Convert a base64 string to a Blob */
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  // Remove data: URL prefix if present
+  const clean = base64.includes(',') ? base64.split(',')[1] : base64;
+  const byteChars = atob(clean);
+  const byteArrays: Uint8Array[] = [];
+  for (let offset = 0; offset < byteChars.length; offset += 512) {
+    const slice = byteChars.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    byteArrays.push(new Uint8Array(byteNumbers));
+  }
+  return new Blob(byteArrays, { type: mimeType });
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -109,4 +157,3 @@ async function rawToDataUri(uri: string): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
-

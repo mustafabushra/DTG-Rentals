@@ -157,7 +157,8 @@ export interface Attachment {
   name: string;
   type: 'image' | 'pdf' | 'doc' | 'other';
   mimeType: string;
-  uri: string;             // local or remote URI
+  uri: string;             // Firebase Storage download URL (previously data: URI or local file: URI)
+  storagePath?: string;    // Firebase Storage path for cleanup on delete
   size?: number;           // bytes
   category: FileCategory;
   expiryDate?: string;     // optional expiry

@@ -22,17 +22,20 @@ export const FileService = {
     expiryDate?: string;
     uploadedBy?: string;
     notes?: string;
+    storagePath?: string;
   }): Attachment {
     const type = FileService.typeFromMime(params.mimeType);
     const expiryStatus = params.expiryDate
       ? FileService.computeExpiryStatus(params.expiryDate)
       : undefined;
+    const { storagePath, ...rest } = params;
     return {
       id:           genId(),
       uploadedAt:   new Date().toISOString(),
       expiryStatus,
       type,
-      ...params,
+      storagePath,
+      ...rest,
     };
   },
 
