@@ -1356,21 +1356,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPhotos: React.Dispatch<React.SetStateAction<Record<string, PropertyPhoto[]>>>,
   ): Promise<void> => {
     const photoId = `ph_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const storagePath = photoStoragePath(entityType, entityId, photoId);
 
-    // Upload to Firebase Storage
-    let finalUri = rawUri;
-    try {
-      finalUri = await uploadPhoto(storagePath, rawUri);
-    } catch (err) {
-      console.warn('[_addPhoto] Storage upload failed, falling back to persistent URI:', err);
-      finalUri = await toPersistentUri(rawUri);
-    }
+    // This converts the image to a permanent, compressed Base64 string (~50-150KB)
+    // This string is saved directly in Firestore and NEVER expires.
+    const uri = await toPersistentUri(rawUri);
 
-    const photo: PropertyPhoto & { entityType: string; entityId: string; storagePath: string } = {
-      id: photoId, uri: finalUri, isMain: false,
+    const photo: PropertyPhoto & { entityType: string; entityId: string } = {
+      id: photoId, uri, isMain: false,
       uploadedAt: new Date().toISOString().split('T')[0],
-      entityType, entityId, storagePath,
+      entityType, entityId,
     };
 
     // Add to local state instantly (optimistic)
@@ -1382,7 +1376,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...prev, [entityId]: [...existing, entry] };
     });
 
-    // Persist to Firestore
+    // Persist to Firestore — each photo is its own document
     const docPhoto = isFirstPhoto ? { ...photo, isMain: true } : photo;
     _writePhoto(docPhoto);
   }, [userId, _writePhoto]);
