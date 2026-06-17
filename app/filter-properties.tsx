@@ -1,18 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { useApp } from '../context/AppProvider';
 
 export default function FilterPropertiesScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
+  const { properties } = useApp();
+  const params = useLocalSearchParams<{ city?: string }>();
+  const initialCity = params.city ?? '';
 
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedCity, setSelectedCity] = useState<string>(initialCity);
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [sort, setSort] = useState<'newest' | 'revenue' | 'units'>('newest');
+
+  // استخراج المدن المتاحة من العقارات
+  const cities = useMemo(() => {
+    const citySet = new Set<string>();
+    properties.forEach(p => {
+      const city = (p as any).city || p.location || 'أخرى';
+      citySet.add(city);
+    });
+    return Array.from(citySet).sort();
+  }, [properties]);
 
   const types = [
     { label: 'شقة', value: 'apartment', icon: 'business-outline' },
@@ -92,6 +107,32 @@ export default function FilterPropertiesScreen() {
                 {status === opt.value && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
               </View>
               <Text style={[styles.radioLabel, { color: colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* City Filter */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>المدينة</Text>
+        <View style={[styles.radioGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.radioItem, { borderBottomColor: colors.border }]}
+            onPress={() => setSelectedCity('')}
+          >
+            <View style={[styles.radioCircle, { borderColor: colors.border }]}>
+              {selectedCity === '' && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
+            </View>
+            <Text style={[styles.radioLabel, { color: colors.text }]}>الكل</Text>
+          </TouchableOpacity>
+          {cities.map(city => (
+            <TouchableOpacity
+              key={city}
+              style={[styles.radioItem, { borderBottomColor: colors.border }]}
+              onPress={() => setSelectedCity(city)}
+            >
+              <View style={[styles.radioCircle, { borderColor: colors.border }]}>
+                {selectedCity === city && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
+              </View>
+              <Text style={[styles.radioLabel, { color: colors.text }]}>{city}</Text>
             </TouchableOpacity>
           ))}
         </View>
