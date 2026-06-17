@@ -109,6 +109,7 @@ interface AppContextType extends AppState {
     collectionRate: number;
     rentedByCity?: Record<string, number>;
     rentedUnitsByCity?: Record<string, number>;
+    totalUnitsByCity?: Record<string, number>;
   };
   canWrite: boolean;
   canDelete: boolean;
@@ -700,7 +701,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const rentedPropIds = new Set<string>();
     const rentedUnitIdsByCity = new Map<string, number>();
     const rentedPropIdsByCity = new Map<string, Set<string>>();
+    const totalUnitsByCity = new Map<string, number>();
 
+    // First pass: count ALL units per city (for totalUnitsByCity)
+    visibleUnits.forEach(u => {
+      const prop = visibleProperties.find(p => p.id === u.propertyId);
+      if (!prop) return;
+      const city = (prop as any).city || prop.location || 'أخرى';
+      totalUnitsByCity.set(city, (totalUnitsByCity.get(city) ?? 0) + 1);
+    });
+
+    // Second pass: count rented units per city from active contracts
     activeContracts.forEach(c => {
       const unit = visibleUnits.find(u => u.id === c.unitId);
       if (!unit) return;
@@ -721,11 +732,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const rentedByCity: Record<string, number> = {};
     const rentedUnitsByCity: Record<string, number> = {};
+    const totalUnitsByCityObj: Record<string, number> = {};
     rentedPropIdsByCity.forEach((propSet, city) => {
       rentedByCity[city] = propSet.size;
     });
     rentedUnitIdsByCity.forEach((count, city) => {
       rentedUnitsByCity[city] = count;
+    });
+    totalUnitsByCity.forEach((count, city) => {
+      totalUnitsByCityObj[city] = count;
     });
 
     return {
@@ -740,6 +755,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       collectionRate,
       rentedByCity,
       rentedUnitsByCity,
+      totalUnitsByCity: totalUnitsByCityObj,
     };
   }, [visibleUnits, visibleContracts, visiblePayments, visibleMaintenance, visibleProperties]);
 

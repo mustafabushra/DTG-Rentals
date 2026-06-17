@@ -9,6 +9,9 @@ interface CityStat {
   city: string;
   rentedProperties: number;
   rentedUnits: number;
+  totalUnits: number;
+  /** عدد الوحدات الغير مؤجرة (الفارغة) */
+  vacantUnits: number;
   /** النسبة من إجمالي العقارات المؤجرة */
   percentage: number;
 }
@@ -37,7 +40,7 @@ export function CityStats({ data, totalRentedProperties }: Props) {
         <View style={[styles.badge, { backgroundColor: colors.primarySubtle }]}>
           <Text style={[styles.badgeTxt, { color: colors.primary }]}>{data.length}</Text>
         </View>
-        <Text style={[styles.title, { color: colors.text }]}>العقارات المؤجرة حسب المدينة</Text>
+        <Text style={[styles.title, { color: colors.text }]}>العقارات حسب المدينة</Text>
       </View>
 
       {/* Top city highlight */}
@@ -75,13 +78,24 @@ export function CityStats({ data, totalRentedProperties }: Props) {
                 <AnimatedBar width={item.percentage} color={barColor} />
               </View>
 
+              {/* Rented / Vacant stats */}
               <View style={styles.cityMeta}>
-                <Text style={[styles.cityMetaText, { color: colors.success }]}>
-                  {item.rentedProperties} {item.rentedProperties === 1 ? 'عقار' : 'عقارات'}
-                </Text>
-                <Text style={[styles.cityMetaDivider, { color: colors.textMuted }]}>·</Text>
-                <Text style={[styles.cityMetaText, { color: colors.primary }]}>
-                  {item.rentedUnits} {item.rentedUnits === 1 ? 'وحدة' : 'وحدات'}
+                <View style={styles.cityStatBox}>
+                  <View style={[styles.cityStatDot, { backgroundColor: colors.success }]} />
+                  <Text style={[styles.cityMetaText, { color: colors.success }]}>
+                    مؤجر: {item.rentedUnits}
+                  </Text>
+                </View>
+                <Text style={[styles.cityMetaDivider, { color: colors.textMuted }]}>|</Text>
+                <View style={styles.cityStatBox}>
+                  <View style={[styles.cityStatDot, { backgroundColor: colors.warning }]} />
+                  <Text style={[styles.cityMetaText, { color: colors.warning }]}>
+                    شاغر: {item.vacantUnits}
+                  </Text>
+                </View>
+                <Text style={[styles.cityMetaDivider, { color: colors.textMuted }]}>|</Text>
+                <Text style={[styles.cityMetaText, { color: colors.textMuted }]}>
+                  إجمالي: {item.totalUnits}
                 </Text>
               </View>
             </View>
@@ -191,6 +205,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexWrap: 'wrap',
+  },
+  cityStatBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  cityStatDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   cityMetaText: {
     fontSize: Theme.fontSize.xs,

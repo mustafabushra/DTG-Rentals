@@ -366,17 +366,25 @@ export default function DashboardScreen() {
   const cityStats = useMemo(() => {
     const byCity: Record<string, number> = kpis.rentedByCity ?? {};
     const unitsByCity: Record<string, number> = kpis.rentedUnitsByCity ?? {};
+    const totalUnitsByCity: Record<string, number> = kpis.totalUnitsByCity ?? {};
     const vals = Object.values(byCity);
     const totalRented = vals.reduce((s: number, v: number) => s + v, 0);
     return Object.entries(byCity)
-      .map(([city, rentedProperties]) => ({
-        city,
-        rentedProperties,
-        rentedUnits: unitsByCity[city] ?? 0,
-        percentage: totalRented > 0 ? Math.round((rentedProperties / totalRented) * 100) : 0,
-      }))
+      .map(([city, rentedProperties]) => {
+        const rentedUnits = unitsByCity[city] ?? 0;
+        const totalUnits = totalUnitsByCity[city] ?? 0;
+        const vacantUnits = Math.max(0, totalUnits - rentedUnits);
+        return {
+          city,
+          rentedProperties,
+          rentedUnits,
+          totalUnits,
+          vacantUnits,
+          percentage: totalRented > 0 ? Math.round((rentedProperties / totalRented) * 100) : 0,
+        };
+      })
       .sort((a, b) => b.rentedProperties - a.rentedProperties);
-  }, [kpis.rentedByCity, kpis.rentedUnitsByCity]);
+  }, [kpis.rentedByCity, kpis.rentedUnitsByCity, kpis.totalUnitsByCity]);
 
   // 5. Vacant units with days vacant
   const vacantUnitsData = useMemo(() => {

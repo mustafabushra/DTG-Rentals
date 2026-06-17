@@ -262,6 +262,8 @@ export interface DashboardKPIs {
   rentedByCity?:      Record<string, number>;
   /** إجمالي الوحدات المؤجرة حسب المدينة */
   rentedUnitsByCity?: Record<string, number>;
+  /** إجمالي الوحدات (المؤجرة + الشاغرة) حسب المدينة */
+  totalUnitsByCity?:  Record<string, number>;
 }
 
 // ─── Filter State ─────────────────────────────────────────────────────────────
