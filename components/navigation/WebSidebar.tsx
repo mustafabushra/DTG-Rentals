@@ -33,6 +33,7 @@ const MORE_ITEMS: NavItem[] = [
   { icon: 'document-outline',      label: 'المرفقات',         route: '/attachments',         moduleKey: null },
   { icon: 'bar-chart-outline',     label: 'التقارير المالية', route: '/financial-reports',   moduleKey: 'reports' },
   { icon: 'calendar-outline',      label: 'التقويم',          route: '/calendar',            moduleKey: 'calendar' },
+  { icon: 'sparkles-outline',      label: 'التحديثات الجديدة', route: '/updates',             moduleKey: null },
   { icon: 'list-outline',          label: 'سجل الإجراءات',   route: '/audit-log',           moduleKey: 'auditLog' },
   { icon: 'notifications-outline', label: 'الإشعارات',        route: '/notifications',       moduleKey: null },
   { icon: 'settings-outline',      label: 'الإعدادات',        route: '/settings',            moduleKey: null },

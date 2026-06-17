@@ -27,6 +27,7 @@ const menuItems: MenuItem[][] = [
   ],
   [
     { icon: 'time-outline', label: 'سجل العمليات', route: '/audit-log', color: '#16A085' },
+    { icon: 'sparkles-outline', label: 'التحديثات الجديدة', route: '/updates', color: '#F1C40F' },
     { icon: 'notifications-outline', label: 'الإشعارات', route: '/notifications', color: '#E74C3C' },
     { icon: 'settings-outline', label: 'الإعدادات', route: '/settings', color: '#7F8C8D' },
   ],
