@@ -21,6 +21,7 @@ import { ExpiringContracts } from '../../components/dashboard/ExpiringContracts'
 import { DuePayments } from '../../components/dashboard/DuePayments';
 import { VacantUnits } from '../../components/dashboard/VacantUnits';
 import { RevenueChart } from '../../components/dashboard/RevenueChart';
+import { CityStats } from '../../components/dashboard/CityStats';
 
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                        'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -361,6 +362,22 @@ export default function DashboardScreen() {
     return { currentMonth: sum(thisM), lastMonth: sum(lastM) };
   }, [payments]);
 
+  // ── City Stats — rented properties by city ───────────────────────────────
+  const cityStats = useMemo(() => {
+    const byCity: Record<string, number> = kpis.rentedByCity ?? {};
+    const unitsByCity: Record<string, number> = kpis.rentedUnitsByCity ?? {};
+    const vals = Object.values(byCity);
+    const totalRented = vals.reduce((s: number, v: number) => s + v, 0);
+    return Object.entries(byCity)
+      .map(([city, rentedProperties]) => ({
+        city,
+        rentedProperties,
+        rentedUnits: unitsByCity[city] ?? 0,
+        percentage: totalRented > 0 ? Math.round((rentedProperties / totalRented) * 100) : 0,
+      }))
+      .sort((a, b) => b.rentedProperties - a.rentedProperties);
+  }, [kpis.rentedByCity, kpis.rentedUnitsByCity]);
+
   // 5. Vacant units with days vacant
   const vacantUnitsData = useMemo(() => {
     const vacant = units.filter(u => u.status === 'vacant' || u.status === 'maintenance');
@@ -650,6 +667,14 @@ export default function DashboardScreen() {
             </View>
           )}
         </View>
+
+        {/* ── City Stats ── */}
+        {cityStats.length > 0 && (
+          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+            <Text style={[styles.secLabel, { color: colors.textMuted }]}>التوزيع الجغرافي</Text>
+            <CityStats data={cityStats} totalRentedProperties={Object.values(kpis.rentedByCity ?? {}).reduce((s, v) => s + v, 0)} />
+          </View>
+        )}
 
         {/* ── Expiring Contracts + Due Payments ── */}
         {(expiringContracts.length > 0 || duePaymentsData.today.length > 0 || duePaymentsData.week.length > 0) && (

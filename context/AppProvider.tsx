@@ -107,6 +107,8 @@ interface AppContextType extends AppState {
     activeContracts: number;
     pendingPayments: number;
     collectionRate: number;
+    rentedByCity?: Record<string, number>;
+    rentedUnitsByCity?: Record<string, number>;
   };
   canWrite: boolean;
   canDelete: boolean;
@@ -692,6 +694,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const paidTotal = visiblePayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
     const totalDue = visiblePayments.reduce((sum, p) => sum + p.amount, 0);
     const collectionRate = totalDue > 0 ? Math.round((paidTotal / totalDue) * 100) : 0;
+
+    // ── Rented properties & units by city ────────────────────────────────
+    // A property is "rented" if it has at least one active contract on any of its units
+    const rentedPropIds = new Set<string>();
+    const rentedUnitIdsByCity = new Map<string, number>();
+    const rentedPropIdsByCity = new Map<string, Set<string>>();
+
+    activeContracts.forEach(c => {
+      const unit = visibleUnits.find(u => u.id === c.unitId);
+      if (!unit) return;
+      const prop = visibleProperties.find(p => p.id === unit.propertyId);
+      if (!prop) return;
+      const city = (prop as any).city || prop.location || 'أخرى';
+
+      // Track units
+      rentedUnitIdsByCity.set(city, (rentedUnitIdsByCity.get(city) ?? 0) + 1);
+
+      // Track unique properties
+      if (!rentedPropIdsByCity.has(city)) {
+        rentedPropIdsByCity.set(city, new Set());
+      }
+      rentedPropIdsByCity.get(city)!.add(prop.id);
+      rentedPropIds.add(prop.id);
+    });
+
+    const rentedByCity: Record<string, number> = {};
+    const rentedUnitsByCity: Record<string, number> = {};
+    rentedPropIdsByCity.forEach((propSet, city) => {
+      rentedByCity[city] = propSet.size;
+    });
+    rentedUnitIdsByCity.forEach((count, city) => {
+      rentedUnitsByCity[city] = count;
+    });
+
     return {
       totalProperties: visibleProperties.length,
       rentedUnits,
@@ -702,6 +738,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activeContracts: activeContracts.length,
       pendingPayments,
       collectionRate,
+      rentedByCity,
+      rentedUnitsByCity,
     };
   }, [visibleUnits, visibleContracts, visiblePayments, visibleMaintenance, visibleProperties]);
 

@@ -258,6 +258,10 @@ export interface DashboardKPIs {
   collectionRate:     number;
   totalRevenue?:      number;
   pendingAmount?:     number;
+  /** عدد العقارات المؤجرة (التي لها عقد نشط) مقسمة حسب المدينة */
+  rentedByCity?:      Record<string, number>;
+  /** إجمالي الوحدات المؤجرة حسب المدينة */
+  rentedUnitsByCity?: Record<string, number>;
 }
 
 // ─── Filter State ─────────────────────────────────────────────────────────────
