@@ -77,7 +77,7 @@ interface AppContextType extends AppState {
   cancelContract: (id: string, reason: string) => void;
   addCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   deleteCalendarEvent: (id: string) => void;
-  addAttachment: (data: { entityType: string; entityId: string; name: string; uri: string; mimeType: string; size?: number; category: FileCategory; expiryDate?: string; notes?: string; uploadedBy?: string }) => Attachment;
+  addAttachment: (data: { entityType: string; entityId: string; name: string; uri: string; mimeType: string; size?: number; category: FileCategory; expiryDate?: string; notes?: string; uploadedBy?: string }) => Promise<Attachment>;
   deleteAttachment: (id: string) => void;
   addPropertyPhoto: (propertyId: string, uri: string) => Promise<void>;
   removePropertyPhoto: (propertyId: string, photoId: string) => void;
@@ -1430,13 +1430,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ─── Attachments ─────────────────────────────────────────────────────────
-  const addAttachment = useCallback((data: {
+  const addAttachment = useCallback(async (data: {
     entityType: string; entityId: string; name: string; uri: string;
     mimeType: string; size?: number; category: FileCategory;
     expiryDate?: string; notes?: string; uploadedBy?: string;
-  }): Attachment => {
+  }): Promise<Attachment> => {
+    // Convert to persistent URI (Base64) before saving
+    const persistentUri = await toPersistentUri(data.uri);
+
     const att = FileService.create({
       ...data,
+      uri: persistentUri,
       uploadedBy: data.uploadedBy ?? currentUser.name,
       // نحتفظ بمعرف المالك إذا كان الرافع صاحب دور مالك — يُستخدم في audit للمدير
       ...(isOwner && currentUser.ownerId ? { ownerContext: currentUser.ownerId } : {}),

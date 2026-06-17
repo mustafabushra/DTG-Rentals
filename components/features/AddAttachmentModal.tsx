@@ -7,7 +7,8 @@ import {
   StyleSheet,
   TextInput,
   FlatList,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -75,6 +76,7 @@ export function AddAttachmentModal({
   });
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const reset = () => {
     setStep(1);
@@ -173,33 +175,40 @@ export function AddAttachmentModal({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!entityId || !selectedFile || !formData.name) {
       Alert.alert('بيانات ناقصة');
       return;
     }
 
-    addAttachment({
-      entityType: entityType!,
-      entityId: entityId!,
-      name: formData.name,
-      uri: selectedFile.uri,
-      mimeType: selectedFile.mimeType,
-      size: selectedFile.size,
-      category: formData.category,
-      expiryDate: formData.expiryDate,
-      notes: formData.notes
-    });
+    setSaving(true);
+    try {
+      await addAttachment({
+        entityType: entityType!,
+        entityId: entityId!,
+        name: formData.name,
+        uri: selectedFile.uri,
+        mimeType: selectedFile.mimeType,
+        size: selectedFile.size,
+        category: formData.category,
+        expiryDate: formData.expiryDate,
+        notes: formData.notes
+      });
 
-    onSave();
-    onClose();
-    reset();
+      onSave();
+      onClose();
+      reset();
+    } catch (e) {
+      console.error('Save attachment failed:', e);
+      Alert.alert('خطأ في الحفظ', 'تعذر حفظ المرفق، يرجى المحاولة مرة أخرى.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>اختر النوع</Text>
-
       <View style={styles.pillGrid}>
         {Object.entries(entityLabels).map(([key, { label }]) => (
           <TouchableOpacity
@@ -215,6 +224,117 @@ export function AddAttachmentModal({
             </Text>
           </TouchableOpacity>
         ))}
+      </View>
+    </View>
+  );
+
+  const renderStep2 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>اختر {entityLabels[entityType!].label}</Text>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="ابحث..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+      />
+      <FlatList
+        data={filteredEntities}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.entityItem, entityId === item.id && styles.entityItemActive]}
+            onPress={() => {
+              setEntityId(item.id);
+              setStep(3);
+            }}
+          >
+            <Text style={[styles.entityText, entityId === item.id && styles.entityTextActive]}>
+              {item.name || item.number || item.contractNumber || item.receiptNumber || item.id}
+            </Text>
+          </TouchableOpacity>
+        )}
+        style={{ maxHeight: 300 }}
+      />
+    </View>
+  );
+
+  const renderStep3 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>اختر الملف</Text>
+      <View style={styles.uploadButtons}>
+        <TouchableOpacity style={styles.uploadBtn} onPress={() => pickFile('image')}>
+          <Ionicons name="image-outline" size={32} color={colors.primary} />
+          <Text style={styles.uploadBtnText}>صورة</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.uploadBtn} onPress={() => pickFile('document')}>
+          <Ionicons name="document-text-outline" size={32} color={colors.primary} />
+          <Text style={styles.uploadBtnText}>ملف PDF / Word</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderStep4 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>بيانات المرفق</Text>
+      <FormInput
+        label="اسم الوثيقة"
+        value={formData.name}
+        onChangeText={v => setFormData(prev => ({ ...prev, name: v }))}
+        placeholder="مثلاً: صورة الهوية، عقد الإيجار..."
+      />
+      <View style={styles.fieldLabelBox}>
+        <Text style={styles.fieldLabel}>التصنيف</Text>
+      </View>
+      <View style={styles.pillGrid}>
+        {(['contract', 'id', 'property', 'payment', 'maintenance', 'other'] as FileCategory[]).map(cat => (
+          <TouchableOpacity
+            key={cat}
+            style={[styles.pill, formData.category === cat && styles.pillActive]}
+            onPress={() => setFormData(prev => ({ ...prev, category: cat }))}
+          >
+            <Text style={[styles.pillText, formData.category === cat && styles.pillTextActive]}>
+              {FileService.categoryLabel(cat)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <FormInput
+        label="تاريخ الانتهاء (اختياري)"
+        value={formData.expiryDate}
+        onChangeText={v => setFormData(prev => ({ ...prev, expiryDate: v }))}
+        placeholder="YYYY-MM-DD"
+      />
+      <FormInput
+        label="ملاحظات"
+        value={formData.notes}
+        onChangeText={v => setFormData(prev => ({ ...prev, notes: v }))}
+        placeholder="أضف أي ملاحظات إضافية هنا..."
+        multiline
+      />
+    </View>
+  );
+
+  const renderStep5 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>مراجعة</Text>
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>النوع:</Text>
+          <Text style={styles.summaryValue}>{entityLabels[entityType!].label}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>الاسم:</Text>
+          <Text style={styles.summaryValue}>{formData.name}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>الملف:</Text>
+          <Text style={styles.summaryValue}>{selectedFile?.name}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>الحجم:</Text>
+          <Text style={styles.summaryValue}>{FileService.formatSize(selectedFile?.size || 0)}</Text>
+        </View>
       </View>
     </View>
   );
@@ -235,17 +355,32 @@ export function AddAttachmentModal({
           {step < 5 ? (
             <Button
               title="التالي"
-              onPress={() => setStep(s => s + 1)}
-              disabled={step === 2 && !entityId || step === 3 && !selectedFile}
+              onPress={() => {
+                if (step === 4) setStep(5);
+                else setStep(s => s + 1);
+              }}
+              disabled={
+                (step === 2 && !entityId) ||
+                (step === 3 && !selectedFile) ||
+                (step === 4 && !formData.name)
+              }
             />
           ) : (
-            <Button title="حفظ" onPress={handleSave} />
+            <Button
+              title={saving ? "جاري الحفظ..." : "حفظ"}
+              onPress={handleSave}
+              disabled={saving}
+            />
           )}
         </View>
       }
     >
       <View style={styles.content}>
         {step === 1 && renderStep1()}
+        {step === 2 && renderStep2()}
+        {step === 3 && renderStep3()}
+        {step === 4 && renderStep4()}
+        {step === 5 && renderStep5()}
       </View>
     </Modal>
   );
@@ -253,42 +388,26 @@ export function AddAttachmentModal({
 
 const styles = StyleSheet.create({
   content: { padding: 16 },
-
   stepContainer: { gap: 16 },
-
-  stepTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'right'
-  },
-
-  pillGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10
-  },
-
-  pill: {
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: '#eee'
-  },
-
-  pillActive: {
-    backgroundColor: '#3b82f6'
-  },
-
-  pillText: {
-    color: '#333'
-  },
-
-  pillTextActive: {
-    color: '#fff'
-  },
-
-  footer: {
-    flexDirection: 'row',
-    gap: 10,
-    padding: 12
-  }
+  stepTitle: { fontSize: 18, fontWeight: 'bold', textAlign: 'right', marginBottom: 8 },
+  pillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
+  pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', borderWeight: 1, borderColor: '#ddd' },
+  pillActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
+  pillText: { color: '#666', fontSize: 14 },
+  pillTextActive: { color: '#fff', fontWeight: 'bold' },
+  searchInput: { backgroundColor: '#f5f5f5', padding: 12, borderRadius: 8, textAlign: 'right', borderWeight: 1, borderColor: '#eee' },
+  entityItem: { padding: 14, borderRadius: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
+  entityItemActive: { backgroundColor: '#3b82f610', borderColor: '#3b82f6' },
+  entityText: { textAlign: 'right', color: '#333' },
+  entityTextActive: { color: '#3b82f6', fontWeight: 'bold' },
+  uploadButtons: { flexDirection: 'row', gap: 16, justifyContent: 'center', paddingVertical: 20 },
+  uploadBtn: { flex: 1, alignItems: 'center', gap: 8, padding: 20, borderRadius: 12, backgroundColor: '#f8f9fa', borderWidth: 1, borderColor: '#e9ecef', borderStyle: 'dashed' },
+  uploadBtnText: { fontSize: 14, color: '#495057', fontWeight: '500' },
+  fieldLabelBox: { alignItems: 'flex-end', marginBottom: -8 },
+  fieldLabel: { fontSize: 14, fontWeight: '600', color: '#444' },
+  summaryCard: { backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16, gap: 12 },
+  summaryRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  summaryLabel: { color: '#666', fontSize: 14 },
+  summaryValue: { color: '#333', fontWeight: '600', fontSize: 14 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderTopWidth: 1, borderTopColor: '#eee' }
 });

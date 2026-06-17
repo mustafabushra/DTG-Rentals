@@ -9,28 +9,29 @@ const JPEG_QUALITY  = 0.72;  // 0–1 JPEG quality
  * Convert a local image URI to a compressed, persistent data: URI.
  *
  * On web  : blob: URLs from expo-image-picker are temporary and revoked after use.
- *           We compress via Canvas → JPEG data: URI (~30–150 KB) that survives
- *           Firestore's 1 MB document limit and persists across sessions.
- * Native  : file: URIs are stable — return as-is (Firebase Storage handles persistence).
+ * Native  : file: URIs are local and not accessible across devices.
+ * Solution: Convert to compressed JPEG data: URI (~30–150 KB) for Firestore storage.
  */
 export async function toPersistentUri(uri: string): Promise<string> {
   if (!uri) return uri;
-  if (Platform.OS !== 'web') return uri;          // native: file:// URIs are stable
-
-  // Already a compressed data URI — return as-is
   if (uri.startsWith('data:')) return uri;
 
-  // Must be a blob: or http: URI on web
   try {
-    const blob      = await fetchBlob(uri);
-    const blobUrl   = URL.createObjectURL(blob);   // stable within this function scope
-    const dataUri   = await compressViaCanvas(blobUrl);
-    URL.revokeObjectURL(blobUrl);
-    return dataUri;
+    if (Platform.OS === 'web') {
+      const blob      = await fetchBlob(uri);
+      const blobUrl   = URL.createObjectURL(blob);
+      const dataUri   = await compressViaCanvas(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+      return dataUri;
+    } else {
+      // Native: Fetch then convert to base64
+      // NOTE: We don't have canvas on native, so we return raw base64 or could use expo-image-manipulator if available.
+      // For now, raw base64 via fetch + reader is the fallback.
+      return await rawToDataUri(uri);
+    }
   } catch (e) {
-    console.warn('[imageUtils] compression failed, falling back to raw fetch:', e);
-    // Last resort: raw base64 (may be large but better than nothing)
-    return rawToDataUri(uri);
+    console.warn('[imageUtils] conversion failed:', e);
+    return uri;
   }
 }
 

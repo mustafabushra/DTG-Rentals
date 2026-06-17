@@ -14,7 +14,7 @@ export function useAttachments(entityType: string, entityId: string) {
     [allAttachments, entityType, entityId],
   );
 
-  const add = (params: {
+  const add = async (params: {
     name: string;
     uri: string;
     mimeType: string;
@@ -23,7 +23,7 @@ export function useAttachments(entityType: string, entityId: string) {
     expiryDate?: string;
     notes?: string;
   }) => {
-    return addAttachment({
+    return await addAttachment({
       entityType,
       entityId,
       uploadedBy: currentUser.name,
