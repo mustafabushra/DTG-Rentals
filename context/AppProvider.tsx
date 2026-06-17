@@ -14,6 +14,7 @@ import { saveCache, loadCache, cacheHasData, clearCache } from '../lib/localCach
 import { FileService } from '../domain/services/FileService';
 import type { Attachment, FileCategory } from '../domain/models';
 import { toPersistentUri } from '../lib/imageUtils';
+import { uploadFile, attachmentStoragePath, uploadPhoto, photoStoragePath, deleteFile } from '../lib/storageService';
 
 export interface PropertyPhoto {
   id: string;
@@ -21,6 +22,7 @@ export interface PropertyPhoto {
   isMain: boolean;
   caption?: string;
   uploadedAt: string;
+  storagePath?: string;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -1335,8 +1337,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setOne(ORG_ID, 'photos', photo.id, photo).catch(console.error);
   }, [userId]);
 
-  const _deletePhotoDoc = useCallback((photoId: string) => {
+  const _deletePhotoDoc = useCallback((photoId: string, storagePath?: string) => {
     if (!userId) return;
+    if (storagePath) deleteFile(storagePath).catch(console.error);
     deleteOne(ORG_ID, 'photos', photoId).catch(console.error);
   }, [userId]);
 
@@ -1353,14 +1356,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPhotos: React.Dispatch<React.SetStateAction<Record<string, PropertyPhoto[]>>>,
   ): Promise<void> => {
     const photoId = `ph_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const storagePath = photoStoragePath(entityType, entityId, photoId);
 
-    // Convert blob: URL → compressed data: URI immediately (web blob URLs are temporary)
-    const uri = await toPersistentUri(rawUri);
+    // Upload to Firebase Storage
+    let finalUri = rawUri;
+    try {
+      finalUri = await uploadPhoto(storagePath, rawUri);
+    } catch (err) {
+      console.warn('[_addPhoto] Storage upload failed, falling back to persistent URI:', err);
+      finalUri = await toPersistentUri(rawUri);
+    }
 
-    const photo: PropertyPhoto & { entityType: string; entityId: string } = {
-      id: photoId, uri, isMain: false,
+    const photo: PropertyPhoto & { entityType: string; entityId: string; storagePath: string } = {
+      id: photoId, uri: finalUri, isMain: false,
       uploadedAt: new Date().toISOString().split('T')[0],
-      entityType, entityId,
+      entityType, entityId, storagePath,
     };
 
     // Add to local state instantly (optimistic)
@@ -1372,7 +1382,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...prev, [entityId]: [...existing, entry] };
     });
 
-    // Persist to Firestore — each photo is its own document, no 1 MB limit issue
+    // Persist to Firestore
     const docPhoto = isFirstPhoto ? { ...photo, isMain: true } : photo;
     _writePhoto(docPhoto);
   }, [userId, _writePhoto]);
@@ -1384,13 +1394,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const removePropertyPhoto = useCallback((propertyId: string, photoId: string) => {
     setPropertyPhotos(prev => {
       const existing = prev[propertyId] ?? [];
+      const photo = existing.find(p => p.id === photoId);
       const filtered = existing.filter(p => p.id !== photoId);
-      const hadMain  = existing.find(p => p.id === photoId)?.isMain;
+      const hadMain  = photo?.isMain;
       if (hadMain && filtered.length > 0) {
         filtered[0] = { ...filtered[0], isMain: true };
         updateOne(ORG_ID, 'photos', filtered[0].id, { isMain: true }).catch(console.error);
       }
-      _deletePhotoDoc(photoId);
+      _deletePhotoDoc(photoId, photo?.storagePath);
       return { ...prev, [propertyId]: filtered };
     });
   }, [_deletePhotoDoc]);
@@ -1410,13 +1421,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const removeUnitPhoto = useCallback((unitId: string, photoId: string) => {
     setUnitPhotos(prev => {
       const existing = prev[unitId] ?? [];
+      const photo = existing.find(p => p.id === photoId);
       const filtered = existing.filter(p => p.id !== photoId);
-      const hadMain  = existing.find(p => p.id === photoId)?.isMain;
+      const hadMain  = photo?.isMain;
       if (hadMain && filtered.length > 0) {
         filtered[0] = { ...filtered[0], isMain: true };
         updateOne(ORG_ID, 'photos', filtered[0].id, { isMain: true }).catch(console.error);
       }
-      _deletePhotoDoc(photoId);
+      _deletePhotoDoc(photoId, photo?.storagePath);
       return { ...prev, [unitId]: filtered };
     });
   }, [_deletePhotoDoc]);
@@ -1435,27 +1447,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     mimeType: string; size?: number; category: FileCategory;
     expiryDate?: string; notes?: string; uploadedBy?: string;
   }): Promise<Attachment> => {
-    // Convert to persistent URI (Base64) before saving
-    const persistentUri = await toPersistentUri(data.uri);
+    const tempId = `att_${Date.now()}`;
+    const storagePath = attachmentStoragePath(data.entityType, data.entityId, tempId);
+
+    // Upload to Firebase Storage
+    let finalUri = data.uri;
+    try {
+      finalUri = await uploadFile(storagePath, data.uri, data.mimeType);
+    } catch (err) {
+      console.warn('[addAttachment] Storage upload failed, falling back to persistent URI:', err);
+      finalUri = await toPersistentUri(data.uri);
+    }
 
     const att = FileService.create({
       ...data,
-      uri: persistentUri,
+      uri: finalUri,
       uploadedBy: data.uploadedBy ?? currentUser.name,
-      // نحتفظ بمعرف المالك إذا كان الرافع صاحب دور مالك — يُستخدم في audit للمدير
       ...(isOwner && currentUser.ownerId ? { ownerContext: currentUser.ownerId } : {}),
     });
-    setAttachments(prev => FileService.syncExpiryStatuses([...prev, att]));
-    fs('attachments', att.id, att, 'set');
-    addAuditEntry('add', 'وثيقة', att.name,
-      `رفع وثيقة "${att.name}" على ${att.entityType} — ${currentUser.name}`);
-    return att;
+
+    const finalAtt = { ...att, storagePath };
+
+    setAttachments(prev => FileService.syncExpiryStatuses([...prev, finalAtt]));
+    fs('attachments', finalAtt.id, finalAtt, 'set');
+    addAuditEntry('add', 'وثيقة', finalAtt.name,
+      `رفع وثيقة "${finalAtt.name}" على ${finalAtt.entityType} — ${currentUser.name}`);
+    return finalAtt;
   }, [userId, currentUser.name, currentUser.ownerId, isOwner, fs]);
 
   const deleteAttachment = useCallback((id: string) => {
+    const att = attachments.find(a => a.id === id);
+    if (att?.storagePath) deleteFile(att.storagePath).catch(console.error);
     setAttachments(prev => prev.filter(a => a.id !== id));
     fs('attachments', id, {}, 'delete');
-  }, [fs]);
+  }, [fs, attachments]);
 
   // ─── Theme & Notifications ────────────────────────────────────────────────
   const setTheme = (t: ThemeMode) => {
