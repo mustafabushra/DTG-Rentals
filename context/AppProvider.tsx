@@ -240,6 +240,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (cached.tenants?.length)     setTenants(cached.tenants as Tenant[]);
         if (cached.payments?.length)    setPayments(cached.payments as Payment[]);
         if (cached.maintenance?.length) setMaintenance(cached.maintenance as Maintenance[]);
+        if (cached.attachments?.length) setAttachments(cached.attachments as Attachment[]);
         console.log('[DATA_LOADED] cache hydrated');
       }
 
@@ -335,6 +336,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             properties: currencyMigratedProps,
             units:      currencyMigratedUnits,
             contracts:  updatedContracts,
+            attachments: [], // Initial load might not have them yet
           });
           hydrated.current = true;
           console.log('[DATA_LOADED] critical Firestore data ready', {
@@ -494,8 +496,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Runs only after initial hydration to avoid overwriting cache with empty state.
   useEffect(() => {
     if (!userId || !hydrated.current) return;
-    saveCache(userId, { owners, properties, units, contracts, tenants, payments, maintenance });
-  }, [userId, owners, properties, units, contracts, tenants, payments, maintenance]);
+    saveCache(userId, { owners, properties, units, contracts, tenants, payments, maintenance, attachments });
+  }, [userId, owners, properties, units, contracts, tenants, payments, maintenance, attachments]);
 
   // ─── عرض رسالة خطأ للمستخدم (مرة واحدة لكل نوع خطأ لتجنب التكرار) ──────
   const activeAlertRef = useRef(false);
