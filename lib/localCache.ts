@@ -8,7 +8,7 @@ const PREFIX = 'dtg-cache-v1';
 
 const COLLECTIONS = [
   'owners', 'properties', 'units', 'tenants',
-  'contracts', 'payments', 'maintenance',
+  'contracts', 'payments', 'maintenance', 'attachments', 'cities',
 ] as const;
 
 export type CachedCollections = {

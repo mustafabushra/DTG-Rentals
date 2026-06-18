@@ -46,13 +46,23 @@ export interface Tenant {
   updatedAt?:   string;
 }
 
+export interface City {
+  id:          string;
+  name:        string;        // الاسم الموحد (للبحث والمقارنة)
+  displayName: string;        // الاسم الأصلي الأكثر شيوعاً (للعرض)
+  region?:     string;        // المنطقة (الرياض، مكة، إلخ)
+  createdAt:   string;
+  updatedAt?:  string;
+}
+
 export interface Property {
   id:          string;
   name:        string;
   type:        PropertyType;
   address?:    string;
   location?:   string;
-  city?:       string;
+  cityId?:     string;        // مرجع إلى City
+  city?:       string;        // legacy — للتوافق مع البيانات القديمة
   floors?:     number;
   totalUnits:  number;
   ownerId:     string;

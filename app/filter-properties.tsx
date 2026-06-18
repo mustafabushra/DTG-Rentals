@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useApp } from '../context/AppProvider';
+import { City } from '../domain/models';
 
 export default function FilterPropertiesScreen() {
   const insets = useSafeAreaInsets();
@@ -19,15 +20,9 @@ export default function FilterPropertiesScreen() {
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [sort, setSort] = useState<'newest' | 'revenue' | 'units'>('newest');
 
-  // استخراج المدن المتاحة من العقارات
-  const cities = useMemo(() => {
-    const citySet = new Set<string>();
-    properties.forEach(p => {
-      const city = (p as any).city || p.location || 'أخرى';
-      citySet.add(city);
-    });
-    return Array.from(citySet).sort();
-  }, [properties]);
+  // استخدام المدن من السياق بدلاً من استخراجها من العقارات
+  const { cities: contextCities } = useApp();
+  const citiesList: City[] = contextCities;
 
   const types = [
     { label: 'شقة', value: 'apartment', icon: 'business-outline' },
@@ -130,16 +125,16 @@ export default function FilterPropertiesScreen() {
             </View>
             <Text style={[styles.radioLabel, { color: colors.text }]}>الكل</Text>
           </TouchableOpacity>
-          {cities.map(city => (
+          {citiesList.map(city => (
             <TouchableOpacity
-              key={city}
+              key={city.id}
               style={[styles.radioItem, { borderBottomColor: colors.border }]}
-              onPress={() => setSelectedCity(city)}
+              onPress={() => setSelectedCity(city.name)}
             >
               <View style={[styles.radioCircle, { borderColor: colors.border }]}>
-                {selectedCity === city && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
+                {selectedCity === city.name && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
               </View>
-              <Text style={[styles.radioLabel, { color: colors.text }]}>{city}</Text>
+              <Text style={[styles.radioLabel, { color: colors.text }]}>{city.displayName || city.name}</Text>
             </TouchableOpacity>
           ))}
         </View>

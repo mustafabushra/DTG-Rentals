@@ -4,20 +4,9 @@ import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../../constants/Theme';
 import { useAppTheme } from '../../hooks/useAppTheme';
-
-interface CityStat {
-  city: string;
-  rentedProperties: number;
-  rentedUnits: number;
-  totalUnits: number;
-  /** عدد الوحدات الغير مؤجرة (الفارغة) */
-  vacantUnits: number;
-  /** النسبة من إجمالي العقارات المؤجرة */
-  percentage: number;
-}
+import { useApp } from '../../context/AppProvider';
 
 interface Props {
-  data: CityStat[];
   totalRentedProperties: number;
 }
 
@@ -26,19 +15,20 @@ const CITY_COLORS = [
   '#1ABC9C', '#3498DB', '#9B59B6', '#F39C12', '#16A085',
 ];
 
-export function CityStats({ data, totalRentedProperties }: Props) {
+export function CityStats({ totalRentedProperties }: Props) {
   const { colors } = useAppTheme();
+  const { cityStats } = useApp();
 
-  if (data.length === 0) return null;
+  if (cityStats.length === 0) return null;
 
-  const topCity = data[0];
+  const topCity = cityStats[0];
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={[styles.badge, { backgroundColor: colors.primarySubtle }]}>
-          <Text style={[styles.badgeTxt, { color: colors.primary }]}>{data.length}</Text>
+          <Text style={[styles.badgeTxt, { color: colors.primary }]}>{cityStats.length}</Text>
         </View>
         <Text style={[styles.title, { color: colors.text }]}>العقارات حسب المدينة</Text>
       </View>
@@ -46,20 +36,23 @@ export function CityStats({ data, totalRentedProperties }: Props) {
       {/* Top city highlight */}
       <View style={[styles.topCityRow, { backgroundColor: colors.primarySubtle, borderColor: colors.primary + '30' }]}>
         <Text style={[styles.topCityLabel, { color: colors.textMuted }]}>الأكثر تأجيراً</Text>
-        <Text style={[styles.topCityName, { color: colors.primary }]}>{topCity.city}</Text>
+        <Text style={[styles.topCityName, { color: colors.primary }]}>{topCity.cityName}</Text>
         <Text style={[styles.topCityStat, { color: colors.primary }]}>
           {topCity.rentedProperties} عقار · {topCity.rentedUnits} وحدة
         </Text>
       </View>
 
       {/* City list */}
-      {data.map((item, idx) => {
+      {cityStats.map((item, idx) => {
         const barColor = CITY_COLORS[idx % CITY_COLORS.length];
-        const isLast = idx === data.length - 1;
+        const isLast = idx === cityStats.length - 1;
+        const pct = totalRentedProperties > 0
+          ? Math.round((item.rentedProperties / totalRentedProperties) * 100)
+          : 0;
         return (
           <TouchableOpacity
-            key={item.city}
-            onPress={() => router.push(`/filter-properties?city=${encodeURIComponent(item.city)}` as any)}
+            key={item.cityId}
+            onPress={() => router.push(`/filter-properties?city=${encodeURIComponent(item.cityName)}` as any)}
             activeOpacity={0.75}
             style={[styles.cityRow, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
           >
@@ -69,13 +62,13 @@ export function CityStats({ data, totalRentedProperties }: Props) {
             {/* City info */}
             <View style={styles.cityInfo}>
               <View style={styles.cityTopRow}>
-                <Text style={[styles.cityName, { color: colors.text }]}>{item.city}</Text>
-                <Text style={[styles.cityPct, { color: barColor }]}>{item.percentage}%</Text>
+                <Text style={[styles.cityName, { color: colors.text }]}>{item.cityName}</Text>
+                <Text style={[styles.cityPct, { color: barColor }]}>{pct}%</Text>
               </View>
 
               {/* Progress bar */}
               <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
-                <AnimatedBar width={item.percentage} color={barColor} />
+                <AnimatedBar width={pct} color={barColor} />
               </View>
 
               {/* Rented / Vacant stats */}

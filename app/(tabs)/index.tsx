@@ -680,7 +680,7 @@ export default function DashboardScreen() {
         {cityStats.length > 0 && (
           <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
             <Text style={[styles.secLabel, { color: colors.textMuted }]}>التوزيع الجغرافي</Text>
-            <CityStats data={cityStats} totalRentedProperties={Object.values(kpis.rentedByCity ?? {}).reduce((s, v) => s + v, 0)} />
+            <CityStats totalRentedProperties={Object.values(kpis.rentedByCity ?? {}).reduce((s, v) => s + v, 0)} />
           </View>
         )}
 

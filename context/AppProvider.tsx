@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { Appearance, Alert, Platform, useColorScheme } from 'react-native';
 import {
-  Owner, Property, Tenant, Unit, Contract, Payment, Maintenance, AuditLog, CalendarEvent,
+  Owner, Tenant, Unit, Contract, Payment, Maintenance, AuditLog, CalendarEvent,
   ContractStatus, UnitStatus,
 } from '../data/mockData';
+import { City, Property, Attachment } from '../domain/models';
 import { defaultUnitStructure, UnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
 import { getAll, getOne, setOne, updateOne, deleteOne, deleteAll, ORG_ID, runContractTransaction } from '../lib/firestoreService';
@@ -12,7 +13,7 @@ import {
 } from '../constants/SystemDefaults';
 import { saveCache, loadCache, cacheHasData, clearCache } from '../lib/localCache';
 import { FileService } from '../domain/services/FileService';
-import type { Attachment, FileCategory } from '../domain/models';
+import type { FileCategory } from '../domain/models';
 import { toPersistentUri } from '../lib/imageUtils';
 import { uploadFile, attachmentStoragePath, uploadPhoto, photoStoragePath, deleteFile } from '../lib/storageService';
 
@@ -40,6 +41,7 @@ interface AppState {
   auditLogs: AuditLog[];
   calendarEvents: CalendarEvent[];
   attachments: Attachment[];
+  cities: City[];
   isAuthenticated: boolean;
   dataLoading: boolean;
   secondaryLoading: boolean;
@@ -123,6 +125,22 @@ interface AppContextType extends AppState {
   financialUnitIds: Set<string>;
   /** المظهر المحلول الفعلي بعد تطبيق الإعداد (يستخدم بدل useColorScheme) */
   resolvedScheme: 'light' | 'dark';
+  /** إدارة المدن */
+  addCity: (city: City) => void;
+  updateCity: (id: string, data: Partial<City>) => void;
+  deleteCity: (id: string) => void;
+  /** إحصائيات المدينة */
+  cityStats: Array<{
+    cityId: string;
+    cityName: string;
+    region?: string;
+    totalProperties: number;
+    rentedProperties: number;
+    totalUnits: number;
+    rentedUnits: number;
+    vacantUnits: number;
+    monthlyRevenue: number;
+  }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -152,6 +170,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadGenRef = useRef(0);
   // Tracks pending secondary-load timer so it can be cancelled on re-auth
   const secondaryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [cities, setCities] = useState<City[]>([]);
   const [systemSettings, setSystemSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
   const [theme, setThemeState]            = useState<ThemeMode>('system');
   const systemScheme = useColorScheme();
@@ -244,7 +263,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (cached.tenants?.length)     setTenants(cached.tenants as Tenant[]);
         if (cached.payments?.length)    setPayments(cached.payments as Payment[]);
         if (cached.maintenance?.length) setMaintenance(cached.maintenance as Maintenance[]);
-        if (cached.attachments?.length) setAttachments(cached.attachments as Attachment[]);
+      if ((cached as any).attachments?.length) setAttachments((cached as any).attachments as Attachment[]);
         console.log('[DATA_LOADED] cache hydrated');
       }
 
@@ -340,7 +359,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             properties: currencyMigratedProps,
             units:      currencyMigratedUnits,
             contracts:  updatedContracts,
-            attachments: [], // Initial load might not have them yet
+          attachments: [], // Initial load might not have them yet
+          cities: [], // Cities loaded in secondary phase
           });
           hydrated.current = true;
           console.log('[DATA_LOADED] critical Firestore data ready', {
@@ -408,11 +428,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return p;
           });
           setPayments(updatedPayments);
-          saveCache(uid, {
-            tenants:     resolvedTenants,
-            payments:    updatedPayments,
-            maintenance: resolvedMaintenance,
-          });
+      saveCache(uid, {
+        tenants:     resolvedTenants,
+        payments:    updatedPayments,
+        maintenance: resolvedMaintenance,
+        attachments: [], // Secondary load will populate
+        cities:      [], // Secondary load will populate
+      });
           console.log('[DATA_LOADED] secondary Firestore data ready', {
             tenants: resolvedTenants.length,
             payments: updatedPayments.length,
@@ -431,7 +453,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }).catch(() => {});
 
-          setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+      // ── تحميل المدن ────────────────────────────────────────────────────────
+      const citiesData = await getAll(ORG_ID, 'cities');
+      if (gen !== loadGenRef.current) return;
+      const resolvedCities = citiesData as City[];
+      setCities(resolvedCities);
+      console.log('[DATA_LOADED] cities ready', { count: resolvedCities.length });
+
+      setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
           setCalendarEvents(calendarData as CalendarEvent[]);
           setAttachments(FileService.syncExpiryStatuses(attachmentsData as Attachment[]));
 
@@ -683,6 +712,111 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [applyOwnerFilter, attachments, visiblePropertyIds, visibleUnitIds, visibleContractIds,
       visiblePayments, visibleMaintenance, currentUser.ownerId]);
 
+  // ─── إحصائيات المدن ────────────────────────────────────────────────────────
+  const cityStats = useMemo(() => {
+    const normCity = (raw: string): string => {
+      let s = raw.trim();
+      s = s.replace(/ة$/g, 'ه');
+      s = s.replace(/[أإآ]/g, 'ا');
+      s = s.replace(/\s+/g, ' ');
+      return s;
+    };
+
+    // خريطة: cityId → إحصائيات
+    const statsMap = new Map<string, {
+      cityId: string;
+      cityName: string;
+      region?: string;
+      totalProperties: number;
+      rentedProperties: number;
+      totalUnits: number;
+      rentedUnits: number;
+      vacantUnits: number;
+      monthlyRevenue: number;
+    }>();
+
+    // Initialize stats for all known cities
+    cities.forEach(city => {
+      statsMap.set(city.id, {
+        cityId: city.id,
+        cityName: city.displayName || city.name,
+        region: city.region,
+        totalProperties: 0,
+        rentedProperties: 0,
+        totalUnits: 0,
+        rentedUnits: 0,
+        vacantUnits: 0,
+        monthlyRevenue: 0,
+      });
+    });
+
+    // Track properties per city (for rentedProperties count)
+    const propCityMap = new Map<string, string>(); // propertyId → cityId
+
+    // Count units per city
+    visibleUnits.forEach(u => {
+      const prop = visibleProperties.find(p => p.id === u.propertyId);
+      if (!prop) return;
+
+      let cityId = prop.cityId;
+      // Fallback: derive cityId from legacy city text
+      if (!cityId && prop.city) {
+        const normalized = normCity(prop.city);
+        const matchingCity = cities.find(c => normCity(c.name) === normalized || normCity(c.displayName) === normalized);
+        if (matchingCity) cityId = matchingCity.id;
+      }
+      if (!cityId) return;
+
+      propCityMap.set(prop.id, cityId);
+      const stats = statsMap.get(cityId);
+      if (!stats) return;
+
+      stats.totalUnits += 1;
+      if (u.status === 'rented') stats.rentedUnits += 1;
+      else if (u.status === 'vacant') stats.vacantUnits += 1;
+    });
+
+    // Count properties and revenue per city from active contracts
+    const activeContracts = visibleContracts.filter(c => c.status === 'active');
+    activeContracts.forEach(c => {
+      const unit = visibleUnits.find(u => u.id === c.unitId);
+      if (!unit) return;
+      const prop = visibleProperties.find(p => p.id === unit.propertyId);
+      if (!prop) return;
+
+      let cityId = prop.cityId;
+      if (!cityId && prop.city) {
+        const normalized = normCity(prop.city);
+        const matchingCity = cities.find(c => normCity(c.name) === normalized || normCity(c.displayName) === normalized);
+        if (matchingCity) cityId = matchingCity.id;
+      }
+      if (!cityId) return;
+
+      const stats = statsMap.get(cityId);
+      if (!stats) return;
+
+      stats.rentedProperties += 1;
+      stats.monthlyRevenue += Math.round(c.annualValue / 12);
+    });
+
+    // Count total properties per city
+    visibleProperties.forEach(prop => {
+      let cityId = prop.cityId;
+      if (!cityId && prop.city) {
+        const normalized = normCity(prop.city);
+        const matchingCity = cities.find(c => normCity(c.name) === normalized || normCity(c.displayName) === normalized);
+        if (matchingCity) cityId = matchingCity.id;
+      }
+      if (!cityId) return;
+
+      const stats = statsMap.get(cityId);
+      if (!stats) return;
+      stats.totalProperties += 1;
+    });
+
+    return Array.from(statsMap.values()).sort((a, b) => b.monthlyRevenue - a.monthlyRevenue);
+  }, [cities, visibleProperties, visibleUnits, visibleContracts]);
+
   const kpis = useMemo(() => {
     const activeContracts = visibleContracts.filter(c => c.status === 'active');
     // Derive rented/vacant from active contracts, not stale unit.status
@@ -790,6 +924,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       cityDisplayNames,
     };
   }, [visibleUnits, visibleContracts, visiblePayments, visibleMaintenance, visibleProperties]);
+
+  // ─── City Management ────────────────────────────────────────────────────────
+  const addCity = (city: City) => {
+    setCities(prev => [...prev, city]);
+    fs('cities', city.id, city, 'set');
+    addAuditEntry('add', 'مدينة', city.displayName || city.name, `تم إضافة مدينة جديدة: ${city.displayName || city.name}`);
+  };
+
+  const updateCity = (id: string, data: Partial<City>) => {
+    setCities(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+    fs('cities', id, data, 'update');
+    const city = cities.find(c => c.id === id);
+    addAuditEntry('edit', 'مدينة', city?.displayName || id, `تم تعديل بيانات المدينة`);
+  };
+
+  const deleteCity = (id: string) => {
+    const city = cities.find(c => c.id === id);
+    // إزالة cityId من العقارات المرتبطة
+    const affectedProps = properties.filter(p => p.cityId === id);
+    affectedProps.forEach(p => {
+      fs('properties', p.id, { cityId: null }, 'update');
+    });
+    setProperties(prev => prev.map(p => p.cityId === id ? { ...p, cityId: undefined } : p));
+    setCities(prev => prev.filter(c => c.id !== id));
+    fs('cities', id, {}, 'delete');
+    addAuditEntry('delete', 'مدينة', city?.displayName || id, `تم حذف المدينة وتحرير ${affectedProps.length} عقار`);
+  };
 
   const addAuditEntry = (action: AuditLog['action'], entityType: string, entityName: string, details: string) => {
     const entry: AuditLog = {
@@ -950,7 +1111,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // لو المستخدم مالك ولم يُحدد ownerId → نربطه بحساب المالك تلقائياً
     const autoOwnerId = isOwner && currentUser.ownerId && !property.ownerId
       ? currentUser.ownerId : property.ownerId;
-    const finalProperty = { ...property, unitStructure: structure, ownerId: autoOwnerId };
+    // إذا كان هناك cityId، نتحقق من وجوده في قائمة المدن
+    let finalCityId = property.cityId;
+    if (finalCityId && !cities.find(c => c.id === finalCityId)) {
+      finalCityId = undefined;
+    }
+    const finalProperty = { ...property, unitStructure: structure, ownerId: autoOwnerId, cityId: finalCityId };
 
     setProperties(prev => [...prev, finalProperty]);
     fs('properties', finalProperty.id, finalProperty, 'set');
@@ -977,8 +1143,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addAuditEntry('add', 'عقار', finalProperty.name, `تم إضافة عقار جديد: ${finalProperty.name}`);
   };
   const updateProperty = (id: string, data: Partial<Property>) => {
-    setProperties(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
-    fs('properties', id, data, 'update');
+    // إذا كان هناك cityId في البيانات، نتحقق من وجوده
+    let finalData = { ...data };
+    if (finalData.cityId && !cities.find(c => c.id === finalData.cityId)) {
+      finalData.cityId = undefined;
+    }
+    setProperties(prev => prev.map(p => p.id === id ? { ...p, ...finalData } : p));
+    fs('properties', id, finalData, 'update');
     const prop = properties.find(p => p.id === id);
     addAuditEntry('edit', 'عقار', prop?.name || id, `تم تعديل بيانات العقار`);
   };
@@ -1016,7 +1187,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Tenant ───────────────────────────────────────────────────────────────
   const addTenant = (tenant: Tenant) => {
-    const finalTenant = isOwner && currentUser.ownerId && !tenant.ownerId
+    const finalTenant = isOwner && currentUser.ownerId && !(tenant as any).ownerId
       ? { ...tenant, ownerId: currentUser.ownerId }
       : tenant;
     setTenants(prev => [...prev, finalTenant]);
@@ -1368,9 +1539,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addAuditEntry('edit', 'دفعة', receipt, `تأكيد استلام الدفعة — المستخدم: ${currentUser.name}`);
   };
   const cancelPayment = (id: string) => {
-    const update = { status: 'pending' as const, paidDate: undefined, receiptNumber: undefined };
+    const update = { status: 'pending' as const, paidDate: undefined, receiptNumber: '' };
     setPayments(prev => prev.map(p => p.id === id ? { ...p, ...update } : p));
-    fs('payments', id, { status: 'pending', paidDate: null, receiptNumber: null }, 'update');
+    fs('payments', id, { status: 'pending', paidDate: null, receiptNumber: '' }, 'update');
     addAuditEntry('edit', 'دفعة', id, `إلغاء تأكيد الدفعة — المستخدم: ${currentUser.name}`);
   };
   const deletePayment = (id: string) => {
@@ -1559,8 +1730,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteAttachment = useCallback((id: string) => {
     // ✅ FIX: Also delete the file from Firebase Storage
     const attachment = attachments.find(a => a.id === id);
-    if (attachment?.storagePath) {
-      deleteFile(attachment.storagePath).catch(err =>
+    if ((attachment as any)?.storagePath) {
+      deleteFile((attachment as any).storagePath).catch(err =>
         console.error('[deleteAttachment] Storage delete failed:', err)
       );
     }
@@ -1828,6 +1999,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       cancelContract, addCalendarEvent, deleteCalendarEvent,
       addAttachment, deleteAttachment,
       login, logout, updateProfile, importBackup, refreshData,
+      cities, cityStats,
+      addCity, updateCity, deleteCity,
     }}>
       {children}
     </AppContext.Provider>
