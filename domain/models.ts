@@ -13,6 +13,7 @@ export type FilterStatus      = 'all' | ContractStatus | PaymentStatus | Mainten
 
 export type PropertyType      = 'apartment' | 'villa' | 'office' | 'shop' | 'building' | 'tower';
 export type UnitType          = 'studio' | 'apartment' | 'villa' | 'office' | 'shop' | 'floor' | string;
+export type UnitStructure     = 'single' | 'multi';
 export type PaymentMethod     = 'bank_transfer' | 'cash' | 'check' | 'transfer';
 export type MaintenancePriority = 'urgent' | 'high' | 'medium' | 'low';
 export type FileCategory      = 'contract' | 'id' | 'invoice' | 'permit' | 'property' | 'payment' | 'maintenance' | 'other';
@@ -71,6 +72,9 @@ export interface Property {
   buildYear?:  number;
   image?:      string;
   photos?:     EntityPhoto[];
+  currency?:   string;        // عملة العقار
+  area?:       number;        // المساحة بالمتر المربع
+  unitStructure?: UnitStructure; // single = وحدة رئيسية تلقائية، multi = وحدات يضيفها المستخدم
   createdAt:   string;
   updatedAt?:  string;
 }

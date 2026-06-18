@@ -2,10 +2,10 @@ import React, { createContext, useContext, useMemo, useState, useCallback, useEf
 import { Appearance, Alert, Platform, useColorScheme } from 'react-native';
 import {
   Owner, Tenant, Unit, Contract, Payment, Maintenance, AuditLog, CalendarEvent,
-  ContractStatus, UnitStatus,
+  ContractStatus, UnitStatus, PropertyType,
 } from '../data/mockData';
-import { City, Property, Attachment } from '../domain/models';
-import { defaultUnitStructure, UnitStructure } from '../data/mockData';
+import { City, Property, Attachment, UnitStructure } from '../domain/models';
+import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
 import { getAll, getOne, setOne, updateOne, deleteOne, deleteAll, ORG_ID, runContractTransaction } from '../lib/firestoreService';
 import {
@@ -141,6 +141,8 @@ interface AppContextType extends AppState {
     vacantUnits: number;
     monthlyRevenue: number;
   }>;
+  /** تحديث جميع العقارات بإضافة cityId */
+  updateAllPropertiesWithCities: () => Promise<{ updated: number; skipped: number }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -631,9 +633,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: `uasprop_${u.id}`,
       name: `وحدة ${u.number}`,
       location: u.parentPropertyName ?? '',
-      type: 'residential' as const,
+      type: 'apartment' as PropertyType,
+      totalUnits: 1,
       ownerId: currentUser.ownerId!,
       unitStructure: 'single' as const,
+      createdAt: new Date().toISOString(),
       _unitId: u.id,
     } as Property & { _unitId: string }));
     return [...ownedProps, ...synthProps];
@@ -970,6 +974,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fs('cities', id, {}, 'delete');
     addAuditEntry('delete', 'مدينة', city?.displayName || id, `تم حذف المدينة وتحرير ${affectedProps.length} عقار`);
   };
+
+  // تحديث جميع العقارات بإضافة cityId بناءً على الموقع
+  const updateAllPropertiesWithCities = useCallback(async () => {
+    const normCity = (raw: string): string => {
+      let s = raw.trim();
+      s = s.replace(/ة$/g, 'ه');
+      s = s.replace(/[أإآ]/g, 'ا');
+      s = s.replace(/\s+/g, ' ');
+      return s;
+    };
+
+    // خريطة: اسم موحد → cityId
+    const cityMap = new Map<string, string>();
+    cities.forEach(city => {
+      const normalized = normCity(city.name);
+      cityMap.set(normalized, city.id);
+      if (city.displayName) {
+        const displayNormalized = normCity(city.displayName);
+        cityMap.set(displayNormalized, city.id);
+      }
+    });
+
+    let updated = 0;
+    let skipped = 0;
+
+    properties.forEach(prop => {
+      // تخطي العقارات التي لها cityId بالفعل
+      if (prop.cityId) {
+        skipped++;
+        return;
+      }
+
+      // استخراج اسم المدينة من location
+      const location = prop.location || (prop as any).city || '';
+      if (!location) return;
+
+      const cityName = location.split(' - ')[0].trim();
+      const normalizedCity = normCity(cityName);
+      const cityId = cityMap.get(normalizedCity);
+
+      if (cityId) {
+        // تحديث العقار
+        fs('properties', prop.id, { cityId }, 'update');
+        setProperties(prev => prev.map(p => p.id === prop.id ? { ...p, cityId } : p));
+        updated++;
+      }
+    });
+
+    return { updated, skipped };
+  }, [cities, properties, fs]);
 
   const addAuditEntry = (action: AuditLog['action'], entityType: string, entityName: string, details: string) => {
     const entry: AuditLog = {
@@ -2020,6 +2074,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       login, logout, updateProfile, importBackup, refreshData,
       cities, cityStats,
       addCity, updateCity, deleteCity,
+      updateAllPropertiesWithCities,
     }}>
       {children}
     </AppContext.Provider>

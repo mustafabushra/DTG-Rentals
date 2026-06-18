@@ -83,6 +83,31 @@ export default function CitiesScreen() {
     return properties.filter(p => (p as any).cityId === cityId).length;
   };
 
+  const handleUpdateAllProperties = async () => {
+    Alert.alert(
+      'تحديث جميع العقارات',
+      'سيتم تحديث جميع العقارات وإضافة cityId بناءً على اسم المدينة في حقل الموقع. هل تريد المتابعة؟',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'تحديث',
+          onPress: async () => {
+            try {
+              const result = await updateAllPropertiesWithCities();
+              Alert.alert(
+                'تم التحديث',
+                `تم تحديث ${result.updated} عقار\nتم تخطي ${result.skipped} عقار (لديه cityId بالفعل)`
+              );
+            } catch (error) {
+              Alert.alert('خطأ', 'حدث خطأ أثناء التحديث');
+              console.error(error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -91,9 +116,14 @@ export default function CitiesScreen() {
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>إدارة المدن</Text>
-        <TouchableOpacity onPress={() => { resetForm(); setShowForm(true); }}>
-          <Ionicons name="add-circle-outline" size={28} color="#FFF" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity onPress={handleUpdateAllProperties} style={styles.headerBtn}>
+            <Ionicons name="refresh-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { resetForm(); setShowForm(true); }}>
+            <Ionicons name="add-circle-outline" size={28} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -216,6 +246,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 14,
     paddingHorizontal: Theme.spacing.base,
+  },
+  headerBtn: {
+    padding: 6,
+    position: 'relative',
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
   content: { padding: Theme.spacing.base, gap: Theme.spacing.md, paddingBottom: 20 },
