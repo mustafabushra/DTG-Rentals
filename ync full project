@@ -1,0 +1,150 @@
+[33m894daf0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m feat: إضافة زر تحديث العقارات بالمدن في شاشة المدن
+[33mf494af6[m feat: جعل نظام المدن يعمل مع البيانات الحقيقية من Firestore
+[33md18c1a0[m feat: إضافة بيانات تجريبية للمدن وربط العقارات بها
+[33m2917157[m fix: إصلاح أخطاء TypeScript في mockData.ts - إضافة priority لـ CalendarEvent
+[33meb9e0f3[m feat: توحيد المدينة كتصنيف رئيسي + حفظ التفاصيل كطبقات
+[33m4b78eda[m تحديث الفلاتر
+[33me12583f[m تحديث الفلاتر
+[33m61789cb[m ميزة __تصنيف العقارات المؤجرة حسب المدينة__ إلى لوحة التحكم
+[33m1a760d2[m ميزة __تصنيف العقارات المؤجرة حسب المدينة__ إلى لوحة التحكم
+[33m3f9f8da[m اصلاح مشكلة المرفقات
+[33mf87465a[m تحديث بشان مشكلة المرفقات
+[33m1799b13[m تحديث بشان مشكلة المرفقات
+[33mf95e20d[m تحديث بشان مشكلة المرفقات
+[33md5eb769[m تحديث بشان مشكلة المرفقات
+[33mbf0f138[m اضافة صفحة جديدة لتتبع التحديثات
+[33mc16e772[m اصلاح مشكلة المرفقات
+[33mb97feb7[m fix theme primary crash + modal update
+[33meaaf29e[m Update attachments, payments, maintenance and tenants modules
+[33maff1d19[m update project files
+[33maee6153[m feat: integrate FileViewer into attachments screen for image and pdf previews
+[33m8a8a591[m refactor: remove redundant attachments route registration to adhere to file-based routing architecture
+[33m0ff9c03[m fix: register attachments screen in root layout to prevent 404
+[33me84ae19[m feat: add attachments collection page and sidebar link
+[33mda0c447[m[33m ([m[1;31morigin/production[m[33m, [m[1;32mproduction[m[33m)[m fix: complete dark mode — replace all hardcoded colors with theme tokens
+[33m3ce1367[m fix: correct app name in onboarding tour to DTG Rentals
+[33m256b976[m fix: complete dark mode — replace all hardcoded colors with theme tokens
+[33meaf24a9[m fix: improve network status detection and offline banner UX
+[33mc0255f8[m feat: add Arabic onboarding tour for new users
+[33m3442041[m fix: simplify Firebase Auth init and add clientId to Google provider
+[33m83c3ec6[m deploy: force redeploy all changes
+[33m7eb8141[m ci: trigger deploy to verify FIREBASE_TOKEN
+[33m3c204d8[m ci: deploy Firestore rules using FIREBASE_TOKEN
+[33m588dd8a[m fix: owner logic bugs — timeline leak, contract dropdown, synthetic property filter
+[33m19797b1[m fix: owner can see tenants they added even without contracts yet
+[33m3e0ecc2[m fix: new tenants without contracts show as active not former
+[33mc6fd9ec[m ci: deploy Firestore rules via service account (no FIREBASE_TOKEN needed)
+[33m0f1d262[m feat: treat external owned units as independent properties in owner dashboard
+[33m7fa3267[m fix: wrap visibleOwners/Tenants/AuditLogs in useMemo to stop infinite re-render for owners
+[33mf633b2f[m fix: allow owner/مالك role to write in Firestore rules
+[33m0ba6b71[m fix: owner canAdd/canEdit enabled + auto-assign ownerId on add property/unit
+[33m06158f9[m fix: owner can see external unit name in add-contract, add-maintenance, and unit detail
+[33m5aa6d2d[m fix: allow editing admin role permissions in system settings
+[33m39c3863[m fix: owner detail page shows external units and their contracts/revenue
+[33m0017b2f[m refactor: replace virtual properties with externalOwnedUnits pattern
+[33m579e7fc[m fix: owner isolation - correct visiblePropertyIds units and maintenance filters
+[33m6d877e5[m feat: virtual properties — badge, navigation, form filters, KPI fix
+[33m277adb8[m feat: add virtual property support for unit-level ownership
+[33mce368a0[m fix: show units with unit-level ownerId in owner's view even if property belongs to another owner
+[33m0e9f394[m fix: remove refresh button from header, pull-to-refresh still works
+[33m12c27ea[m fix: PWA login blank screen + animated refresh button + pull-to-refresh on dashboard
+[33m74ada7f[m fix: restore sidebar on home tab — / is authenticated home, not public route
+[33m8325b54[m fix: add static landing page content in HTML body for search crawler visibility
+[33m7d05e3b[m fix: show landing page at root URL for unauthenticated users instead of login
+[33m12b4147[m feat: add Google Search Console meta tag verification
+[33mcce992a[m feat: add Google Search Console verification file
+[33m5659a19[m feat: add public landing page and whitelist public routes from auth redirect
+[33m25b632f[m feat: add Terms of Service link in settings screen
+[33mb06ad5b[m feat: add Terms of Service page
+[33m0fa9766[m docs: add Google Calendar section to privacy policy and update date
+[33ma82c73f[m feat: support Google Calendar OAuth redirect flow for mobile browsers
+[33mdc45145[m fix: block Google Calendar connect on mobile browser with clear message
+[33mbd86482[m fix: use safe values array in SVG polygon/polyline to eliminate NaN coordinates
+[33mabebff5[m fix: guard NaN in revenue chart and comparison — coerce amounts to Number
+[33me4adad5[m ci: add EXPO_PUBLIC_GOOGLE_CLIENT_ID to build env
+[33md69a20b[m fix: replace signInWithPopup with GIS initTokenClient for Calendar auth
+[33m8246103[m feat: Google Calendar integration — connect, sync contracts & payments
+[33mcbc2a2d[m feat: add 3-installment option to contract form
+[33mad4e43e[m feat: enrich upcoming events with tenant name and property/unit location
+[33m97d74f8[m feat: add contract renewal button for expired contracts
+[33m1b7206a[m fix: guard toLocaleString against undefined amount/dueDate
+[33m523eb4e[m fix: unify unit filter chips to use same FilterBar style
+[33m66ee496[m feat: add currency field to Property edit form + migrate all old properties in Firestore
+[33m0b71233[m feat: add currency field to Unit — forms, migration, and Firestore sync
+[33m773c1ee[m fix(rtl): section titles on right, action links on left across all screens
+[33ma22094e[m polish: improve spacing and visual hierarchy across all dashboard components for mobile
+[33m2b0bd93[m feat: add 8 dashboard sections (smart alert, collection bar, revenue chart, expiring contracts, due payments, vacant units, tenant stats, MoM comparison)
+[33m4f4dd97[m Fix: save migrated properties to cache so migration persists on reload
+[33mc145bd4[m Auto-migrate property currencies based on contract history
+[33m6f82809[m fix(units): show correct currency per property/contract instead of always SAR
+[33m1b560a6[m fix(contracts): show property name instead of 'رئيسية' in unit selector
+[33m9855aa5[m feat(auth): add Google Sign-In via signInWithPopup
+[33mb94bb1f[m feat(reports): add country cards to financial reports overview
+[33m4f12687[m feat: auto-migrate legacy properties to unitStructure on load
+[33m4b8b5c1[m feat: unitStructure — single vs multi unit properties
+[33mc0e4f59[m fix(ui): remove redundant totals bar from payments and ledger screens
+[33m0a5d231[m feat: atomic addContract via Firestore Transaction
+[33m4c15b69[m feat(functions): Week 2 — Cloud Functions for auto-expiry, overdue, receipts, integrity check
+[33m57b0dbb[m fix(arch): Week 1 — critical data integrity & cascade fixes
+[33mf60d818[m fix: auto-reactivate expired contract when endDate extended to future
+[33m8e75ea3[m feat: add refreshData function and refresh button in dashboard header
+[33m74c9f5f[m fix: sort auditLogs by timestamp desc so recent activity shows latest entries
+[33m5c7d811[m fix: filter pill text invisible on light mode (inactive color was white on beige)
+[33m070186d[m fix: coerce xlsx cell values to string before .trim() (numbers crash on area field)
+[33m85dd28f[m fix: use Web FileReader API for xlsx on web (avoid expo-file-system.Base64 error)
+[33mdd08b63[m feat: bulk import properties from Excel/CSV
+[33m5130414[m feat: add land property type, deed number & area fields, fix contract edit regeneration
+[33m689ab37[m fix: replace Alert.alert with ConfirmModal for installment regeneration on web
+[33m2067fb4[m fix: handle typo correction in annualValue and add confirmation dialog for installment regeneration
+[33m7ce8813[m feat: add SAR total card with fixed exchange rate conversion across all currencies
+[33m8a4ec13[m fix: make country cards static grid instead of horizontal scroll
+[33mf444ec9[m fix: move COUNTRY_LABELS before COUNTRY_CURRENCY_OPTIONS to fix initialization error
+[33m0e55318[m feat: replace currency dropdown with country selector in contract forms
+[33m5546a08[m fix: use plain text formatAmount in country cards to prevent SVG layout overflow
+[33m55ff6ef[m fix: remove currency code from country card header to prevent text overlap
+[33m40e4ecf[m fix: add flexDirection row to horizontal country cards ScrollView
+[33m1e60cfd[m feat: country breakdown cards + country filter across payments, ledger, units
+[33m10af46b[m feat: add country/currency filter to payments and ledger screens
+[33m8cdec11[m fix: propagate contract currency to all payment display screens
+[33m7d0fd03[m fix: resolve payment currency from contract chain instead of payment.currency field
+[33mb724c1c[m feat: add currency field to edit-contract + cascade to payments
+[33mcf50711[m feat: payments inherit and display contract currency
+[33m9b4ca8c[m feat: country/currency filter and breakdown in financial reports
+[33m1ac8ee6[m fix: replace ر.س with ﷼ symbol and expose error details in ErrorBoundary
+[33mfe47e5e[m fix: currency button uses status color for contrast on light banner background
+[33m4e66877[m feat: add currency picker modal to active contract detail screen
+[33mae2d8e6[m fix: import formatCurrency in payment detail screen to resolve crash
+[33m44d9586[m feat: add bulk currency migration tool in system settings
+[33mbb120b1[m feat: multi-currency — currency field on Property & Contract, CurrencyText respects contract/property currency
+[33m2129ca8[m fix: CurrencyText respects system currency (AED/USD/etc), hide zero area/floor in UnitCard
+[33md8fa609[m fix: increase touch targets to 44px — theme chips, confirm payment btn, terminate contract btn
+[33m66509e4[m fix: increase properties header button touch target to 44px, add scroll fade hint in calendar
+[33m369b2e4[m fix: mobile UX — payment-log redirect, FilterBar RTL scroll, tenant name/email fixes
+[33medb505a[m fix: FilterBar active pill text color adapts to theme (dark text on gold in dark mode)
+[33m671fc0b[m fix: unmatched routes, reserved unit stat, collection rate cap, hydration-safe number formatter
+[33m02ab859[m fix: CurrencyText uses official SAMA SVG with color extracted from style/prop/theme
+[33macb9500[m test: trigger staging deploy to verify CI pipeline
+[33m9e350d9[m chore: remove empty firebase-hosting-pull-request workflow
+[33m89c4349[m رييغتلا فصو
+[33m6e5ec2f[m fix: staging CI deploys to live channel of staging site (dtg-rentals-staging.web.app)
+[33mb83a19d[m chore: remove empty firebase-hosting-merge workflow (no triggers defined)
+[33m7b8152a[m fix: replace RiyalSymbol SVG with Unicode ﷼ in CurrencyText so color always inherits from style
+[33m15cc525[m fix: make CurrencyText and RiyalSymbol respect theme color automatically
+[33madc2c52[m test: verify secrets work in CI
+[33m3ae400e[m fix: show auth errors inline on login screen instead of Alert
+[33m7829015[m fix: resolve Firebase Auth null on client by using lazy getFirebaseAuth()
+[33mdd3995f[m feat: use official SAMA Saudi Riyal SVG symbol throughout app
+[33mda95571[m fix: staging uses same project and service account as production
+[33m3d3cb74[m fix: use dtg-rentals-staging site for staging target
+[33m772c078[m fix: disable auto-generated Firebase CLI workflows
+[33me93b5ad[m fix: restore firebase.json hosting targets
+[33m5704d2e[m fix: add channelId to Firebase hosting deploy steps
+[33mcb27a82[m fix staging project id
+[33m4152e89[m fix staging site id
+[33m3ff9d6e[m fix: use separate service account for staging
+[33mc939975[m fix: skip Firebase Auth init during SSR build
+[33m575314f[m debug env vars
+[33m977e21f[m debug env vars
+[33m7b696d5[m add firebase env secrets
+[33mafa5be2[m add web build script
+[33m063d94f[m add Firebase CI/CD setup

@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { lightColors, darkColors, spacing, fontSize, fontWeight, radius } from '../../constants/DesignTokens';
 import { useApp } from '../../context/AppProvider';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { useColorScheme } from 'react-native';
 
 const MENU_ITEMS = [
   { icon: 'grid-outline',          label: 'الوحدات',         route: '/units' },
@@ -18,6 +19,7 @@ const MENU_ITEMS = [
   { icon: 'cash-outline',          label: 'الدفعات',         route: '/payments' },
   { icon: 'bar-chart-outline',     label: 'التقارير المالية', route: '/financial-reports' },
   { icon: 'construct-outline',     label: 'الصيانة',         route: '/maintenance' },
+  { icon: 'location-outline',      label: 'إدارة المدن',     route: '/cities' },
   { icon: 'settings-outline',      label: 'إدارة النظام',    route: '/settings' },
   { icon: 'calendar-outline',      label: 'التقويم',         route: '/calendar' },
   { icon: 'receipt-outline',       label: 'سجل الإجراءات',   route: '/audit-log' },
@@ -31,6 +33,8 @@ interface MoreMenuProps {
 
 export function MoreMenu({ visible, onClose }: MoreMenuProps) {
   const { colors } = useAppTheme();
+  const colorScheme = useColorScheme();
+  const scheme = colorScheme ?? 'light';
   const { payments, contracts } = useApp();
   // عدد الإشعارات = الدفعات المتأخرة + العقود التي تنتهي خلال 30 يوماً
   const unread = payments.filter(p => p.status === 'overdue').length

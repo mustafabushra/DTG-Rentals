@@ -22,6 +22,7 @@ const TAB_ITEMS: NavItem[] = [
   { icon: 'business-outline',      label: 'العقارات',         route: '/(tabs)/properties',   moduleKey: 'properties' },
   { icon: 'people-outline',        label: 'الملاك',           route: '/(tabs)/owners',       moduleKey: 'owners' },
   { icon: 'document-text-outline', label: 'العقود',           route: '/(tabs)/contracts',    moduleKey: 'contracts' },
+  { icon: 'location-outline',      label: 'المدن',            route: '/cities',              moduleKey: null },
 ];
 
 const MORE_ITEMS: NavItem[] = [

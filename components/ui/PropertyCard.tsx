@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { Theme } from '../../constants/Theme';
 import type { PropertyPhoto } from '../../context/AppProvider';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { useApp } from '../../context/AppProvider';
 
 interface PropertyCardProps {
   property: {
@@ -14,6 +15,7 @@ interface PropertyCardProps {
     address?: string;
     location?: string;
     city?: string;
+    cityId?: string;
     totalUnits: number;
     status?: string;
   };
@@ -57,9 +59,12 @@ const TYPE_COLORS: Record<string, [string, string]> = {
 export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCount = 0, onDelete }: PropertyCardProps) {
   const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
+  const { cities } = useApp();
 
   const location = property.address ?? property.location ?? '';
-  const city     = property.city ?? '';
+  const cityName = property.cityId
+    ? (cities.find(c => c.id === property.cityId)?.displayName ?? cities.find(c => c.id === property.cityId)?.name ?? '')
+    : (property as any).city ?? '';
   const mainPhoto = photos.find(p => p.isMain) ?? photos[0];
   const photoUri  = mainPhoto?.uri;
   const total     = property.totalUnits;
@@ -120,11 +125,11 @@ export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCou
         {/* Name + location overlay — bottom */}
         <View style={styles.overlay} pointerEvents="none">
           <Text style={styles.overlayName} numberOfLines={1}>{property.name}</Text>
-          {(location || city) && (
+          {(location || cityName) && (
             <View style={styles.overlayLocation}>
               <Ionicons name="location-outline" size={11} color="rgba(255,255,255,0.8)" />
               <Text style={styles.overlayLocationText} numberOfLines={1}>
-                {[location, city].filter(Boolean).join('، ')}
+                {[location, cityName].filter(Boolean).join('، ')}
               </Text>
             </View>
           )}
