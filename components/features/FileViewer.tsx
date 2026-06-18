@@ -15,59 +15,42 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { WebView } from 'react-native-webview';
 import * as Sharing from 'expo-sharing';
 
-import { spacing, fontSize, fontWeight, radius } from '../../constants/DesignTokens';
-import { FileService } from '../../domain/services/FileService';
-import type { Attachment } from '../../domain/models';
-import { useAppTheme } from '../../hooks/useAppTheme';
+import { Attachment } from '../../domain/models';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
 const isRemote = (uri: string) =>
   uri.startsWith('http://') || uri.startsWith('https://');
 
-const pdfSource = (uri: string) => {
-  if (Platform.OS === 'android' && isRemote(uri)) {
-    return `https://docs.google.com/viewer?url=${encodeURIComponent(uri)}&embedded=true`;
-  }
-  return uri;
-};
-
-const TYPE_COLOR: Record<Attachment['type'], string> = {
-  image: '#2E86C1',
-  pdf: '#E74C3C',
-  doc: '#8E44AD',
-  other: '#7F8C8D',
-};
-
-interface FileViewerProps {
+interface Props {
   attachment: Attachment | null;
   onClose: () => void;
 }
 
-export function FileViewer({ attachment, onClose }: FileViewerProps) {
-  const { colors } = useAppTheme();
-
-  const [loading, setLoading] = useState(true);
+export function FileViewer({ attachment, onClose }: Props) {
+  const [imageLoading, setImageLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [error, setError] = useState(false);
 
   const slideY = useRef(new Animated.Value(SCREEN_H)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
+  const isImage = attachment?.type === 'image';
+  const isPdf = attachment?.type === 'pdf';
+
   // OPEN animation
   const open = () => {
-    setLoading(true);
     setError(false);
+    setImageLoading(false);
+    setPdfLoading(false);
 
     Animated.parallel([
       Animated.spring(slideY, {
         toValue: 0,
         useNativeDriver: true,
-        tension: 60,
-        friction: 12,
       }),
       Animated.timing(opacity, {
         toValue: 1,
@@ -97,39 +80,27 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
     if (attachment) open();
   }, [attachment]);
 
-  // Auto share Android local PDF (safe fallback)
+  // PDF timeout fallback (prevents infinite loading)
   useEffect(() => {
-    if (!attachment) return;
+    if (!isPdf) return;
 
-    const isLocalPdf =
-      attachment.type === 'pdf' &&
-      Platform.OS === 'android' &&
-      !isRemote(attachment.uri);
+    const t = setTimeout(() => {
+      if (pdfLoading) {
+        setError(true);
+        setPdfLoading(false);
+      }
+    }, 12000);
 
-    if (isLocalPdf) {
-      Sharing.shareAsync(attachment.uri, {
-        mimeType: attachment.mimeType,
-        dialogTitle: attachment.name,
-      }).finally(() => onClose());
-    }
-  }, [attachment]);
+    return () => clearTimeout(t);
+  }, [pdfLoading, isPdf]);
 
-  if (!attachment) {
-    return null;
-  }
-
-  const isImage = attachment.type === 'image';
-  const isPdf = attachment.type === 'pdf';
-  const color = TYPE_COLOR[attachment.type];
+  if (!attachment) return null;
 
   const handleShare = async () => {
     try {
       const ok = await Sharing.isAvailableAsync();
       if (ok) {
-        await Sharing.shareAsync(attachment.uri, {
-          mimeType: attachment.mimeType,
-          dialogTitle: attachment.name,
-        });
+        await Sharing.shareAsync(attachment.uri);
       }
     } catch (e) {
       console.log('SHARE ERROR:', e);
@@ -137,44 +108,26 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
   };
 
   const renderPdf = () => {
-    const src = pdfSource(attachment.uri);
-
-    if (Platform.OS === 'web') {
-      return (
-        <iframe
-          src={src}
-          style={{ width: '100%', height: '100%', border: 'none' }}
-        />
-      );
-    }
-
     return (
       <WebView
         style={{ flex: 1 }}
-        source={{ uri: src }}
-        originWhitelist={['*']}
+        source={{ uri: attachment.uri }}
+        startInLoadingState
         javaScriptEnabled
         domStorageEnabled
-        startInLoadingState
-        onLoadStart={() => setLoading(true)}
-        onLoadEnd={() => setLoading(false)}
+        onLoadStart={() => setPdfLoading(true)}
+        onLoadEnd={() => setPdfLoading(false)}
         onError={(e) => {
           console.log('PDF ERROR:', e.nativeEvent);
-          setLoading(false);
           setError(true);
+          setPdfLoading(false);
         }}
       />
     );
   };
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={close}
-    >
+    <Modal visible transparent animationType="none" onRequestClose={close}>
       <StatusBar barStyle="light-content" />
 
       {/* BACKDROP */}
@@ -187,15 +140,12 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
           {/* HEADER */}
           <View style={styles.header}>
             <TouchableOpacity onPress={close}>
-              <Text style={{ color: '#fff' }}>✕</Text>
+              <Text style={{ color: '#fff', fontSize: 18 }}>✕</Text>
             </TouchableOpacity>
 
             <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontWeight: '600' }} numberOfLines={1}>
+              <Text style={{ color: '#fff' }} numberOfLines={1}>
                 {attachment.name}
-              </Text>
-              <Text style={{ color: '#999', fontSize: 12 }}>
-                {attachment.type}
               </Text>
             </View>
 
@@ -207,8 +157,28 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
           {/* CONTENT */}
           <View style={{ flex: 1 }}>
 
+            {/* IMAGE */}
+            {isImage && !error && (
+              <ScrollView contentContainerStyle={{ flex: 1 }}>
+                <Image
+                  source={{ uri: attachment.uri }}
+                  style={{ width: '100%', flex: 1 }}
+                  resizeMode="contain"
+                  onLoadStart={() => setImageLoading(true)}
+                  onLoadEnd={() => setImageLoading(false)}
+                  onError={() => {
+                    setError(true);
+                    setImageLoading(false);
+                  }}
+                />
+              </ScrollView>
+            )}
+
+            {/* PDF */}
+            {isPdf && !error && renderPdf()}
+
             {/* LOADER */}
-            {loading && !error && (
+            {(imageLoading || pdfLoading) && !error && (
               <View style={styles.loader}>
                 <ActivityIndicator color="#fff" />
                 <Text style={{ color: '#aaa', marginTop: 10 }}>
@@ -220,7 +190,10 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
             {/* ERROR */}
             {error && (
               <View style={styles.error}>
-                <Text style={{ color: '#fff' }}>Failed to load file</Text>
+                <Text style={{ color: '#fff' }}>
+                  Failed to load file
+                </Text>
+
                 <TouchableOpacity onPress={handleShare}>
                   <Text style={{ color: 'lightblue', marginTop: 10 }}>
                     Open externally
@@ -228,29 +201,6 @@ export function FileViewer({ attachment, onClose }: FileViewerProps) {
                 </TouchableOpacity>
               </View>
             )}
-
-            {/* IMAGE */}
-            {isImage && !error && (
-              <ScrollView
-                contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-                maximumZoomScale={5}
-              >
-                <Image
-                  source={{ uri: attachment.uri }}
-                  style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                  onLoadStart={() => setLoading(true)}
-                  onLoadEnd={() => setLoading(false)}
-                  onError={(e) => {
-                    console.log('IMAGE ERROR:', e.nativeEvent);
-                    setError(true);
-                    setLoading(false);
-                  }}
-                />
-              </ScrollView>
-            )}
-
-            {/* PDF */}
-            {isPdf && !error && renderPdf()}
 
           </View>
 
@@ -277,12 +227,12 @@ const styles = StyleSheet.create({
     borderBottomColor: '#222',
   },
   loader: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
   },
   error: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
   },
