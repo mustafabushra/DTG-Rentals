@@ -454,8 +454,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }).catch(() => {});
 
       // ── تحميل المدن ────────────────────────────────────────────────────────
-      const citiesData = await getAll(ORG_ID, 'cities');
+      let citiesData = await getAll(ORG_ID, 'cities');
       if (gen !== loadGenRef.current) return;
+      
+      // إذا لم تكن هناك مدن، أنشئ المدن الافتراضية تلقائياً
+      if (!citiesData || citiesData.length === 0) {
+        console.log('[CITIES] No cities found, seeding default cities...');
+        const defaultCities: City[] = [
+          { id: 'city_1', name: 'الرياض', displayName: 'الرياض', region: 'الرياض', createdAt: new Date().toISOString() },
+          { id: 'city_2', name: 'جدة', displayName: 'جدة', region: 'مكة المكرمة', createdAt: new Date().toISOString() },
+          { id: 'city_3', name: 'الدمام', displayName: 'الدمام', region: 'الشرقية', createdAt: new Date().toISOString() },
+          { id: 'city_4', name: 'المدينة المنورة', displayName: 'المدينة المنورة', region: 'المدينة المنورة', createdAt: new Date().toISOString() },
+        ];
+        
+        // حفظ المدن الافتراضية في Firestore
+        for (const city of defaultCities) {
+          await setOne(ORG_ID, 'cities', city.id, city);
+        }
+        citiesData = defaultCities;
+        console.log('[CITIES] Seeded', defaultCities.length, 'default cities');
+      }
+      
       const resolvedCities = citiesData as City[];
       setCities(resolvedCities);
       console.log('[DATA_LOADED] cities ready', { count: resolvedCities.length });
