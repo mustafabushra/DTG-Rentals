@@ -17,12 +17,13 @@ import { CURRENCY_OPTIONS } from '../utils/currency';
 export default function AddPropertyScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { owners, addProperty, systemSettings } = useApp();
+  const { owners, cities, addProperty, systemSettings } = useApp();
 
   const [form, setForm] = useState({
     name: '', type: '' as PropertyType | '', location: '', floors: '',
     ownerId: '', description: '', currency: systemSettings?.currency ?? 'SAR',
     deedNumber: '', area: '', unitStructure: '' as UnitStructure | '',
+    cityId: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -36,6 +37,7 @@ export default function AddPropertyScreen() {
     const r3 = validatePositiveNumber(form.floors, 'عدد الطوابق');
     if (!r3.valid) e.floors = r3.error!;
     if (!form.ownerId) e.ownerId = 'المالك مطلوب';
+    if (!form.cityId) e.cityId = 'المدينة مطلوبة';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -47,6 +49,7 @@ export default function AddPropertyScreen() {
       name:        sanitizeText(form.name),
       type:        form.type as PropertyType,
       location:    sanitizeText(form.location),
+      cityId:      form.cityId || undefined,
       floors:      Number(sanitizeNumber(form.floors)),
       totalUnits:  0,
       ownerId:     form.ownerId,
@@ -63,6 +66,10 @@ export default function AddPropertyScreen() {
   };
 
   const ownerOptions = owners.map(o => ({ label: o.name, value: o.id }));
+  const cityOptions = [
+    { label: 'اختر المدينة...', value: '' },
+    ...cities.map(c => ({ label: c.displayName || c.name, value: c.id })),
+  ];
   const typeOptions = [
     { label: 'شقة', value: 'apartment' }, { label: 'فيلا', value: 'villa' },
     { label: 'مبنى', value: 'building' }, { label: 'برج', value: 'tower' },
@@ -134,6 +141,7 @@ export default function AddPropertyScreen() {
             </View>
           ) : null}
 
+          <FormSelect label="المدينة" value={form.cityId} options={cityOptions} onSelect={set('cityId')} required placeholder="اختر المدينة..." error={errors.cityId} />
           <FormInput label="الموقع" value={form.location} onChangeText={set('location')} placeholder="مثال: الرياض - حي العليا" required icon="location-outline" error={errors.location} />
           <FormInput label="عدد الطوابق" value={form.floors} onChangeText={set('floors')} placeholder="مثال: 8" keyboardType="number-pad" required icon="layers-outline" error={errors.floors} />
           <FormSelect label="المالك" value={form.ownerId} options={ownerOptions} onSelect={set('ownerId')} required placeholder="اختر المالك..." error={errors.ownerId} />
