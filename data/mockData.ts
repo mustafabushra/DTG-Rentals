@@ -37,18 +37,23 @@ export interface Property {
   id: string;
   name: string;
   type: PropertyType;
+  address?: string;
   location: string;
+  cityId?: string;          // مرجع إلى City
+  city?: string;            // legacy — للتوافق مع البيانات القديمة
   floors: number;
   totalUnits: number;
   ownerId: string;
   status: PropertyStatus;
   description: string;
+  buildYear?: number;
   image?: string;
   currency?: string;        // e.g. 'SAR' | 'AED' | 'EGP'
   deedNumber?: string;      // رقم الصك (اختياري)
   area?: number;            // المساحة بالمتر المربع (اختياري)
   unitStructure?: UnitStructure; // single = وحدة رئيسية تلقائية، multi = وحدات يضيفها المستخدم
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Tenant {
@@ -148,6 +153,7 @@ export interface CalendarEvent {
   notes?: string;
   entityId?: string;
   entityType?: string;
+  priority?: 'high' | 'medium' | 'low';
   // legacy fields kept for backward compat
   description?: string;
   relatedId?: string;

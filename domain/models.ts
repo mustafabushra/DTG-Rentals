@@ -227,6 +227,7 @@ export interface CalendarEvent {
   entityType?:  string;
   description?: string;
   relatedId?:   string;
+  priority?:    'high' | 'medium' | 'low';
 }
 
 // ─── User & Preferences ───────────────────────────────────────────────────────
