@@ -11,7 +11,7 @@ import { City } from '../domain/models';
 export default function CitiesScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { cities, addCity, updateCity, deleteCity, properties } = useApp();
+  const { cities, addCity, updateCity, deleteCity, properties, updateAllPropertiesWithCities } = useApp();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
