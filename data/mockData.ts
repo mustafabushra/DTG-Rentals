@@ -21,6 +21,25 @@ export type MaintenanceStatus = 'new' | 'in_progress' | 'completed' | 'cancelled
 export type AuditAction = 'add' | 'edit' | 'delete';
 export type CalendarEventType = 'payment' | 'maintenance' | 'contract_expiry' | 'file_expiry' | 'manual';
 
+// ===========================
+// CITIES — مدن
+// ===========================
+export interface City {
+  id: string;
+  name: string;
+  displayName: string;
+  region?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export const mockCities: City[] = [
+  { id: 'city_1', name: 'الرياض', displayName: 'الرياض', region: 'الرياض', createdAt: '2024-01-01' },
+  { id: 'city_2', name: 'جدة', displayName: 'جدة', region: 'مكة المكرمة', createdAt: '2024-01-01' },
+  { id: 'city_3', name: 'الدمام', displayName: 'الدمام', region: 'الشرقية', createdAt: '2024-01-01' },
+  { id: 'city_4', name: 'المدينة المنورة', displayName: 'المدينة المنورة', region: 'المدينة المنورة', createdAt: '2024-01-01' },
+];
+
 export interface Owner {
   id: string;
   name: string;
@@ -213,7 +232,9 @@ export const mockProperties: Property[] = [
     id: 'p1',
     name: 'برج الرياض السكني',
     type: 'apartment',
+    address: 'الرياض - حي العليا',
     location: 'الرياض - حي العليا',
+    cityId: 'city_1',
     floors: 12,
     totalUnits: 6,
     ownerId: 'o1',
@@ -225,7 +246,9 @@ export const mockProperties: Property[] = [
     id: 'p2',
     name: 'فيلا الملك فهد',
     type: 'villa',
+    address: 'الرياض - حي الملقا',
     location: 'الرياض - حي الملقا',
+    cityId: 'city_1',
     floors: 3,
     totalUnits: 3,
     ownerId: 'o1',
@@ -237,7 +260,9 @@ export const mockProperties: Property[] = [
     id: 'p3',
     name: 'مجمع الأعمال التجاري',
     type: 'office',
+    address: 'جدة - حي الروضة',
     location: 'جدة - حي الروضة',
+    cityId: 'city_2',
     floors: 8,
     totalUnits: 4,
     ownerId: 'o2',
@@ -249,7 +274,9 @@ export const mockProperties: Property[] = [
     id: 'p4',
     name: 'مركز الخليج التجاري',
     type: 'shop',
+    address: 'جدة - حي البلد',
     location: 'جدة - حي البلد',
+    cityId: 'city_2',
     floors: 2,
     totalUnits: 3,
     ownerId: 'o2',
@@ -261,7 +288,9 @@ export const mockProperties: Property[] = [
     id: 'p5',
     name: 'أبراج الدمام السكنية',
     type: 'apartment',
+    address: 'الدمام - حي الشاطئ',
     location: 'الدمام - حي الشاطئ',
+    cityId: 'city_3',
     floors: 10,
     totalUnits: 2,
     ownerId: 'o3',
@@ -273,7 +302,9 @@ export const mockProperties: Property[] = [
     id: 'p6',
     name: 'عمارة المدينة المنورة',
     type: 'apartment',
+    address: 'المدينة المنورة - حي قباء',
     location: 'المدينة المنورة - حي قباء',
+    cityId: 'city_4',
     floors: 6,
     totalUnits: 2,
     ownerId: 'o4',
