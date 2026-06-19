@@ -348,13 +348,13 @@ export function AddAttachmentModal({
       scrollable
       footer={
         <View style={styles.footer}>
-          {step > 1 && (
-            <Button title="السابق" variant="ghost" onPress={() => setStep(s => s - 1)} />
+            {step > 1 && (
+            <Button label="السابق" variant="ghost" onPress={() => setStep(s => s - 1)} />
           )}
 
           {step < 5 ? (
             <Button
-              title="التالي"
+              label="التالي"
               onPress={() => {
                 if (step === 4) setStep(5);
                 else setStep(s => s + 1);
@@ -367,7 +367,7 @@ export function AddAttachmentModal({
             />
           ) : (
             <Button
-              title={saving ? "جاري الحفظ..." : "حفظ"}
+              label={saving ? "جاري الحفظ..." : "حفظ"}
               onPress={handleSave}
               disabled={saving}
             />

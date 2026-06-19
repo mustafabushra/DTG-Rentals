@@ -430,13 +430,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return p;
           });
           setPayments(updatedPayments);
-      saveCache(uid, {
-        tenants:     resolvedTenants,
-        payments:    updatedPayments,
-        maintenance: resolvedMaintenance,
-        attachments: [], // Secondary load will populate
-        cities:      [], // Secondary load will populate
-      });
           console.log('[DATA_LOADED] secondary Firestore data ready', {
             tenants: resolvedTenants.length,
             payments: updatedPayments.length,
@@ -481,9 +474,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCities(resolvedCities);
       console.log('[DATA_LOADED] cities ready', { count: resolvedCities.length });
 
+      const resolvedAttachments = FileService.syncExpiryStatuses(attachmentsData as Attachment[]);
       setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
           setCalendarEvents(calendarData as CalendarEvent[]);
-          setAttachments(FileService.syncExpiryStatuses(attachmentsData as Attachment[]));
+          setAttachments(resolvedAttachments);
 
           // Group individual photo docs by entityId
           const propPhotosMap: Record<string, PropertyPhoto[]> = {};
@@ -503,6 +497,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
           setPropertyPhotos(propPhotosMap);
           setUnitPhotos(unitPhotosMap);
+
+          // Save cache only AFTER all secondary state is fully populated
+      saveCache(uid, {
+        tenants:     resolvedTenants,
+        payments:    updatedPayments,
+        maintenance: resolvedMaintenance,
+        attachments: resolvedAttachments,
+        cities:      resolvedCities,
+      });
         } catch (e) {
           console.error('Secondary load error:', e);
         } finally {
