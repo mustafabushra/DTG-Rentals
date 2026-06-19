@@ -1776,22 +1776,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     mimeType: string; size?: number; category: FileCategory;
     expiryDate?: string; notes?: string; uploadedBy?: string;
   }): Promise<Attachment> => {
-    // ✅ FIX: Upload to Firebase Storage instead of converting to base64 data URI.
+    // ✅ Use the SAME approach as property photos:
+    //   Convert file to persistent Base64 data URI and store directly in Firestore.
     //   This avoids:
     //     - "Not allowed to load local resource" error on web
-    //     - Firestore 1MB document limit (base64 can be huge)
-    //     - File persistence (download URLs never expire)
-    const storagePath = attachmentStoragePath(data.entityType, data.entityId, `att_${Date.now()}`);
-    const uploadResult = await uploadFile(storagePath, data.uri, data.mimeType).catch(err => {
-      console.error('[addAttachment] Storage upload failed:', err);
-      // Fallback: use the original URI (may still fail to display on web, but at least saves)
-      return { downloadUrl: data.uri, storagePath: undefined };
-    });
+    //     - Firebase Storage permission issues for non-image files
+    //     - WebView platform limitations for PDFs
+    //     - Download URL expiry
+    const uri = await toPersistentUri(data.uri);
 
     const att = FileService.create({
       ...data,
-      uri: uploadResult.downloadUrl,
-      storagePath: uploadResult.storagePath,
+      uri,
       uploadedBy: data.uploadedBy ?? currentUser.name,
       ...(isOwner && currentUser.ownerId ? { ownerContext: currentUser.ownerId } : {}),
     });
