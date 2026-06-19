@@ -17,7 +17,7 @@ export default function EditPropertyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { properties, owners, updateProperty } = useApp();
+  const { properties, owners, cities, updateProperty } = useApp();
 
   const property = properties.find(p => p.id === id);
 
@@ -27,6 +27,7 @@ export default function EditPropertyScreen() {
     location: property?.location || '',
     floors: property?.floors?.toString() || '',
     ownerId: property?.ownerId || '',
+    cityId: property?.cityId || '',
     status: property?.status || 'active',
     currency: property?.currency || 'SAR',
     description: property?.description || '',
@@ -41,6 +42,7 @@ export default function EditPropertyScreen() {
         location: property.location || '',
         floors: property.floors?.toString() || '',
         ownerId: property.ownerId || '',
+        cityId: property.cityId || '',
         status: property.status || 'active',
         currency: property.currency || 'SAR',
         description: property.description || '',
@@ -71,7 +73,8 @@ export default function EditPropertyScreen() {
     updateProperty(id, {
       name: form.name.trim(), type: form.type as any,
       location: form.location.trim(), floors: Number(form.floors),
-      ownerId: form.ownerId, status: form.status as any,
+      ownerId: form.ownerId, cityId: form.cityId || undefined,
+      status: form.status as any,
       currency: form.currency,
       description: form.description.trim(),
     });
@@ -79,6 +82,10 @@ export default function EditPropertyScreen() {
   };
 
   const ownerOptions = owners.map(o => ({ label: o.name, value: o.id }));
+  const cityOptions = [
+    { label: 'اختر المدينة...', value: '' },
+    ...cities.map(c => ({ label: c.displayName || c.name, value: c.id })),
+  ];
   const typeOptions = [
     { label: 'شقة', value: 'apartment' }, { label: 'فيلا', value: 'villa' },
     { label: 'مبنى', value: 'building' }, { label: 'برج', value: 'tower' },
@@ -109,6 +116,7 @@ export default function EditPropertyScreen() {
         <FormInput label="اسم العقار" value={form.name} onChangeText={set('name')} required icon="business-outline" error={errors.name} />
         <FormSelect label="نوع العقار" value={form.type} options={typeOptions} onSelect={set('type')} required error={errors.type} />
         <FormInput label="الموقع" value={form.location} onChangeText={set('location')} required icon="location-outline" error={errors.location} />
+        <FormSelect label="المدينة" value={form.cityId} options={cityOptions} onSelect={set('cityId')} required placeholder="اختر المدينة..." />
         <FormInput label="عدد الطوابق" value={form.floors} onChangeText={set('floors')} keyboardType="number-pad" required icon="layers-outline" error={errors.floors} />
         <FormSelect label="المالك" value={form.ownerId} options={ownerOptions} onSelect={set('ownerId')} required error={errors.ownerId} />
         <FormSelect label="الحالة" value={form.status} options={statusOptions} onSelect={set('status')} required />

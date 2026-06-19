@@ -955,7 +955,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addCity = (city: City) => {
     setCities(prev => [...prev, city]);
     fs('cities', city.id, city, 'set');
-    addAuditEntry('add', 'مدينة', city.displayName || city.name, `تم إضافة مدينة جديدة: ${city.displayName || city.name}`);
+
+    // ✅ Auto-link existing properties that match this city by location name
+    const cityName = (city.name || '').toLowerCase().trim();
+    const matchingProps = properties.filter(p => {
+      if (p.cityId) return false; // already linked
+      const loc = (p.location || (p as any).city || '').toLowerCase();
+      // Check if location starts with or contains the city name
+      return loc.startsWith(cityName) || loc.includes(cityName);
+    });
+    matchingProps.forEach(p => {
+      setProperties(prev => prev.map(pr => pr.id === p.id ? { ...pr, cityId: city.id } : pr));
+      fs('properties', p.id, { cityId: city.id }, 'update');
+    });
+    if (matchingProps.length > 0) {
+      console.log(`[CITY] Auto-linked ${matchingProps.length} properties to "${city.displayName || city.name}"`);
+    }
+
+    addAuditEntry('add', 'مدينة', city.displayName || city.name, `تم إضافة مدينة جديدة: ${city.displayName || city.name}${matchingProps.length > 0 ? ` (ربط ${matchingProps.length} عقار)` : ''}`);
   };
 
   const updateCity = (id: string, data: Partial<City>) => {

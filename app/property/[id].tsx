@@ -23,7 +23,7 @@ export default function PropertyDetailScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const { colors } = useAppTheme();
-  const { properties, owners, units, maintenance, contracts, payments,
+  const { properties, owners, cities, units, maintenance, contracts, payments,
           propertyPhotos, addPropertyPhoto, removePropertyPhoto, setPropertyMainPhoto,
           canWrite, canDelete, currentUser } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('units');
@@ -36,6 +36,7 @@ export default function PropertyDetailScreen() {
   const handleRemovePhoto = useCallback((photoId: string) => { if (id) removePropertyPhoto(id, photoId); }, [id, removePropertyPhoto]);
   const handleSetMain     = useCallback((photoId: string) => { if (id) setPropertyMainPhoto(id, photoId); }, [id, setPropertyMainPhoto]);
   const owner = property ? owners.find(o => o.id === property.ownerId) ?? null : null;
+  const city = property?.cityId ? cities.find(c => c.id === property.cityId) ?? null : null;
   const propUnits = units.filter(u => u.propertyId === id);
   const propMaintenance = maintenance.filter(m => m.propertyId === id);
   const isSingleUnit = (property?.unitStructure ?? 'multi') === 'single';
@@ -91,6 +92,12 @@ export default function PropertyDetailScreen() {
             <Ionicons name="layers-outline" size={14} color={colors.textSecondary} />
             <Text style={[styles.infoSub, { color: colors.textSecondary }]}>{property.floors} طوابق · {getPropertyTypeLabel(property.type)}</Text>
           </View>
+          {city && (
+            <View style={styles.infoRow}>
+              <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+              <Text style={[styles.infoSub, { color: colors.textSecondary }]}>{city.displayName || city.name}</Text>
+            </View>
+          )}
           {owner && (
             <TouchableOpacity style={styles.infoRow} onPress={() => router.push(`/owner/${owner.id}`)}>
               <Ionicons name="person-outline" size={14} color={colors.primary} />
