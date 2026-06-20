@@ -274,16 +274,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
           setDataLoading(true);
           const [
-            ownersData, propertiesData, unitsData, contractsData,
+            ownersData, propertiesData, unitsData, contractsData, citiesRaw,
           ] = await Promise.all([
             getAll(ORG_ID, 'owners'),
             getAll(ORG_ID, 'properties'),
             getAll(ORG_ID, 'units'),
             getAll(ORG_ID, 'contracts'),
+            getAll(ORG_ID, 'cities'),
           ]);
 
           // Bail if a newer auth event superseded this one
           if (gen !== loadGenRef.current) return;
+
+          // ── معالجة المدن (بما في ذلك البذر التلقائي إن كانت فارغة) ──────────
+          let citiesData = citiesRaw;
+          if (!citiesData || citiesData.length === 0) {
+            console.log('[CITIES] No cities found in critical load, seeding defaults...');
+            const defaultCities: City[] = [
+              { id: 'city_1', name: 'الرياض', displayName: 'الرياض', region: 'الرياض', createdAt: new Date().toISOString() },
+              { id: 'city_2', name: 'جدة', displayName: 'جدة', region: 'مكة المكرمة', createdAt: new Date().toISOString() },
+              { id: 'city_3', name: 'الدمام', displayName: 'الدمام', region: 'الشرقية', createdAt: new Date().toISOString() },
+              { id: 'city_4', name: 'المدينة المنورة', displayName: 'المدينة المنورة', region: 'المدينة المنورة', createdAt: new Date().toISOString() },
+            ];
+            for (const city of defaultCities) { await setOne(ORG_ID, 'cities', city.id, city); }
+            citiesData = defaultCities;
+          }
+          const resolvedCities = citiesData as City[];
+          setCities(resolvedCities);
 
           const firestoreHasData = ownersData.length > 0 || propertiesData.length > 0 ||
                                    unitsData.length > 0  || contractsData.length > 0;
@@ -361,8 +378,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             properties: currencyMigratedProps,
             units:      currencyMigratedUnits,
             contracts:  updatedContracts,
-          attachments: [], // Initial load might not have them yet
-          cities: [], // Cities loaded in secondary phase
+            cities:     resolvedCities,
+            attachments: [],
           });
           hydrated.current = true;
           console.log('[DATA_LOADED] critical Firestore data ready', {
@@ -370,6 +387,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             properties: resolvedProperties.length,
             units: finalUnits.length,
             contracts: updatedContracts.length,
+            cities: resolvedCities.length,
             fromCache: useCache,
           });
         } catch (e: any) {
