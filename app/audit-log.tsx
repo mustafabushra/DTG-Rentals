@@ -8,6 +8,7 @@ import { SearchBar } from '../components/ui/SearchBar';
 import { AppHeader } from '../components/ui/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { FilterBar, AUDIT_FILTERS } from '../components/ui/FilterBar';
+import { ListSkeleton } from '../components/ui/Skeleton';
 import { AuditAction } from '../data/mockData';
 import { useAppTheme } from '../hooks/useAppTheme';
 

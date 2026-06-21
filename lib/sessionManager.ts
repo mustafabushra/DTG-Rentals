@@ -11,6 +11,9 @@ import { logger } from './logger';
 const IDLE_TIMEOUT_MS = 30 * 60_000; // 30 minutes
 const SESSION_KEY     = secureStorage.KEYS.SESSION_UID;
 
+// Reference to the active instance's reset function so module-level touchSession() can poke it
+let activeReset: (() => void) | null = null;
+
 export function initSessionManager(onExpired: () => void) {
   // Each call creates its own isolated state — no module-level globals that bleed across instances
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -47,17 +50,19 @@ export function initSessionManager(onExpired: () => void) {
     }
   });
 
+  activeReset = resetIdleTimer;
   resetIdleTimer();
 
   return () => {
     active = false;
+    if (activeReset === resetIdleTimer) activeReset = null;
     sub.remove();
     clearIdleTimer();
   };
 }
 
 export function touchSession() {
-  if (getFirebaseAuth()?.currentUser) resetIdleTimer();
+  if (getFirebaseAuth()?.currentUser) activeReset?.();
 }
 
 // ── Firebase error code → Arabic message ────────────────────────────────────

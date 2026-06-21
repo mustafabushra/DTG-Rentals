@@ -215,12 +215,12 @@ export default function DashboardScreen() {
       ? new Set(payments.filter(p => ownerContractIds!.has(p.contractId ?? '')).map(p => p.id))
       : null;
 
-    type TlEvent = { id: string; title: string; date: string; type: keyof typeof TL_CFG; entityType: string; entityId: string; notes?: string; subtitle?: string; overdue?: boolean };
+    type TlEvent = { id: string; title: string; date: string; type: keyof ReturnType<typeof getTlCfg>; entityType: string; entityId: string; notes?: string; subtitle?: string; overdue?: boolean };
     const events: TlEvent[] = [];
 
     // 1. Manual calendar events
     calendarEvents.forEach(e => {
-      events.push({ id: e.id, title: e.title, date: e.date, type: e.type as keyof typeof TL_CFG, entityType: e.entityType ?? 'manual', entityId: e.entityId ?? e.id, notes: e.notes });
+      events.push({ id: e.id, title: e.title, date: e.date, type: e.type as keyof ReturnType<typeof getTlCfg>, entityType: e.entityType ?? 'manual', entityId: e.entityId ?? e.id, notes: e.notes });
     });
 
     // 2. Active contract expiry
