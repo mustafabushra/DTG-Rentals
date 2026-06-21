@@ -21,7 +21,14 @@ import {
 } from '../utils/rateLimiter';
 
 // ─── تسجيل مستخدم جديد ───────────────────────────────────────────────────────
-export async function registerUser(name: string, email: string, password: string) {
+// كل تسجيل جديد يُنشئ مؤسسة (org) مستقلة خاصة به — لا يرى بيانات أي حساب آخر.
+// accountType: 'company' = شركة تضم ملاكاً تحتها | 'independent' = مالك مستقل يدير عقاراته فقط.
+export async function registerUser(
+  name: string,
+  email: string,
+  password: string,
+  accountType: 'company' | 'independent' = 'company',
+) {
   const cleanEmail = sanitizeEmail(email);
   const cleanName  = sanitizeText(name);
 
@@ -43,12 +50,13 @@ export async function registerUser(name: string, email: string, password: string
     await updateProfile(credential.user, { displayName: cleanName });
 
     await setDoc(doc(db, 'users', credential.user.uid), {
-      name:      cleanName,
-      email:     cleanEmail,
-      role:      'admin',
-      orgId:     'main',
-      status:    'active',
-      createdAt: serverTimestamp(),
+      name:        cleanName,
+      email:       cleanEmail,
+      role:        'admin',              // مدير مؤسسته الخاصة فقط
+      orgId:       credential.user.uid,  // مؤسسة مستقلة فريدة لكل حساب جديد
+      accountType,
+      status:      'active',
+      createdAt:   serverTimestamp(),
     });
 
     recordSuccess('register', cleanEmail);
@@ -184,12 +192,13 @@ export async function loginWithGoogle() {
   const profileSnap = await getDoc(doc(db, 'users', user.uid));
   if (!profileSnap.exists()) {
     await setDoc(doc(db, 'users', user.uid), {
-      name:      user.displayName ?? 'مستخدم Google',
-      email:     user.email ?? '',
-      role:      'admin',
-      orgId:     'main',
-      status:    'active',
-      createdAt: serverTimestamp(),
+      name:        user.displayName ?? 'مستخدم Google',
+      email:       user.email ?? '',
+      role:        'admin',         // مدير مؤسسته الخاصة فقط
+      orgId:       user.uid,        // مؤسسة مستقلة فريدة
+      accountType: 'company',
+      status:      'active',
+      createdAt:   serverTimestamp(),
     });
   }
 

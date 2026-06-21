@@ -19,6 +19,7 @@ export default function LoginScreen() {
   const [name, setName]         = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
+  const [accountType, setAccountType] = useState<'company' | 'independent'>('company');
   const [errors, setErrors]     = useState<Record<string, string>>({});
   const [loading, setLoading]   = useState(false);
   const [authError, setAuthError] = useState('');
@@ -45,7 +46,7 @@ export default function LoginScreen() {
       if (mode === 'login') {
         await loginUser(email.trim(), password);
       } else {
-        await registerUser(name.trim(), email.trim(), password);
+        await registerUser(name.trim(), email.trim(), password, accountType);
       }
       // Navigation handled by onAuthChange in _layout.tsx
     } catch (err: any) {
@@ -121,6 +122,47 @@ export default function LoginScreen() {
                 icon="person-outline"
                 error={errors.name}
               />
+            )}
+
+            {mode === 'register' && (
+              <View style={styles.accountTypeWrapper}>
+                <Text style={[styles.accountTypeLabel, { color: colors.text }]}>نوع الحساب</Text>
+                <View style={[styles.accountTypeToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <TouchableOpacity
+                    style={[styles.accountTypeOption, accountType === 'company' && { backgroundColor: '#03284C' }]}
+                    onPress={() => setAccountType('company')}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color={accountType === 'company' ? '#FFF' : colors.textSecondary}
+                    />
+                    <Text style={[styles.accountTypeText, { color: accountType === 'company' ? '#FFF' : colors.textSecondary }]}>
+                      شركة
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.accountTypeOption, accountType === 'independent' && { backgroundColor: '#03284C' }]}
+                    onPress={() => setAccountType('independent')}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons
+                      name="person-outline"
+                      size={18}
+                      color={accountType === 'independent' ? '#FFF' : colors.textSecondary}
+                    />
+                    <Text style={[styles.accountTypeText, { color: accountType === 'independent' ? '#FFF' : colors.textSecondary }]}>
+                      مالك مستقل
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={[styles.accountTypeHint, { color: colors.textMuted }]}>
+                  {accountType === 'company'
+                    ? 'شركة تدير عدة ملاك وعقاراتهم'
+                    : 'مالك يدير عقاراته الخاصة فقط'}
+                </Text>
+              </View>
             )}
 
             <FormInput
@@ -257,6 +299,18 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   tabText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  accountTypeWrapper: { gap: 6 },
+  accountTypeLabel: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
+  accountTypeToggle: {
+    flexDirection: 'row', borderRadius: Theme.radius.lg,
+    borderWidth: 1, padding: 4, gap: 4,
+  },
+  accountTypeOption: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 12, borderRadius: Theme.radius.md, minHeight: 44,
+  },
+  accountTypeText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  accountTypeHint: { fontSize: Theme.fontSize.xs, textAlign: 'right' },
   submitBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, borderRadius: Theme.radius.lg, paddingVertical: 16, marginTop: 4,

@@ -53,6 +53,30 @@ service cloud.firestore {
       return getUserData().orgId == orgId;
     }
 
+    function isManager() {
+      return isSignedIn() && isActive() &&
+             userRole() in ['manager', 'مدير'];
+    }
+
+    function isManagerOrAdmin() {
+      return isAdmin() || isManager();
+    }
+
+    // المجموعات الحساسة التي تخضع لعزل المالك (قراءة/كتابة محصورة بـ ownerId)
+    function isOwnerScopedCol(col) {
+      return col in ['properties', 'units', 'contracts', 'payments', 'maintenance'];
+    }
+
+    // مراجع مشتركة يقرؤها أي عضو نشط في المؤسسة (المالك التابع أيضاً)
+    function isSharedReadCol(col) {
+      return col in ['cities', 'settings', 'calendarEvents', 'photos', 'tenants', 'attachments'];
+    }
+
+    // مراجع مشتركة يجوز للمالك التابع الكتابة فيها
+    function isOwnerWritableSharedCol(col) {
+      return col in ['calendarEvents', 'photos', 'tenants'];
+    }
+
     function validString(val, maxLen) {
       return val is string && val.size() > 0 && val.size() <= maxLen;
     }
@@ -66,34 +90,78 @@ service cloud.firestore {
     }
 
     // ── User profiles ─────────────────────────────────────────────────────────
+    // الأمان: لا يستطيع المستخدم الانضمام إلى مؤسسة غيره ولا تصعيد دوره/حالته.
     match /users/{uid} {
-      allow read:   if isSuperAdmin() || (isSignedIn() && (request.auth.uid == uid || isAdmin()));
-      allow create: if isSuperAdmin() || (isSignedIn() && request.auth.uid == uid);
-      allow update: if isSuperAdmin() || (isSignedIn() &&
-                       (request.auth.uid == uid || isAdmin()) &&
-                       !request.resource.data.diff(resource.data).affectedKeys()
-                         .hasAny(['role', 'orgId', 'status']) || isAdmin());
+      // قراءة: مستندك أنت، أو مدير يقرأ مستخدمي مؤسسته فقط.
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && request.auth.uid == uid)
+        || (isSignedIn() && isAdmin() && resource.data.orgId == getUserData().orgId);
+
+      // تسجيل ذاتي: مستندك أنت فقط، وبمؤسسة جديدة خاصة بك (orgId == uid)
+      // — يمنع وضع orgId='main' للانضمام إلى مؤسسة قائمة والاطلاع على بياناتها.
+      // أو: مدير يُنشئ مستخدماً داخل مؤسسته هو (مثل دعوة مالك تابع).
+      allow create: if isSuperAdmin()
+        || (isSignedIn() && request.auth.uid == uid
+            && request.resource.data.orgId == uid)
+        || (isSignedIn() && isAdmin()
+            && request.resource.data.orgId == getUserData().orgId);
+
+      // تحديث ذاتي: يجوز تعديل الملف الشخصي فقط — لا role/orgId/status/ownerId.
+      // المدير يُحدّث مستخدمي مؤسسته فقط، ولا ينقلهم إلى مؤسسة أخرى.
+      allow update: if isSuperAdmin()
+        || (isSignedIn() && request.auth.uid == uid
+            && request.resource.data.get('orgId',   '') == resource.data.get('orgId',   '')
+            && request.resource.data.get('role',    '') == resource.data.get('role',    '')
+            && request.resource.data.get('status',  '') == resource.data.get('status',  '')
+            && request.resource.data.get('ownerId', '') == resource.data.get('ownerId', ''))
+        || (isSignedIn() && isAdmin()
+            && resource.data.orgId == getUserData().orgId
+            && request.resource.data.orgId == getUserData().orgId);
+
       allow delete: if isSuperAdmin();
     }
 
-    // ── Org data (shared) ─────────────────────────────────────────────────────
+    // ── Org data ──────────────────────────────────────────────────────────────
+    // المدير/المالك المستقل (admin) والمدير التنفيذي (manager): وصول كامل لمؤسستهم.
+    // المالك التابع (owner): قراءة/كتابة محصورة بسجلاته (ownerId) على المجموعات الحساسة،
+    // ووصول للمراجع المشتركة فقط. ملاحظة: قواعد Firestore تتحد (OR) عبر المسارات المطابقة،
+    // لذا نستخدم قوائم بيضاء صريحة حتى لا يتسرّب وصول auditLogs/managedUsers عبر هذه القاعدة العامة.
     match /orgs/{orgId}/{collection}/{docId} {
 
-      allow read: if isSuperAdmin() || (canRead() && isSameOrg(orgId));
+      allow read: if isSuperAdmin() || (canRead() && isSameOrg(orgId) && (
+        isManagerOrAdmin() ||
+        (collection == 'owners' && docId == ownerLinkedId()) ||
+        (isOwnerScopedCol(collection) && resource.data.ownerId == ownerLinkedId()) ||
+        isSharedReadCol(collection)
+      ));
 
-      allow create: if isSuperAdmin() || (isSameOrg(orgId) && (
-        canWrite() ||
-        (isOwnerRole() && collection == 'attachments' &&
-         request.resource.data.ownerContext == ownerLinkedId())
-      ) && validateDoc(collection, request.resource.data));
+      allow create: if isSuperAdmin() || (isSameOrg(orgId)
+        && validateDoc(collection, request.resource.data)
+        && (
+          isManagerOrAdmin() ||
+          (isOwnerRole() && isOwnerScopedCol(collection)
+             && request.resource.data.ownerId == ownerLinkedId()) ||
+          (isOwnerRole() && collection == 'attachments'
+             && request.resource.data.ownerContext == ownerLinkedId()) ||
+          (isOwnerRole() && isOwnerWritableSharedCol(collection))
+        ));
 
-      allow update: if isSuperAdmin() || (canWrite() && isSameOrg(orgId) &&
-                       validateDoc(collection, request.resource.data));
+      allow update: if isSuperAdmin() || (isSameOrg(orgId)
+        && validateDoc(collection, request.resource.data)
+        && (
+          isManagerOrAdmin() ||
+          (isOwnerRole() && isOwnerScopedCol(collection)
+             && resource.data.ownerId == ownerLinkedId()
+             && request.resource.data.ownerId == ownerLinkedId()) ||
+          (isOwnerRole() && collection == 'attachments'
+             && resource.data.ownerContext == ownerLinkedId()) ||
+          (isOwnerRole() && isOwnerWritableSharedCol(collection))
+        ));
 
       allow delete: if isSuperAdmin() || (isSameOrg(orgId) && (
         isAdmin() ||
-        (isOwnerRole() && collection == 'attachments' &&
-         resource.data.ownerContext == ownerLinkedId())
+        (isOwnerRole() && collection == 'attachments'
+           && resource.data.ownerContext == ownerLinkedId())
       ));
     }
 

@@ -19,12 +19,13 @@ const CURRENCY_OPTIONS = CURRENCIES.map(c => ({ value: c.code, label: c.label, s
 
 export default function SystemSettingsScreen() {
   const { colors } = useAppTheme();
-  const { systemSettings, updateSystemSettings, isAdmin, contracts, units, properties, updateContract, updateProperty } = useApp();
+  const { systemSettings, updateSystemSettings, isAdmin, contracts, units, properties, updateContract, updateProperty, backfillOwnerIds } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('modules');
   const [saving, setSaving] = useState(false);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [migrating, setMigrating] = useState(false);
   const [migrateResult, setMigrateResult] = useState<{ updated: number; preview: { id: string; name: string; currency: string }[] } | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
 
   if (!isAdmin) {
     return (
@@ -141,6 +142,33 @@ export default function SystemSettingsScreen() {
       ]
     );
   }, [migrationPreview, updateContract, updateProperty, properties]);
+
+  // ── ختم ownerId على السجلات القديمة (ترحيل لمرة واحدة) ─────────────────────
+  const handleBackfillOwnerIds = useCallback(() => {
+    if (!isAdmin) return;
+    Alert.alert(
+      'ختم ownerId على السجلات القديمة',
+      'سيتم تعبئة حقل ownerId في الوحدات والعقود والدفعات وطلبات الصيانة القديمة بناءً على مالك العقار التابعة له. هذا إجراء لمرة واحدة لتفعيل عزل بيانات الملاك. هل تريد المتابعة؟',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'تطبيق',
+          style: 'default',
+          onPress: async () => {
+            setBackfilling(true);
+            try {
+              const result = await backfillOwnerIds();
+              Alert.alert('تم الختم', `تم ختم ownerId على ${result.updated} سجلاً`);
+            } catch (error: any) {
+              Alert.alert('خطأ', error?.message || 'حدث خطأ أثناء تنفيذ الإجراء');
+            } finally {
+              setBackfilling(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [isAdmin, backfillOwnerIds]);
 
   const modules = systemSettings.modules;
   const permissions = systemSettings.permissions;
@@ -367,6 +395,46 @@ export default function SystemSettingsScreen() {
                   </Text>
                 </View>
               )}
+            </View>
+
+            {/* ── ختم ownerId على السجلات القديمة ── */}
+            <Text style={[styles.sectionTitle, { color: colors.textMuted, backgroundColor: colors.surface }]}>
+              صيانة عزل بيانات الملاك
+            </Text>
+            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.migrateHeader, { borderBottomWidth: 0 }]}>
+                <View style={[styles.moduleIcon, { backgroundColor: `${colors.warning}18` }]}>
+                  <Ionicons name="pricetags-outline" size={20} color={colors.warning} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.moduleLabel, { color: colors.text }]}>ختم ownerId على السجلات القديمة</Text>
+                  <Text style={[styles.moduleDesc, { color: colors.textMuted }]}>
+                    إجراء لمرة واحدة يربط الوحدات والعقود والدفعات والصيانة القديمة بمالكها
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.migrateBtn,
+                  {
+                    backgroundColor: (backfilling || !isAdmin) ? colors.border : colors.warning,
+                    borderColor: colors.warning,
+                  },
+                ]}
+                onPress={handleBackfillOwnerIds}
+                disabled={backfilling || !isAdmin}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={backfilling ? 'hourglass-outline' : 'pricetags-outline'}
+                  size={16}
+                  color="#FFF"
+                />
+                <Text style={[styles.migrateBtnText, { color: '#FFF' }]}>
+                  {backfilling ? 'جارٍ التنفيذ...' : 'ختم ownerId على السجلات القديمة'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <Text style={[styles.sectionTitle, { color: colors.textMuted, backgroundColor: colors.surface }]}>

@@ -7,7 +7,7 @@ import {
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
-import { getAll, getOne, setOne, updateOne, deleteOne, deleteAll, ORG_ID, runContractTransaction } from '../lib/firestoreService';
+import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction } from '../lib/firestoreService';
 import {
   SystemSettings, DEFAULT_SYSTEM_SETTINGS, resolvePermissions,
 } from '../constants/SystemDefaults';
@@ -46,7 +46,7 @@ interface AppState {
   dataLoading: boolean;
   secondaryLoading: boolean;
   refreshData: () => void;
-  currentUser: { id: string; name: string; email: string; phone: string; role: string; ownerId?: string };
+  currentUser: { id: string; name: string; email: string; phone: string; role: string; ownerId?: string; orgId?: string };
   theme: ThemeMode;
   notificationPrefs: NotificationPrefs;
   propertyPhotos: Record<string, PropertyPhoto[]>;
@@ -143,6 +143,8 @@ interface AppContextType extends AppState {
   }>;
   /** تحديث جميع العقارات بإضافة cityId */
   updateAllPropertiesWithCities: () => Promise<{ updated: number; skipped: number }>;
+  /** ختم ownerId على البيانات القديمة (مرة واحدة، للمدير) — لتفعيل عزل المالك */
+  backfillOwnerIds: () => Promise<{ updated: number }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -181,7 +183,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     contracts: true, payments: true, documents: true, maintenance: true,
   });
   const [currentUser, setCurrentUser] = useState<{
-    id: string; name: string; email: string; phone: string; role: string; ownerId?: string;
+    id: string; name: string; email: string; phone: string; role: string; ownerId?: string; orgId?: string;
   }>({
     id: '', name: 'مدير النظام', email: '', phone: '', role: 'مدير عام',
   });
@@ -205,6 +207,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!firebaseUser) {
         hydrated.current = false;
         loadingRef.current = false;
+        setActiveOrgId(null);
         setIsAuthenticated(false);
         setUserId(null);
         setDataLoading(false);
@@ -225,9 +228,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(true);
 
       // تحميل بيانات الملف الشخصي من Firestore
+      // المؤسسة الافتراضية = uid (للحسابات الجديدة)، وتُستبدل بقيمة البروفايل إن وُجدت
+      let resolvedOrgId = firebaseUser.uid;
+      // مالك تابع لشركة (role=owner + ownerId) → نحصر استعلاماته على سجلاته فقط
+      let scopeOwnerId: string | null = null;
       try {
         const profile = await getUserProfile(firebaseUser.uid);
         if (gen !== loadGenRef.current) return; // stale — newer auth event took over
+        resolvedOrgId = (profile?.orgId as string) || firebaseUser.uid;
+        scopeOwnerId = ((profile?.role === 'owner' || profile?.role === 'مالك') && profile?.ownerId)
+          ? (profile.ownerId as string) : null;
         setCurrentUser(prev => ({
           ...prev,
           id:      firebaseUser.uid,
@@ -236,6 +246,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           phone:   profile?.phone   ?? '',
           role:    profile?.role    ?? 'مدير عام',
           ownerId: profile?.ownerId ?? undefined,
+          orgId:   resolvedOrgId,
         }));
         if (profile?.theme) {
           setThemeState(profile.theme as ThemeMode);
@@ -251,8 +262,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id:    firebaseUser.uid,
           name:  firebaseUser.displayName ?? 'مستخدم',
           email: firebaseUser.email ?? '',
+          orgId: resolvedOrgId,
         }));
       }
+      // ضبط المؤسسة النشطة قبل أي تحميل بيانات — حاسم: كل الاستعلامات تعتمد عليها
+      setActiveOrgId(resolvedOrgId);
+
+      // ── دوال جلب تراعي عزل المالك ───────────────────────────────────────────
+      // المالك التابع: استعلامات محصورة بـ where('ownerId','==',scopeOwnerId) على المجموعات الحساسة.
+      // المدير/المالك المستقل: جلب كامل لمؤسسته.
+      const OWNER_SCOPED = new Set(['properties', 'units', 'contracts', 'payments', 'maintenance']);
+      const fetchCol = (col: string) =>
+        (scopeOwnerId && OWNER_SCOPED.has(col))
+          ? getWhere(resolvedOrgId, col, [where('ownerId', '==', scopeOwnerId)])
+          : getAll(resolvedOrgId, col);
+      const fetchOwners = async () => {
+        if (!scopeOwnerId) return getAll(resolvedOrgId, 'owners');
+        const own = await getOne(resolvedOrgId, 'owners', scopeOwnerId);
+        return own ? [own] : [];
+      };
 
       // ── Hydrate from cache immediately so the UI never shows empty ──────────
       const uid = firebaseUser.uid;
@@ -276,11 +304,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const [
             ownersData, propertiesData, unitsData, contractsData, citiesRaw,
           ] = await Promise.all([
-            getAll(ORG_ID, 'owners'),
-            getAll(ORG_ID, 'properties'),
-            getAll(ORG_ID, 'units'),
-            getAll(ORG_ID, 'contracts'),
-            getAll(ORG_ID, 'cities'),
+            fetchOwners(),
+            fetchCol('properties'),
+            fetchCol('units'),
+            fetchCol('contracts'),
+            getAll(resolvedOrgId, 'cities'),
           ]);
 
           // Bail if a newer auth event superseded this one
@@ -296,7 +324,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               { id: 'city_3', name: 'الدمام', displayName: 'الدمام', region: 'الشرقية', createdAt: new Date().toISOString() },
               { id: 'city_4', name: 'المدينة المنورة', displayName: 'المدينة المنورة', region: 'المدينة المنورة', createdAt: new Date().toISOString() },
             ];
-            for (const city of defaultCities) { await setOne(ORG_ID, 'cities', city.id, city); }
+            for (const city of defaultCities) { await setOne(getActiveOrgId(), 'cities', city.id, city); }
             citiesData = defaultCities;
           }
           const resolvedCities = citiesData as City[];
@@ -326,7 +354,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const updatedContracts = rawContracts.map(c => {
             if (c.status === 'active' && c.endDate < today) {
               unitUpdatesMap[c.unitId] = { status: 'vacant', currentTenantId: undefined, currentContractId: undefined };
-              updateOne(ORG_ID, 'contracts', c.id, { status: 'expired' }).catch(() => {});
+              updateOne(getActiveOrgId(), 'contracts', c.id, { status: 'expired' }).catch(() => {});
               return { ...c, status: 'expired' as ContractStatus };
             }
             return c;
@@ -351,13 +379,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (u.status !== 'rented' || u.currentContractId !== activeContract.id) {
                 const fix = { status: 'rented' as UnitStatus, currentContractId: activeContract.id, currentTenantId: activeContract.tenantId };
                 console.log(`[UNIT_SYNC] ${u.id} → rented (active contract ${activeContract.id})`);
-                updateOne(ORG_ID, 'units', u.id, fix).catch(() => {});
+                updateOne(getActiveOrgId(), 'units', u.id, fix).catch(() => {});
                 return { ...u, ...fix };
               }
             } else if (u.status === 'rented') {
               // الوحدة مؤجرة لكن لا يوجد عقد نشط → شاغرة
               console.log(`[UNIT_SYNC] ${u.id} → vacant (no active contract)`);
-              updateOne(ORG_ID, 'units', u.id, { status: 'vacant', currentTenantId: null, currentContractId: null }).catch(() => {});
+              updateOne(getActiveOrgId(), 'units', u.id, { status: 'vacant', currentTenantId: null, currentContractId: null }).catch(() => {});
               return { ...u, status: 'vacant' as const, currentTenantId: undefined, currentContractId: undefined };
             }
             return u;
@@ -426,13 +454,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
           const today = new Date().toISOString().split('T')[0];
           const [tenantsData, paymentsData, maintenanceData, auditData, calendarData, attachmentsData, allPhotosData] = await Promise.all([
-            getAll(ORG_ID, 'tenants'),
-            getAll(ORG_ID, 'payments'),
-            getAll(ORG_ID, 'maintenance'),
-            getAll(ORG_ID, 'auditLogs'),
-            getAll(ORG_ID, 'calendarEvents'),
-            getAll(ORG_ID, 'attachments'),
-            getAll(ORG_ID, 'photos'),
+            getAll(resolvedOrgId, 'tenants'),
+            fetchCol('payments'),
+            fetchCol('maintenance'),
+            scopeOwnerId ? Promise.resolve([] as any[]) : getAll(resolvedOrgId, 'auditLogs'),
+            getAll(resolvedOrgId, 'calendarEvents'),
+            getAll(resolvedOrgId, 'attachments'),
+            getAll(resolvedOrgId, 'photos'),
           ]);
           if (gen !== loadGenRef.current) return;
           const resolvedTenants     = tenantsData     as Tenant[];
@@ -442,7 +470,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const rawPayments = paymentsData as Payment[];
           const updatedPayments = rawPayments.map(p => {
             if (p.status === 'pending' && p.dueDate < today) {
-              updateOne(ORG_ID, 'payments', p.id, { status: 'overdue' }).catch(() => {});
+              updateOne(getActiveOrgId(), 'payments', p.id, { status: 'overdue' }).catch(() => {});
               return { ...p, status: 'overdue' as const };
             }
             return p;
@@ -455,7 +483,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
 
           // Load system settings (feature flags + role permissions)
-          getOne(ORG_ID, 'settings', 'system').then(doc => {
+          getOne(getActiveOrgId(), 'settings', 'system').then(doc => {
             if (doc && gen === loadGenRef.current) {
               setSystemSettings(prev => ({
                 modules:            { ...DEFAULT_SYSTEM_SETTINGS.modules, ...(doc.modules ?? {}) },
@@ -467,7 +495,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }).catch(() => {});
 
       // ── تحميل المدن ────────────────────────────────────────────────────────
-      let citiesData = await getAll(ORG_ID, 'cities');
+      let citiesData = await getAll(getActiveOrgId(), 'cities');
       if (gen !== loadGenRef.current) return;
       
       // إذا لم تكن هناك مدن، أنشئ المدن الافتراضية تلقائياً
@@ -482,7 +510,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         
         // حفظ المدن الافتراضية في Firestore
         for (const city of defaultCities) {
-          await setOne(ORG_ID, 'cities', city.id, city);
+          await setOne(getActiveOrgId(), 'cities', city.id, city);
         }
         citiesData = defaultCities;
         console.log('[CITIES] Seeded', defaultCities.length, 'default cities');
@@ -562,7 +590,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toMark.forEach(p => markedOverdueRef.current.add(p.id));
     const ids = new Set(toMark.map(p => p.id));
     setPayments(prev => prev.map(p => ids.has(p.id) ? { ...p, status: 'overdue' as const } : p));
-    toMark.forEach(p => updateOne(ORG_ID, 'payments', p.id, { status: 'overdue' }).catch(() => {}));
+    toMark.forEach(p => updateOne(getActiveOrgId(), 'payments', p.id, { status: 'overdue' }).catch(() => {}));
     console.log('[PAYMENTS] marked overdue:', toMark.map(p => p.id));
   }, [payments, userId]);
 
@@ -604,7 +632,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ─── Firestore sync helper (يكتب دائماً في orgs/main المشتركة) ──────────
+  // ─── Firestore sync helper (يكتب في مؤسسة المستخدم النشطة) ──────────
   const fs = useCallback((col: string, id: string, data: any, op: 'set' | 'update' | 'delete') => {
     if (!userId) return;
     const _p = resolvePermissions(currentUser.role, systemSettings);
@@ -612,9 +640,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const deleteAllowed = _p.canDelete;
     if (op === 'delete' && !deleteAllowed) { console.warn('Permission denied: delete'); return; }
     if ((op === 'set' || op === 'update') && !writeAllowed) { console.warn('Permission denied: write'); return; }
-    if (op === 'set')    setOne(ORG_ID, col, id, data).catch(e => showSaveError(e, `set ${col}/${id}`));
-    if (op === 'update') updateOne(ORG_ID, col, id, data).catch(e => showSaveError(e, `update ${col}/${id}`));
-    if (op === 'delete') deleteOne(ORG_ID, col, id).catch(e => showSaveError(e, `delete ${col}/${id}`));
+    if (op === 'set')    setOne(getActiveOrgId(), col, id, data).catch(e => showSaveError(e, `set ${col}/${id}`));
+    if (op === 'update') updateOne(getActiveOrgId(), col, id, data).catch(e => showSaveError(e, `update ${col}/${id}`));
+    if (op === 'delete') deleteOne(getActiveOrgId(), col, id).catch(e => showSaveError(e, `delete ${col}/${id}`));
   }, [userId, currentUser.role, showSaveError]);
 
   // ─── صلاحيات المستخدم الحالي (مستمدة من إعدادات النظام الديناميكية) ────────
@@ -638,7 +666,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .filter(u => {
         if (u.ownerId !== oid) return false;
         const prop = properties.find(p => p.id === u.propertyId);
-        return !!prop && prop.ownerId !== oid;
+        // عقار الأب ليس ضمن عقارات المالك (مملوك لغيره أو غير مُحمّل) → وحدة خارجية
+        return !prop || prop.ownerId !== oid;
       })
       .map(u => ({
         ...u,
@@ -1130,7 +1159,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // إذا لم تكن currency محددة أصلاً → اكتبها في Firestore (SAR أو ما استُنتج)
       if (!p.currency || p.currency !== topCurrency) {
-        updateOne(ORG_ID, 'properties', p.id, { currency: topCurrency }).catch(() => {});
+        updateOne(getActiveOrgId(), 'properties', p.id, { currency: topCurrency }).catch(() => {});
         return { ...p, currency: topCurrency };
       }
       return p;
@@ -1152,7 +1181,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ?? loadedProperties.find(p => p.id === u.propertyId)?.currency
         ?? 'SAR';
       if (inherited && inherited !== u.currency) {
-        updateOne(ORG_ID, 'units', u.id, { currency: inherited }).catch(() => {});
+        updateOne(getActiveOrgId(), 'units', u.id, { currency: inherited }).catch(() => {});
         return { ...u, currency: inherited };
       }
       return u;
@@ -1180,7 +1209,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const needsStructureUpdate = !p.unitStructure;
 
       if (needsStructureUpdate) {
-        updateOne(ORG_ID, 'properties', p.id, { unitStructure: structure }).catch(() => {});
+        updateOne(getActiveOrgId(), 'properties', p.id, { unitStructure: structure }).catch(() => {});
       }
 
       // ② إنشاء وحدة رئيسية للعقارات الفردية بدون وحدات
@@ -1191,6 +1220,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const autoUnit: Unit = {
             id:          `u_${p.id}`,
             propertyId:  p.id,
+            ...(p.ownerId ? { ownerId: p.ownerId } : {}),
             number:      'رئيسية',
             type:        'apartment_1',
             floor:       1,
@@ -1204,7 +1234,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // تحقق إضافي: لا تنشئ إذا كان ID موجوداً بالفعل في Firestore
           const alreadyExists = loadedUnits.some(u => u.id === autoUnit.id);
           if (!alreadyExists) {
-            setOne(ORG_ID, 'units', autoUnit.id, autoUnit).catch(() => {});
+            setOne(getActiveOrgId(), 'units', autoUnit.id, autoUnit).catch(() => {});
             newUnits.push(autoUnit);
           }
         }
@@ -1237,6 +1267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const autoUnit: Unit = {
         id:           `u_${finalProperty.id}`,
         propertyId:   finalProperty.id,
+        ...(finalProperty.ownerId ? { ownerId: finalProperty.ownerId } : {}),
         number:       'رئيسية',
         type:         'apartment_1',
         floor:        1,
@@ -1345,19 +1376,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Unit ─────────────────────────────────────────────────────────────────
   const addUnit = (unit: Unit) => {
-    // لو المستخدم مالك وهذه وحدة في عقار يملكه → ownerId غير مطلوب (يرثه من العقار)
-    // لو أضاف وحدة في عقار آخر → نحتفظ بـ ownerId المُحدد
-    // لكن لو لا ownerId ولا propertyId يطابق عقاره → نربطه به تلقائياً
-    const finalUnit = isOwner && currentUser.ownerId && !unit.ownerId ? (() => {
-      const parentProp = properties.find(p => p.id === unit.propertyId);
-      // لو العقار الأب ملكه → لا نضيف ownerId (الوحدة ترث)
-      if (parentProp?.ownerId === currentUser.ownerId) return unit;
-      // لو العقار لشخص آخر → أضف ownerId صراحةً
-      return { ...unit, ownerId: currentUser.ownerId };
-    })() : unit;
+    // نختم ownerId الفعلي دائماً (= مالك الوحدة الصريح أو مالك العقار الأب) ليعمل
+    // العزل والاستعلامات المحصورة على السيرفر. الوحدات بلا مالك (عقار للشركة) تبقى بلا ownerId.
+    const parentProp = properties.find(p => p.id === unit.propertyId);
+    const effectiveOwnerId = unit.ownerId ?? parentProp?.ownerId;
+    const finalUnit = effectiveOwnerId ? { ...unit, ownerId: effectiveOwnerId } : unit;
     setUnits(prev => [...prev, finalUnit]);
     fs('units', finalUnit.id, finalUnit, 'set');
-    addAuditEntry('add', 'وحدة', `وحدة ${unit.number}`, `تم إضافة وحدة جديدة رقم ${unit.number}`);
+    addAuditEntry('add', 'وحدة', `وحدة ${finalUnit.number}`, `تم إضافة وحدة جديدة رقم ${finalUnit.number}`);
   };
   const updateUnit = (id: string, data: Partial<Unit>) => {
     setUnits(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));
@@ -1375,6 +1401,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ─── Contract ─────────────────────────────────────────────────────────────
   const addContract = (contract: Contract) => {
     if (!userId) return;
+
+    // مالك الوحدة (للعزل والاستعلامات المحصورة) — من الوحدة أو من عقارها الأب
+    const cUnit = units.find(u => u.id === contract.unitId);
+    const contractOwnerId = cUnit?.ownerId ?? properties.find(p => p.id === cUnit?.propertyId)?.ownerId;
+    const finalContract = contractOwnerId ? { ...contract, ownerId: contractOwnerId } : contract;
 
     // ① حساب الوحدة والمستأجر المحدّثين
     const unitPatch: Partial<Unit> = {
@@ -1400,6 +1431,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: `pay_${contract.id}_${i + 1}`,
         receiptNumber: `RCP-PENDING-${i + 1}`,
         contractId: contract.id,
+        ...(contractOwnerId ? { ownerId: contractOwnerId } : {}),
         amount,
         dueDate: new Date(dueMs).toISOString().split('T')[0],
         status: 'pending' as const,
@@ -1409,15 +1441,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     // ③ تحديث الـ state فوراً (optimistic)
-    setContracts(prev => [...prev, contract]);
+    setContracts(prev => [...prev, finalContract]);
     setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitPatch } : u));
     setTenants(prev => prev.map(t => t.id === contract.tenantId ? { ...t, contractIds: newContractIds } : t));
     setPayments(prev => [...prev, ...installments]);
 
     // ④ كتابة Firestore كلها في transaction واحدة ذرية
     runContractTransaction({
-      orgId:       ORG_ID,
-      contract,
+      orgId:       getActiveOrgId(),
+      contract:    finalContract,
       unitId:      contract.unitId,
       unitPatch,
       tenantId:    contract.tenantId,
@@ -1525,6 +1557,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: `pay_${id}_${installmentIndex + 1}_r${Date.now()}`,
           receiptNumber: `RCP-PENDING-${installmentIndex + 1}`,
           contractId: id,
+          ...(updatedContract.ownerId ? { ownerId: updatedContract.ownerId } : {}),
           amount,
           dueDate: new Date(Math.min(dueMs, endMs)).toISOString().split('T')[0],
           status: 'pending',
@@ -1664,9 +1697,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Maintenance ──────────────────────────────────────────────────────────
   const addMaintenance = (item: Maintenance) => {
-    setMaintenance(prev => [...prev, item]);
-    fs('maintenance', item.id, item, 'set');
-    addAuditEntry('add', 'طلب صيانة', item.title, `تم فتح طلب صيانة جديد: ${item.title}`);
+    // ختم مالك العقار/الوحدة للعزل
+    const mOwnerId = properties.find(p => p.id === item.propertyId)?.ownerId
+      ?? units.find(u => u.id === item.unitId)?.ownerId;
+    const finalItem = mOwnerId ? { ...item, ownerId: mOwnerId } : item;
+    setMaintenance(prev => [...prev, finalItem]);
+    fs('maintenance', finalItem.id, finalItem, 'set');
+    addAuditEntry('add', 'طلب صيانة', finalItem.title, `تم فتح طلب صيانة جديد: ${finalItem.title}`);
   };
   const updateMaintenance = (id: string, data: Partial<Maintenance>) => {
     setMaintenance(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));
@@ -1704,19 +1741,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const _writePhoto = useCallback((photo: PropertyPhoto & { entityType: string; entityId: string }) => {
     if (!userId) return;
-    setOne(ORG_ID, 'photos', photo.id, photo).catch(console.error);
+    setOne(getActiveOrgId(), 'photos', photo.id, photo).catch(console.error);
   }, [userId]);
 
   const _deletePhotoDoc = useCallback((photoId: string, storagePath?: string) => {
     if (!userId) return;
     if (storagePath) deleteFile(storagePath).catch(console.error);
-    deleteOne(ORG_ID, 'photos', photoId).catch(console.error);
+    deleteOne(getActiveOrgId(), 'photos', photoId).catch(console.error);
   }, [userId]);
 
   // Update isMain flag in Firestore for each photo in a list
   const _syncMainFlags = useCallback((photos: (PropertyPhoto & { entityType: string; entityId: string })[]) => {
     if (!userId) return;
-    photos.forEach(p => updateOne(ORG_ID, 'photos', p.id, { isMain: p.isMain }).catch(console.error));
+    photos.forEach(p => updateOne(getActiveOrgId(), 'photos', p.id, { isMain: p.isMain }).catch(console.error));
   }, [userId]);
 
   const _addPhoto = useCallback(async (
@@ -1763,7 +1800,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const hadMain  = photo?.isMain;
       if (hadMain && filtered.length > 0) {
         filtered[0] = { ...filtered[0], isMain: true };
-        updateOne(ORG_ID, 'photos', filtered[0].id, { isMain: true }).catch(console.error);
+        updateOne(getActiveOrgId(), 'photos', filtered[0].id, { isMain: true }).catch(console.error);
       }
       _deletePhotoDoc(photoId, photo?.storagePath);
       return { ...prev, [propertyId]: filtered };
@@ -1773,7 +1810,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setPropertyMainPhoto = useCallback((propertyId: string, photoId: string) => {
     setPropertyPhotos(prev => {
       const updated = (prev[propertyId] ?? []).map(p => ({ ...p, isMain: p.id === photoId }));
-      updated.forEach(p => updateOne(ORG_ID, 'photos', p.id, { isMain: p.isMain }).catch(console.error));
+      updated.forEach(p => updateOne(getActiveOrgId(), 'photos', p.id, { isMain: p.isMain }).catch(console.error));
       return { ...prev, [propertyId]: updated };
     });
   }, []);
@@ -1790,7 +1827,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const hadMain  = photo?.isMain;
       if (hadMain && filtered.length > 0) {
         filtered[0] = { ...filtered[0], isMain: true };
-        updateOne(ORG_ID, 'photos', filtered[0].id, { isMain: true }).catch(console.error);
+        updateOne(getActiveOrgId(), 'photos', filtered[0].id, { isMain: true }).catch(console.error);
       }
       _deletePhotoDoc(photoId, photo?.storagePath);
       return { ...prev, [unitId]: filtered };
@@ -1800,7 +1837,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setUnitMainPhoto = useCallback((unitId: string, photoId: string) => {
     setUnitPhotos(prev => {
       const updated = (prev[unitId] ?? []).map(p => ({ ...p, isMain: p.id === photoId }));
-      updated.forEach(p => updateOne(ORG_ID, 'photos', p.id, { isMain: p.isMain }).catch(console.error));
+      updated.forEach(p => updateOne(getActiveOrgId(), 'photos', p.id, { isMain: p.isMain }).catch(console.error));
       return { ...prev, [unitId]: updated };
     });
   }, []);
@@ -1875,7 +1912,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!userId) return;
     // حذف من Firestore (إصلاح: كان يحذف الحالة المحلية فقط والبيانات تعود عند إعادة التشغيل)
     const cols = ['owners','properties','tenants','units','contracts','payments','maintenance','calendarEvents','attachments','propertyPhotos'];
-    await Promise.all(cols.map(col => deleteAll(ORG_ID, col).catch(console.error)));
+    await Promise.all(cols.map(col => deleteAll(getActiveOrgId(), col).catch(console.error)));
     // مسح الحالة المحلية والكاش
     clearCache(userId);
     setOwners([]); setProperties([]); setTenants([]); setUnits([]);
@@ -1939,7 +1976,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Wipe then rewrite each collection in Firestore — collect any write errors
     const deleteErrors: string[] = [];
     await Promise.all(cols.map(col =>
-      deleteAll(ORG_ID, col).catch(e => { deleteErrors.push(`حذف ${col}: ${e?.message ?? e}`); })
+      deleteAll(getActiveOrgId(), col).catch(e => { deleteErrors.push(`حذف ${col}: ${e?.message ?? e}`); })
     ));
 
     const writeErrors: string[] = [];
@@ -1948,7 +1985,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .filter((item: any) => item?.id)
         .map((item: any) => {
           const sanitized = sanitizeImportRecord(col, item);
-          return setOne(ORG_ID, col, sanitized.id, sanitized).catch(e => {
+          return setOne(getActiveOrgId(), col, sanitized.id, sanitized).catch(e => {
             writeErrors.push(`كتابة ${col}/${sanitized.id}: ${e?.message ?? e}`);
           });
         })
@@ -2001,14 +2038,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       details: `استعادة نسخة احتياطية — التوقيت: ${ts} — المستخدم: ${currentUser.name}`,
     };
     setAuditLogs(prev => [log, ...prev]);
-    setOne(ORG_ID, 'auditLogs', log.id, log).catch(() => {});
+    setOne(getActiveOrgId(), 'auditLogs', log.id, log).catch(() => {});
   }, [userId, currentUser.name, currentUser.email]);
 
   // ─── System Settings ──────────────────────────────────────────────────────
   const updateSystemSettings = useCallback(async (patch: Partial<SystemSettings>) => {
     const updated: SystemSettings = { ...systemSettings, ...patch, updatedAt: new Date().toISOString(), updatedBy: currentUser.id };
     setSystemSettings(updated);
-    await setOne(ORG_ID, 'settings', 'system', updated).catch(e => showSaveError(e, 'settings/system'));
+    await setOne(getActiveOrgId(), 'settings', 'system', updated).catch(e => showSaveError(e, 'settings/system'));
     addAuditEntry('edit', 'system', 'إعدادات النظام', 'تم تحديث إعدادات النظام');
   }, [systemSettings, currentUser.id]);
 
@@ -2038,19 +2075,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const refreshData = async () => {
     if (!userId) return;
+    const org = getActiveOrgId();
+    const sOwner = (currentUser.role === 'owner' || currentUser.role === 'مالك') && currentUser.ownerId ? currentUser.ownerId : null;
+    const ownerScoped = new Set(['properties', 'units', 'contracts', 'payments', 'maintenance']);
+    const fcol = (col: string) => (sOwner && ownerScoped.has(col)) ? getWhere(org, col, [where('ownerId', '==', sOwner)]) : getAll(org, col);
+    const fOwners = async () => { if (!sOwner) return getAll(org, 'owners'); const o = await getOne(org, 'owners', sOwner); return o ? [o] : []; };
     setDataLoading(true);
     try {
       const [
         ownersData, propertiesData, unitsData, contractsData,
         tenantsData, paymentsData, maintenanceData,
       ] = await Promise.all([
-        getAll(ORG_ID, 'owners'),
-        getAll(ORG_ID, 'properties'),
-        getAll(ORG_ID, 'units'),
-        getAll(ORG_ID, 'contracts'),
-        getAll(ORG_ID, 'tenants'),
-        getAll(ORG_ID, 'payments'),
-        getAll(ORG_ID, 'maintenance'),
+        fOwners(),
+        fcol('properties'),
+        fcol('units'),
+        fcol('contracts'),
+        getAll(org, 'tenants'),
+        fcol('payments'),
+        fcol('maintenance'),
       ]);
       const { properties: migratedProps, units: migratedUnits } =
         migrateProperties(propertiesData as Property[], unitsData as Unit[]);
@@ -2065,9 +2107,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setMaintenance(maintenanceData as Maintenance[]);
 
       const [auditData, calendarData, attachmentsData] = await Promise.all([
-        getAll(ORG_ID, 'auditLogs'),
-        getAll(ORG_ID, 'calendarEvents'),
-        getAll(ORG_ID, 'attachments'),
+        sOwner ? Promise.resolve([] as any[]) : getAll(org, 'auditLogs'),
+        getAll(org, 'calendarEvents'),
+        getAll(org, 'attachments'),
       ]);
       setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
       setCalendarEvents(calendarData as CalendarEvent[]);
@@ -2077,6 +2119,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     setDataLoading(false);
   };
+
+  // ─── Backfill ownerId على البيانات القديمة (إجراء يدوي للمدير) ─────────────
+  // يختم ownerId على الوحدات/العقود/الدفعات/الصيانة الموجودة مسبقاً اعتماداً على
+  // سلسلة الملكية (وحدة → عقار). يجب تشغيله مرة واحدة قبل تفعيل عزل المالك الكامل.
+  const backfillOwnerIds = useCallback(async (): Promise<{ updated: number }> => {
+    if (!isAdmin) throw new Error('هذا الإجراء متاح للمدير فقط');
+    const org = getActiveOrgId();
+    let updated = 0;
+
+    const propOwner = new Map<string, string | undefined>(properties.map(p => [p.id, p.ownerId || undefined]));
+    const unitOwner = new Map<string, string | undefined>();
+
+    // الوحدات: ownerId = مالك الوحدة الصريح أو مالك العقار الأب
+    for (const u of units) {
+      const eff = u.ownerId || propOwner.get(u.propertyId);
+      unitOwner.set(u.id, eff);
+      if (eff && u.ownerId !== eff) { await updateOne(org, 'units', u.id, { ownerId: eff }); updated++; }
+    }
+    // العقود: ownerId = مالك الوحدة
+    const contractOwner = new Map<string, string | undefined>();
+    for (const c of contracts) {
+      const eff = unitOwner.get(c.unitId);
+      contractOwner.set(c.id, eff);
+      if (eff && (c as any).ownerId !== eff) { await updateOne(org, 'contracts', c.id, { ownerId: eff }); updated++; }
+    }
+    // الدفعات: ownerId = مالك العقد
+    for (const p of payments) {
+      const eff = contractOwner.get(p.contractId);
+      if (eff && (p as any).ownerId !== eff) { await updateOne(org, 'payments', p.id, { ownerId: eff }); updated++; }
+    }
+    // الصيانة: ownerId = مالك العقار (أو الوحدة)
+    for (const m of maintenance) {
+      const eff = propOwner.get(m.propertyId) || (m.unitId ? unitOwner.get(m.unitId) : undefined);
+      if (eff && (m as any).ownerId !== eff) { await updateOne(org, 'maintenance', m.id, { ownerId: eff }); updated++; }
+    }
+    console.log(`[BACKFILL] ownerId stamped on ${updated} documents`);
+    return { updated };
+  }, [isAdmin, properties, units, contracts, payments, maintenance]);
 
   return (
     <AppContext.Provider value={{
@@ -2109,6 +2189,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       cities, cityStats,
       addCity, updateCity, deleteCity,
       updateAllPropertiesWithCities,
+      backfillOwnerIds,
     }}>
       {children}
     </AppContext.Provider>

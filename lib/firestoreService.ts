@@ -1,13 +1,21 @@
 import {
   collection, doc, getDocs, getDoc,
   addDoc, setDoc, deleteDoc,
-  runTransaction,
+  runTransaction, query, where,
   serverTimestamp,
-  type DocumentData,
+  type DocumentData, type QueryConstraint,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-export const ORG_ID = 'main';
+// ── المؤسسة النشطة (tenant) للجلسة الحالية ───────────────────────────────────
+// تطبيق عميل بمستخدم واحد: مؤسسة واحدة نشطة في كل لحظة. تُضبط عند الدخول وتُمسح عند الخروج.
+// تحل محل الثابت القديم ORG_ID='main' الذي كان يجعل كل المستخدمين يتشاركون نفس البيانات.
+let _activeOrgId: string | null = null;
+export function setActiveOrgId(orgId: string | null): void { _activeOrgId = orgId; }
+export function getActiveOrgId(): string {
+  if (!_activeOrgId) throw new Error('Active org not set — user not authenticated');
+  return _activeOrgId;
+}
 
 function stripUndefined(obj: DocumentData): DocumentData {
   return Object.fromEntries(
@@ -39,6 +47,15 @@ export async function getAll(orgId: string, col: string): Promise<DocumentData[]
   // id: d.id يجب أن يأتي آخراً ليكون دائماً هو الأولوية بغض النظر عن الحقول المخزّنة داخل المستند
   return snap.docs.map(d => ({ ...normalizeTimestamps(d.data()), id: d.id }));
 }
+
+// استعلام محصور — لجلب سجلات مالك واحد فقط (مثلاً where('ownerId','==',ownerId))
+export async function getWhere(orgId: string, col: string, constraints: QueryConstraint[]): Promise<DocumentData[]> {
+  const snap = await getDocs(query(orgCol(orgId, col), ...constraints));
+  return snap.docs.map(d => ({ ...normalizeTimestamps(d.data()), id: d.id }));
+}
+
+// إعادة تصدير دالة where لاستخدامها في بناء القيود من خارج هذا الملف
+export { where };
 
 export async function getOne(orgId: string, col: string, id: string) {
   const snap = await getDoc(orgDoc(orgId, col, id));

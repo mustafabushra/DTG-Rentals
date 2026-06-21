@@ -6,7 +6,6 @@ import { logger } from 'firebase-functions/v2';
 admin.initializeApp();
 const db = admin.firestore();
 
-const ORG_ID  = 'main';
 const REGION  = 'us-central1';
 const TZ      = 'Asia/Riyadh';
 
@@ -16,11 +15,8 @@ function today(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-function orgCol(col: string) {
-  return db.collection('orgs').doc(ORG_ID).collection(col);
-}
-
 async function addAuditLog(
+  orgId: string,
   action: 'add' | 'edit' | 'delete',
   entityType: string,
   entityName: string,
@@ -36,7 +32,7 @@ async function addAuditLog(
     timestamp:  new Date().toISOString(),
     details,
   };
-  await orgCol('auditLogs').doc(entry.id).set(entry);
+  await db.collection('orgs').doc(orgId).collection('auditLogs').doc(entry.id).set(entry);
 }
 
 // ─── [1] إنهاء العقود تلقائياً كل يوم ───────────────────────────────────────
@@ -47,7 +43,7 @@ export const dailyContractExpiry = onSchedule(
     const todayStr = today();
     logger.info(`[dailyContractExpiry] running for date: ${todayStr}`);
 
-    const snap = await orgCol('contracts')
+    const snap = await db.collectionGroup('contracts')
       .where('status', '==', 'active')
       .where('endDate', '<', todayStr)
       .get();
@@ -57,34 +53,52 @@ export const dailyContractExpiry = onSchedule(
       return;
     }
 
-    const batch = db.batch();
-    const unitUpdates: { unitId: string; tenantId: string }[] = [];
-
+    // Group docs by org
+    const docsByOrg = new Map<string, typeof snap.docs>();
     snap.docs.forEach(doc => {
-      const c = doc.data();
-      batch.update(doc.ref, { status: 'expired' });
-      if (c['unitId']) {
-        unitUpdates.push({ unitId: c['unitId'], tenantId: c['tenantId'] });
+      const orgId = doc.ref.parent.parent!.id;
+      if (!docsByOrg.has(orgId)) {
+        docsByOrg.set(orgId, []);
       }
+      docsByOrg.get(orgId)!.push(doc);
     });
 
-    for (const { unitId } of unitUpdates) {
-      const unitRef = orgCol('units').doc(unitId);
-      batch.update(unitRef, {
-        status: 'vacant',
-        currentTenantId:  admin.firestore.FieldValue.delete(),
-        currentContractId: admin.firestore.FieldValue.delete(),
-      });
+    // Process each org
+    for (const [orgId, orgDocs] of docsByOrg.entries()) {
+      const chunkSize = 400;
+      for (let i = 0; i < orgDocs.length; i += chunkSize) {
+        const chunk = orgDocs.slice(i, i + chunkSize);
+        const batch = db.batch();
+        const unitUpdates: { unitId: string; tenantId: string }[] = [];
+
+        chunk.forEach(doc => {
+          const c = doc.data();
+          batch.update(doc.ref, { status: 'expired' });
+          if (c['unitId']) {
+            unitUpdates.push({ unitId: c['unitId'], tenantId: c['tenantId'] });
+          }
+        });
+
+        for (const { unitId } of unitUpdates) {
+          const unitRef = db.collection('orgs').doc(orgId).collection('units').doc(unitId);
+          batch.update(unitRef, {
+            status: 'vacant',
+            currentTenantId:  admin.firestore.FieldValue.delete(),
+            currentContractId: admin.firestore.FieldValue.delete(),
+          });
+        }
+
+        await batch.commit();
+      }
+
+      await addAuditLog(
+        orgId,
+        'edit', 'عقد', 'تشغيل تلقائي',
+        `تم إنهاء ${orgDocs.length} عقد تلقائياً وتحرير ${orgDocs.length} وحدة`,
+      );
     }
 
-    await batch.commit();
-
-    await addAuditLog(
-      'edit', 'عقد', 'تشغيل تلقائي',
-      `تم إنهاء ${snap.size} عقد تلقائياً وتحرير ${unitUpdates.length} وحدة`,
-    );
-
-    logger.info(`[dailyContractExpiry] expired ${snap.size} contracts`);
+    logger.info(`[dailyContractExpiry] expired ${snap.size} contracts across all orgs`);
   },
 );
 
@@ -96,7 +110,7 @@ export const dailyPaymentOverdue = onSchedule(
     const todayStr = today();
     logger.info(`[dailyPaymentOverdue] running for date: ${todayStr}`);
 
-    const snap = await orgCol('payments')
+    const snap = await db.collectionGroup('payments')
       .where('status', '==', 'pending')
       .where('dueDate', '<', todayStr)
       .get();
@@ -106,21 +120,34 @@ export const dailyPaymentOverdue = onSchedule(
       return;
     }
 
-    const chunkSize = 400;
-    const docs = snap.docs;
-    for (let i = 0; i < docs.length; i += chunkSize) {
-      const chunk = docs.slice(i, i + chunkSize);
-      const batch = db.batch();
-      chunk.forEach(doc => batch.update(doc.ref, { status: 'overdue' }));
-      await batch.commit();
+    // Group docs by org
+    const docsByOrg = new Map<string, typeof snap.docs>();
+    snap.docs.forEach(doc => {
+      const orgId = doc.ref.parent.parent!.id;
+      if (!docsByOrg.has(orgId)) {
+        docsByOrg.set(orgId, []);
+      }
+      docsByOrg.get(orgId)!.push(doc);
+    });
+
+    // Process each org
+    for (const [orgId, orgDocs] of docsByOrg.entries()) {
+      const chunkSize = 400;
+      for (let i = 0; i < orgDocs.length; i += chunkSize) {
+        const chunk = orgDocs.slice(i, i + chunkSize);
+        const batch = db.batch();
+        chunk.forEach(doc => batch.update(doc.ref, { status: 'overdue' }));
+        await batch.commit();
+      }
+
+      await addAuditLog(
+        orgId,
+        'edit', 'دفعة', 'تشغيل تلقائي',
+        `تم تحويل ${orgDocs.length} دفعة إلى متأخرة تلقائياً`,
+      );
     }
 
-    await addAuditLog(
-      'edit', 'دفعة', 'تشغيل تلقائي',
-      `تم تحويل ${snap.size} دفعة إلى متأخرة تلقائياً`,
-    );
-
-    logger.info(`[dailyPaymentOverdue] marked ${snap.size} payments as overdue`);
+    logger.info(`[dailyPaymentOverdue] marked ${snap.size} payments as overdue across all orgs`);
   },
 );
 
@@ -128,7 +155,7 @@ export const dailyPaymentOverdue = onSchedule(
 
 export const generateReceiptNumber = onDocumentWritten(
   {
-    document: `orgs/${ORG_ID}/payments/{paymentId}`,
+    document: 'orgs/{orgId}/payments/{paymentId}',
     region:   REGION,
   },
   async event => {
@@ -140,7 +167,8 @@ export const generateReceiptNumber = onDocumentWritten(
     if (before?.['status'] === 'paid') return;
 
     const paymentId = event.params['paymentId'];
-    const counterRef = db.collection('orgs').doc(ORG_ID).collection('_counters').doc('receipts');
+    const orgId     = event.params['orgId'];
+    const counterRef = db.collection('orgs').doc(orgId).collection('_counters').doc('receipts');
 
     await db.runTransaction(async tx => {
       const counterDoc = await tx.get(counterRef);
@@ -156,7 +184,7 @@ export const generateReceiptNumber = onDocumentWritten(
         tx.update(event.data.after.ref, { receiptNumber: receipt });
       }
 
-      logger.info(`[generateReceiptNumber] ${paymentId} → ${receipt}`);
+      logger.info(`[generateReceiptNumber] ${orgId}/${paymentId} → ${receipt}`);
     });
   },
 );
@@ -169,34 +197,79 @@ export const weeklyIntegrityCheck = onSchedule(
     logger.info('[weeklyIntegrityCheck] starting...');
 
     const [contractsSnap, unitsSnap, paymentsSnap] = await Promise.all([
-      orgCol('contracts').where('status', '==', 'active').get(),
-      orgCol('units').where('status', '==', 'rented').get(),
-      orgCol('payments').where('status', '==', 'pending').get(),
+      db.collectionGroup('contracts').where('status', '==', 'active').get(),
+      db.collectionGroup('units').where('status', '==', 'rented').get(),
+      db.collectionGroup('payments').where('status', '==', 'pending').get(),
     ]);
 
-    const activeContractUnitIds = new Set(contractsSnap.docs.map(d => d.data()['unitId']));
-    const issues: string[] = [];
+    // Group docs by org
+    const contractsByOrg = new Map<string, typeof contractsSnap.docs>();
+    const unitsByOrg = new Map<string, typeof unitsSnap.docs>();
+    const paymentsByOrg = new Map<string, typeof paymentsSnap.docs>();
+
+    contractsSnap.docs.forEach(doc => {
+      const orgId = doc.ref.parent.parent!.id;
+      if (!contractsByOrg.has(orgId)) {
+        contractsByOrg.set(orgId, []);
+      }
+      contractsByOrg.get(orgId)!.push(doc);
+    });
 
     unitsSnap.docs.forEach(doc => {
-      if (!activeContractUnitIds.has(doc.id)) {
-        issues.push(`وحدة ${doc.id} حالتها rented لكن لا يوجد عقد active`);
+      const orgId = doc.ref.parent.parent!.id;
+      if (!unitsByOrg.has(orgId)) {
+        unitsByOrg.set(orgId, []);
       }
+      unitsByOrg.get(orgId)!.push(doc);
     });
 
-    const activeContractIds = new Set(contractsSnap.docs.map(d => d.id));
-    const orphanPayments = paymentsSnap.docs.filter(d => {
-      const cid = d.data()['contractId'];
-      return cid && !activeContractIds.has(cid);
+    paymentsSnap.docs.forEach(doc => {
+      const orgId = doc.ref.parent.parent!.id;
+      if (!paymentsByOrg.has(orgId)) {
+        paymentsByOrg.set(orgId, []);
+      }
+      paymentsByOrg.get(orgId)!.push(doc);
     });
-    if (orphanPayments.length > 0) {
-      issues.push(`${orphanPayments.length} دفعة معلقة مرتبطة بعقود غير نشطة`);
+
+    // Get all orgs to check
+    const allOrgIds = new Set<string>([
+      ...contractsByOrg.keys(),
+      ...unitsByOrg.keys(),
+      ...paymentsByOrg.keys(),
+    ]);
+
+    // Check each org independently
+    for (const orgId of allOrgIds) {
+      const orgContracts = contractsByOrg.get(orgId) || [];
+      const orgUnits = unitsByOrg.get(orgId) || [];
+      const orgPayments = paymentsByOrg.get(orgId) || [];
+
+      const activeContractUnitIds = new Set(orgContracts.map(d => d.data()['unitId']));
+      const issues: string[] = [];
+
+      orgUnits.forEach(doc => {
+        if (!activeContractUnitIds.has(doc.id)) {
+          issues.push(`وحدة ${doc.id} حالتها rented لكن لا يوجد عقد active`);
+        }
+      });
+
+      const activeContractIds = new Set(orgContracts.map(d => d.id));
+      const orphanPayments = orgPayments.filter(d => {
+        const cid = d.data()['contractId'];
+        return cid && !activeContractIds.has(cid);
+      });
+      if (orphanPayments.length > 0) {
+        issues.push(`${orphanPayments.length} دفعة معلقة مرتبطة بعقود غير نشطة`);
+      }
+
+      if (issues.length > 0) {
+        await addAuditLog(orgId, 'edit', 'فحص سلامة', 'أسبوعي', `تحذيرات: ${issues.join(' | ')}`);
+        logger.warn(`[weeklyIntegrityCheck] ${orgId} issues:`, issues);
+      } else {
+        logger.info(`[weeklyIntegrityCheck] ${orgId} all clear`);
+      }
     }
 
-    if (issues.length > 0) {
-      await addAuditLog('edit', 'فحص سلامة', 'أسبوعي', `تحذيرات: ${issues.join(' | ')}`);
-      logger.warn('[weeklyIntegrityCheck] issues found:', issues);
-    } else {
-      logger.info('[weeklyIntegrityCheck] all clear');
-    }
+    logger.info('[weeklyIntegrityCheck] completed for all orgs');
   },
 );

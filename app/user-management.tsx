@@ -16,7 +16,7 @@ import {
   updateProfile as fbUpdateProfile, deleteUser, signOut,
 } from 'firebase/auth';
 import { db, getSecondaryAuth } from '../lib/firebase';
-import { ORG_ID } from '../lib/firestoreService';
+import { getActiveOrgId } from '../lib/firestoreService';
 import { useApp } from '../context/AppProvider';
 import { isAdminRole } from '../utils/roleUtils';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -130,7 +130,7 @@ export default function UserManagementScreen() {
 
   // قائمة المستخدمين مشتركة تحت orgs/main/managedUsers
   const colRef = useCallback(
-    () => collection(db, 'orgs', ORG_ID, 'managedUsers'),
+    () => collection(db, 'orgs', getActiveOrgId(), 'managedUsers'),
     [],
   );
 
@@ -233,7 +233,7 @@ export default function UserManagementScreen() {
 
       if (editing) {
         // ── تعديل مستخدم موجود ────────────────────────────────────────────
-        await setDoc(doc(db, 'orgs', ORG_ID, 'managedUsers', editing.id), data, { merge: true });
+        await setDoc(doc(db, 'orgs', getActiveOrgId(), 'managedUsers', editing.id), data, { merge: true });
         // حفظ في مستند المستخدم نفسه كذلك (لو كان لديه حساب Firebase Auth)
         await setDoc(doc(db, 'users', editing.id), {
           name:  data.name,
@@ -272,13 +272,13 @@ export default function UserManagementScreen() {
           phone:     data.phone,
           role:      data.role,
           status:    'active',
-          orgId:     ORG_ID,
+          orgId:     getActiveOrgId(),
           ...(data.role === 'owner' || data.role === 'مالك' ? { ownerId: data.ownerId } : {}),
           createdAt: serverTimestamp(),
         });
 
         // 3. احفظه في قائمة المستخدمين المشتركة orgs/main/managedUsers
-        await setDoc(doc(db, 'orgs', ORG_ID, 'managedUsers', newUid), {
+        await setDoc(doc(db, 'orgs', getActiveOrgId(), 'managedUsers', newUid), {
           ...data,
           status:    'active',
           createdAt: serverTimestamp(),
@@ -314,7 +314,7 @@ export default function UserManagementScreen() {
   const handleDelete = async () => {
     if (!delTarget) return;
     try {
-      await deleteDoc(doc(db, 'orgs', ORG_ID, 'managedUsers', delTarget.id));
+      await deleteDoc(doc(db, 'orgs', getActiveOrgId(), 'managedUsers', delTarget.id));
       setUsers(prev => prev.filter(u => u.id !== delTarget.id));
     } catch { toast('تعذّر الحذف'); }
     finally { setDelTarget(null); }
@@ -323,7 +323,7 @@ export default function UserManagementScreen() {
   const toggleStatus = async (u: ManagedUser) => {
     const next: ManagedUser['status'] = u.status === 'active' ? 'suspended' : 'active';
     try {
-      await setDoc(doc(db, 'orgs', ORG_ID, 'managedUsers', u.id), { status: next }, { merge: true });
+      await setDoc(doc(db, 'orgs', getActiveOrgId(), 'managedUsers', u.id), { status: next }, { merge: true });
       // حدّث بروفايل المستخدم نفسه أيضاً
       await setDoc(doc(db, 'users', u.id), { status: next }, { merge: true });
       setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: next } : x));

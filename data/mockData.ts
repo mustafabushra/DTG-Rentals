@@ -83,6 +83,7 @@ export interface Tenant {
   nationalId: string;
   nationality: string;
   contractIds: string[];
+  ownerId?: string;          // المالك الذي أضاف المستأجر (للعزل داخل الشركة)
   createdAt: string;
 }
 
@@ -109,6 +110,7 @@ export interface Contract {
   contractNumber: string;
   unitId: string;
   tenantId: string;
+  ownerId?: string;    // مالك الوحدة (مُضمَّن للعزل والاستعلامات المحصورة)
   startDate: string;
   endDate: string;
   annualValue: number;
@@ -126,6 +128,7 @@ export interface Payment {
   id: string;
   receiptNumber: string;
   contractId: string;
+  ownerId?: string;    // مالك العقد (مُضمَّن للعزل والاستعلامات المحصورة)
   amount: number;
   dueDate: string;
   paidDate?: string;
@@ -143,6 +146,7 @@ export interface Maintenance {
   description: string;
   propertyId: string;
   unitId: string;
+  ownerId?: string;    // مالك العقار/الوحدة (مُضمَّن للعزل والاستعلامات المحصورة)
   priority: MaintenancePriority;
   status: MaintenanceStatus;
   technicianName?: string;
