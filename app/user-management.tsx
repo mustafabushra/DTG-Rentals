@@ -248,6 +248,7 @@ export default function UserManagementScreen() {
         // ── إنشاء مستخدم جديد ──────────────────────────────────────────────
         // 1. أنشئ حساب Firebase Auth بكلمة مرور مؤقتة عشوائية (عبر app ثانوية)
         const secondaryAuth = getSecondaryAuth();
+        if (!secondaryAuth) { toast('تعذّر تهيئة المصادقة'); setSaving(false); return; }
         const tempPassword  = `Temp_${Math.random().toString(36).slice(2, 10)}!`;
         let   newUid        = '';
         try {
@@ -287,10 +288,17 @@ export default function UserManagementScreen() {
         // 4. أرسل بريد إعادة تعيين كلمة المرور — هذا هو "دعوة التسجيل"
         await sendPasswordResetEmail(secondaryAuth, data.email);
 
-        setUsers(prev => [
-          ...prev,
-          { id: newUid, ...data, status: 'pending' as const, createdAt: new Date().toISOString() },
-        ].sort((a, b) => a.name.localeCompare(b.name)));
+        const newUser: ManagedUser = {
+          id:        newUid,
+          name:      data.name,
+          email:     data.email,
+          phone:     data.phone,
+          role:      data.role,
+          status:    'pending',
+          createdAt: new Date().toISOString(),
+          ...(data.ownerId ? { ownerId: data.ownerId } : {}),
+        };
+        setUsers(prev => [...prev, newUser].sort((a, b) => a.name.localeCompare(b.name)));
 
         setScreen('list');
         // إشعار واضح للمدير
@@ -622,8 +630,10 @@ export default function UserManagementScreen() {
                     <TouchableOpacity
                       style={[styles.actionBtn, { backgroundColor: '#EBF5FB' }]}
                       onPress={async () => {
+                        const sAuth = getSecondaryAuth();
+                        if (!sAuth) { toast('تعذّر تهيئة المصادقة'); return; }
                         try {
-                          await sendPasswordResetEmail(getSecondaryAuth(), u.email);
+                          await sendPasswordResetEmail(sAuth, u.email);
                           toast(`تم إعادة إرسال بريد الدعوة إلى ${u.email}`);
                         } catch { toast('تعذّر إرسال البريد'); }
                       }}
