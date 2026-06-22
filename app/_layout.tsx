@@ -31,7 +31,7 @@ function StackContent() {
   const { isDesktop } = useScreenSize();
   const pathname = usePathname();
   // '/' هو مسار home tab للمستخدم المسجل — لا يُدرج هنا
-  const NO_SIDEBAR_PATHS = ['/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
+  const NO_SIDEBAR_PATHS = ['/login', '/register-code', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
   const isLogin = NO_SIDEBAR_PATHS.includes(pathname);
   const { theme } = useApp();
   const systemScheme = useColorScheme();
@@ -48,6 +48,7 @@ function StackContent() {
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+      <Stack.Screen name="register-code" options={{ headerShown: false, animation: 'fade' }} />
       <Stack.Screen name="property/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="owner/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="tenant/[id]" options={{ headerShown: false }} />
@@ -137,7 +138,7 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
         // Only navigate to tabs when explicitly on the login screen.
         // If pathname is '/' we are already inside the app (tabs index) — do NOT navigate
         // because router.replace('/(tabs)') from '/' causes Expo Router to remount the root.
-        if (pathnameRef.current === '/login' || pathnameRef.current === '/about') {
+        if (pathnameRef.current === '/login' || pathnameRef.current === '/about' || pathnameRef.current === '/register-code') {
           console.log('[AUTH_STATE_CHANGED] user=signed-in → navigating to tabs');
           // في وضع PWA standalone نحتاج reload كامل عشان يتحدث الـ view بعد تسجيل الدخول
           const isStandalone = typeof window !== 'undefined' &&
@@ -153,7 +154,7 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
       } else {
         sessionCleanupRef.current?.();
         sessionCleanupRef.current = null;
-        const PUBLIC_ROUTES = ['/login', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
+        const PUBLIC_ROUTES = ['/login', '/register-code', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
         if (!PUBLIC_ROUTES.includes(pathnameRef.current)) {
           console.log('[AUTH_STATE_CHANGED] user=signed-out → navigating to about/login');
           // Root path → about page (public landing), all others → login

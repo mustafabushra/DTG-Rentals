@@ -33,10 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.weeklyIntegrityCheck = exports.generateReceiptNumber = exports.dailyPaymentOverdue = exports.dailyContractExpiry = void 0;
+exports.redeemInvite = exports.weeklyIntegrityCheck = exports.generateReceiptNumber = exports.dailyPaymentOverdue = exports.dailyContractExpiry = void 0;
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const firestore_1 = require("firebase-functions/v2/firestore");
+const https_1 = require("firebase-functions/v2/https");
 const v2_1 = require("firebase-functions/v2");
 admin.initializeApp();
 const db = admin.firestore();
@@ -242,5 +243,78 @@ exports.weeklyIntegrityCheck = (0, scheduler_1.onSchedule)({ schedule: 'every mo
         }
     }
     v2_1.logger.info('[weeklyIntegrityCheck] completed for all orgs');
+});
+// ─── [5] استبدال كود الدعوة → إنشاء حساب المستخدم وربطه بمؤسسته ─────────────
+// البوابة الآمنة الوحيدة التي يُنشأ عبرها مستخدم بـ orgId يخصّ مؤسسة قائمة (وليس uid).
+// قواعد Firestore تمنع المستخدم من فعل ذلك بنفسه عمداً؛ هنا الـ Admin SDK يتجاوزها
+// بعد التحقق من كود دعوة صالح (الكود نفسه هو "السر" الذي يصرّح بالانضمام).
+// تُستدعى بدون مصادقة (المستخدم لا يملك حساباً بعد) — الحماية بالكود + الاستهلاك لمرة واحدة.
+const OWNER_ROLES = ['owner', 'مالك'];
+exports.redeemInvite = (0, https_1.onCall)({ region: REGION }, async (request) => {
+    var _a, _b, _c, _d, _e, _f;
+    const code = String((_b = (_a = request.data) === null || _a === void 0 ? void 0 : _a.code) !== null && _b !== void 0 ? _b : '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const email = String((_d = (_c = request.data) === null || _c === void 0 ? void 0 : _c.email) !== null && _d !== void 0 ? _d : '').trim().toLowerCase();
+    const password = String((_f = (_e = request.data) === null || _e === void 0 ? void 0 : _e.password) !== null && _f !== void 0 ? _f : '');
+    if (!code)
+        throw new https_1.HttpsError('invalid-argument', 'الكود مطلوب');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        throw new https_1.HttpsError('invalid-argument', 'بريد إلكتروني غير صحيح');
+    if (password.length < 6)
+        throw new https_1.HttpsError('invalid-argument', 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    // البحث عن الدعوة عبر كل المؤسسات (المستخدم لا يعرف orgId)
+    const snap = await db.collectionGroup('invites')
+        .where('code', '==', code)
+        .where('status', '==', 'pending')
+        .limit(1)
+        .get();
+    if (snap.empty)
+        throw new https_1.HttpsError('not-found', 'الكود غير صحيح أو استُخدم مسبقاً');
+    const inviteRef = snap.docs[0].ref;
+    const invite = snap.docs[0].data();
+    const orgId = inviteRef.parent.parent.id;
+    if (invite['expiresAt'] && new Date(invite['expiresAt']).getTime() < Date.now()) {
+        throw new https_1.HttpsError('deadline-exceeded', 'انتهت صلاحية الكود — اطلب كوداً جديداً');
+    }
+    // حماية حرجة للعزل: دعوة بدور "مالك" يجب أن تحمل ownerId، وإلا سيرى المالك كل بيانات المؤسسة
+    if (OWNER_ROLES.includes(invite['role']) && !invite['ownerId']) {
+        throw new https_1.HttpsError('failed-precondition', 'الدعوة غير مكتملة (مالك بلا ربط) — راجع المدير');
+    }
+    // 1) إنشاء حساب المصادقة أولاً (نفشل مبكراً قبل المساس بالدعوة لو الإيميل مستخدم)
+    let uid;
+    try {
+        const userRecord = await admin.auth().createUser({ email, password, displayName: invite['name'] });
+        uid = userRecord.uid;
+    }
+    catch (e) {
+        if (e.code === 'auth/email-already-exists') {
+            throw new https_1.HttpsError('already-exists', 'هذا البريد مسجّل مسبقاً — استخدم تسجيل الدخول');
+        }
+        v2_1.logger.error('[redeemInvite] createUser failed', e);
+        throw new https_1.HttpsError('internal', 'تعذّر إنشاء الحساب');
+    }
+    // 2) استهلاك الدعوة + كتابة الملف الشخصي ضمن معاملة واحدة (حارس ضد إعادة الاستخدام المتزامن)
+    try {
+        await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(inviteRef);
+            if (!fresh.exists || fresh.data()['status'] !== 'pending') {
+                throw new https_1.HttpsError('failed-precondition', 'الكود استُخدم بالفعل');
+            }
+            tx.update(inviteRef, {
+                status: 'used',
+                usedBy: uid,
+                usedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            tx.set(db.doc(`users/${uid}`), Object.assign(Object.assign({ name: invite['name'], email, role: invite['role'], orgId }, (invite['ownerId'] ? { ownerId: invite['ownerId'] } : {})), { status: 'active', createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+            tx.set(db.collection('orgs').doc(orgId).collection('managedUsers').doc(uid), Object.assign(Object.assign({ name: invite['name'], email, role: invite['role'] }, (invite['ownerId'] ? { ownerId: invite['ownerId'] } : {})), { status: 'active', createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+        });
+    }
+    catch (e) {
+        // خسرنا السباق أو فشلت الكتابة → نظّف حساب المصادقة اليتيم
+        await admin.auth().deleteUser(uid).catch(() => { });
+        throw e instanceof https_1.HttpsError ? e : new https_1.HttpsError('internal', 'تعذّر إكمال التسجيل');
+    }
+    // 3) رمز مخصّص لتسجيل الدخول فوراً دون إعادة إدخال
+    const token = await admin.auth().createCustomToken(uid);
+    return { token };
 });
 //# sourceMappingURL=index.js.map

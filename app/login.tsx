@@ -269,6 +269,18 @@ export default function LoginScreen() {
               <Text style={[styles.googleBtnText, { color: colors.text }]}>المتابعة بحساب Google</Text>
             </TouchableOpacity>
 
+            {/* تسجيل بكود دعوة (للملاك المدعوّين من قبل مدير) */}
+            <TouchableOpacity
+              style={styles.inviteCodeBtn}
+              onPress={() => router.push('/register-code')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="key-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.inviteCodeText, { color: colors.secondary }]}>
+                عندك كود دعوة؟ سجّل هنا
+              </Text>
+            </TouchableOpacity>
+
           </View>
         </ScrollView>
       </View>
@@ -333,4 +345,6 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   googleBtnText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.semibold },
+  inviteCodeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 4 },
+  inviteCodeText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },
 });

@@ -9,14 +9,11 @@ import { AppHeader } from '../components/ui/AppHeader';
 import { FormInput } from '../components/forms/FormInput';
 import { ConfirmModal } from '../components/ui/Modal';
 import {
-  collection, getDocs, addDoc, setDoc, deleteDoc, doc, serverTimestamp, Timestamp,
+  collection, getDocs, setDoc, deleteDoc, doc, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
-import {
-  createUserWithEmailAndPassword, sendPasswordResetEmail,
-  updateProfile as fbUpdateProfile, deleteUser, signOut,
-} from 'firebase/auth';
-import { db, getSecondaryAuth } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { getActiveOrgId } from '../lib/firestoreService';
+import { generateInviteCode, formatInviteCode } from '../lib/invites';
 import { useApp } from '../context/AppProvider';
 import { isAdminRole } from '../utils/roleUtils';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -30,6 +27,8 @@ interface ManagedUser {
   status:    'active' | 'pending' | 'suspended';
   createdAt?: string;
   ownerId?:  string;
+  kind?:     'user' | 'invite';  // 'invite' = دعوة معلّقة بكود لم تُستبدل بعد
+  code?:     string;             // كود الدعوة (لعناصر kind='invite')
 }
 
 const ROLE_OPTIONS = [
@@ -138,8 +137,11 @@ export default function UserManagementScreen() {
     if (!currentUser.id || !isAdminRole(currentUser.role)) return;
     setLoading(true);
     try {
-      const snap = await getDocs(colRef());
-      const list: ManagedUser[] = snap.docs.map(d => {
+      const [usersSnap, invitesSnap] = await Promise.all([
+        getDocs(colRef()),
+        getDocs(collection(db, 'orgs', getActiveOrgId(), 'invites')),
+      ]);
+      const list: ManagedUser[] = usersSnap.docs.map(d => {
         const data = d.data();
         return {
           id:        d.id,
@@ -150,9 +152,25 @@ export default function UserManagementScreen() {
           status:    data.status   ?? 'pending',
           createdAt: normalizeTs(data.createdAt),
           ownerId:   data.ownerId  ?? undefined,
+          kind:      'user' as const,
         };
       });
-      setUsers(list.sort((a, b) => (a.name).localeCompare(b.name)));
+      // الدعوات المعلّقة (كود لم يُستبدل) تُعرض كبطاقات "معلّق" مع الكود
+      const pending: ManagedUser[] = invitesSnap.docs
+        .map(d => ({ data: d.data() as any, id: d.id }))
+        .filter(x => x.data.status === 'pending')
+        .map(x => ({
+          id:        x.id,
+          name:      x.data.name ?? '',
+          email:     '',
+          role:      x.data.role ?? 'viewer',
+          status:    'pending' as const,
+          createdAt: normalizeTs(x.data.createdAt),
+          ownerId:   x.data.ownerId ?? undefined,
+          kind:      'invite' as const,
+          code:      x.data.code ?? x.id,
+        }));
+      setUsers([...list, ...pending].sort((a, b) => (a.name).localeCompare(b.name)));
     } catch (err: any) {
       // تجاهل أخطاء الصلاحيات عند تسجيل الخروج
       if (currentUser.id && isAdminRole(currentUser.role)) {
@@ -212,8 +230,8 @@ export default function UserManagementScreen() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!fName.trim())  e.name  = 'الاسم مطلوب';
-    if (!fEmail.trim()) e.email = 'البريد الإلكتروني مطلوب';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fEmail.trim())) e.email = 'بريد إلكتروني غير صحيح';
+    // البريد يُجمع من المستخدم نفسه عند التسجيل بالكود — مطلوب فقط عند تعديل حساب قائم
+    if (fEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fEmail.trim())) e.email = 'بريد إلكتروني غير صحيح';
     if (fRole === 'owner' && !fOwnerId) e.ownerId = 'يجب اختيار المالك المرتبط بهذا الحساب';
     setFErrors(e);
     return Object.keys(e).length === 0;
@@ -245,71 +263,43 @@ export default function UserManagementScreen() {
         setScreen('list');
 
       } else {
-        // ── إنشاء مستخدم جديد ──────────────────────────────────────────────
-        // 1. أنشئ حساب Firebase Auth بكلمة مرور مؤقتة عشوائية (عبر app ثانوية)
-        const secondaryAuth = getSecondaryAuth();
-        if (!secondaryAuth) { toast('تعذّر تهيئة المصادقة'); setSaving(false); return; }
-        const tempPassword  = `Temp_${Math.random().toString(36).slice(2, 10)}!`;
-        let   newUid        = '';
-        try {
-          const cred = await createUserWithEmailAndPassword(secondaryAuth, data.email, tempPassword);
-          newUid = cred.user.uid;
-          await fbUpdateProfile(cred.user, { displayName: data.name });
-          // تسجيل خروج من الـ session الثانوي فوراً — session المدير سليم
-          await signOut(secondaryAuth);
-        } catch (authErr: any) {
-          if (authErr.code === 'auth/email-already-in-use') {
-            toast('هذا البريد الإلكتروني مسجّل مسبقاً في النظام');
-            setSaving(false);
-            return;
-          }
-          throw authErr;
-        }
-
-        // 2. احفظ بروفايل المستخدم في users/{uid} (خاص به) + orgId للوصول للبيانات المشتركة
-        await setDoc(doc(db, 'users', newUid), {
+        // ── إنشاء كود دعوة ──────────────────────────────────────────────────
+        // لا يُنشأ حساب الآن. تُحفظ "دعوة" بكود فريد؛ يستبدلها المالك لاحقاً عبر
+        // Cloud Function آمنة (redeemInvite) تُنشئ الحساب وتربطه بالمؤسسة والمالك.
+        const code = generateInviteCode();
+        const org  = getActiveOrgId();
+        await setDoc(doc(db, 'orgs', org, 'invites', code), {
+          code,
           name:      data.name,
-          email:     data.email,
-          phone:     data.phone,
           role:      data.role,
-          status:    'active',
-          orgId:     getActiveOrgId(),
-          ...(data.role === 'owner' || data.role === 'مالك' ? { ownerId: data.ownerId } : {}),
+          ...(data.ownerId ? { ownerId: data.ownerId } : {}),
+          orgId:     org,
+          status:    'pending',
+          createdBy: currentUser.id,
           createdAt: serverTimestamp(),
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         });
 
-        // 3. احفظه في قائمة المستخدمين المشتركة orgs/main/managedUsers
-        await setDoc(doc(db, 'orgs', getActiveOrgId(), 'managedUsers', newUid), {
-          ...data,
-          status:    'active',
-          createdAt: serverTimestamp(),
-        });
-
-        // 4. أرسل بريد إعادة تعيين كلمة المرور — هذا هو "دعوة التسجيل"
-        await sendPasswordResetEmail(secondaryAuth, data.email);
-
-        const newUser: ManagedUser = {
-          id:        newUid,
+        const newInvite: ManagedUser = {
+          id:        code,
           name:      data.name,
-          email:     data.email,
-          phone:     data.phone,
+          email:     '',
           role:      data.role,
           status:    'pending',
           createdAt: new Date().toISOString(),
           ...(data.ownerId ? { ownerId: data.ownerId } : {}),
+          kind:      'invite',
+          code,
         };
-        setUsers(prev => [...prev, newUser].sort((a, b) => a.name.localeCompare(b.name)));
-
+        setUsers(prev => [...prev, newInvite].sort((a, b) => a.name.localeCompare(b.name)));
         setScreen('list');
-        // إشعار واضح للمدير
-        if (Platform.OS === 'web') {
-          window.alert(`✅ تم إنشاء الحساب\n\nأُرسل بريد دعوة إلى:\n${data.email}\n\nسيضغط المستخدم على الرابط ويحدد كلمة مروره ثم يسجّل دخوله.`);
-        } else {
-          Alert.alert(
-            '✅ تم إنشاء الحساب',
-            `أُرسل بريد دعوة إلى:\n${data.email}\n\nسيضغط المستخدم على الرابط ويحدد كلمة مروره ثم يسجّل دخوله.`,
-          );
-        }
+
+        // انسخ الكود تلقائياً واعرضه للمدير
+        const pretty = formatInviteCode(code);
+        try { (Clipboard as any).setString(pretty); } catch {}
+        const msg = `الكود: ${pretty}\n(نُسخ تلقائياً)\n\nأعطِ هذا الكود لـ "${data.name}". في التطبيق يضغط «عندك كود دعوة؟ سجّل هنا» ويُدخل الكود وبريده وكلمة مروره.`;
+        if (Platform.OS === 'web') window.alert(`✅ تم إنشاء كود الدعوة\n\n${msg}`);
+        else Alert.alert('✅ تم إنشاء كود الدعوة', msg);
       }
     } catch (e: any) {
       console.error('user-management save error:', e);
@@ -322,7 +312,12 @@ export default function UserManagementScreen() {
   const handleDelete = async () => {
     if (!delTarget) return;
     try {
-      await deleteDoc(doc(db, 'orgs', getActiveOrgId(), 'managedUsers', delTarget.id));
+      if (delTarget.kind === 'invite') {
+        // إلغاء دعوة معلّقة → حذف مستند الكود (يبطله فوراً)
+        await deleteDoc(doc(db, 'orgs', getActiveOrgId(), 'invites', delTarget.code ?? delTarget.id));
+      } else {
+        await deleteDoc(doc(db, 'orgs', getActiveOrgId(), 'managedUsers', delTarget.id));
+      }
       setUsers(prev => prev.filter(u => u.id !== delTarget.id));
     } catch { toast('تعذّر الحذف'); }
     finally { setDelTarget(null); }
@@ -340,6 +335,11 @@ export default function UserManagementScreen() {
 
   const copyEmail = (email: string) => {
     try { (Clipboard as any).setString(email); toast(`تم نسخ: ${email}`); } catch {}
+  };
+
+  const copyCode = (code: string) => {
+    const pretty = formatInviteCode(code);
+    try { (Clipboard as any).setString(pretty); toast(`تم نسخ الكود: ${pretty}`); } catch {}
   };
 
   // ─── PERMISSIONS SCREEN ────────────────────────────────────────────────────
@@ -417,11 +417,22 @@ export default function UserManagementScreen() {
 
           <FormInput label="الاسم الكامل *" value={fName} onChangeText={v => { setFName(v); setFErrors(e => ({ ...e, name: '' })); }}
             placeholder="محمد أحمد" icon="person-outline" error={fErrors.name} />
-          <FormInput label="البريد الإلكتروني *" value={fEmail} onChangeText={v => { setFEmail(v); setFErrors(e => ({ ...e, email: '' })); }}
-            placeholder="user@example.com" icon="mail-outline" keyboardType="email-address"
-            autoCapitalize="none" error={fErrors.email} editable={!editing} />
-          <FormInput label="رقم الجوال" value={fPhone} onChangeText={setFPhone}
-            placeholder="05xxxxxxxx" icon="call-outline" keyboardType="phone-pad" />
+          {editing ? (
+            <FormInput label="البريد الإلكتروني" value={fEmail} onChangeText={() => {}}
+              placeholder="user@example.com" icon="mail-outline" keyboardType="email-address"
+              autoCapitalize="none" editable={false} />
+          ) : (
+            <View style={[styles.infoNote, { backgroundColor: colors.primarySubtle, borderColor: colors.primary + '30' }]}>
+              <Ionicons name="key-outline" size={16} color={colors.primary} />
+              <Text style={[styles.infoNoteText, { color: colors.primary }]}>
+                بعد الحفظ يتولّد كود دعوة تعطيه للمستخدم. يُدخل بريده وكلمة مروره بنفسه عند التسجيل بالكود.
+              </Text>
+            </View>
+          )}
+          {editing && (
+            <FormInput label="رقم الجوال" value={fPhone} onChangeText={setFPhone}
+              placeholder="05xxxxxxxx" icon="call-outline" keyboardType="phone-pad" />
+          )}
 
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>الصلاحية</Text>
           {ROLE_OPTIONS.map(r => {
@@ -598,9 +609,17 @@ export default function UserManagementScreen() {
                   <Text style={[styles.name, { color: u.status === 'suspended' ? colors.textMuted : colors.text }]}>
                     {u.name}
                   </Text>
-                  <TouchableOpacity onPress={() => copyEmail(u.email)} activeOpacity={0.7}>
-                    <Text style={[styles.emailText, { color: colors.primary }]}>{u.email}</Text>
-                  </TouchableOpacity>
+                  {u.kind === 'invite' ? (
+                    <TouchableOpacity onPress={() => copyCode(u.code ?? u.id)} activeOpacity={0.7}>
+                      <Text style={[styles.emailText, { color: '#E67E22' }]}>
+                        كود الدعوة: {formatInviteCode(u.code ?? u.id)}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity onPress={() => copyEmail(u.email)} activeOpacity={0.7}>
+                      <Text style={[styles.emailText, { color: colors.primary }]}>{u.email}</Text>
+                    </TouchableOpacity>
+                  )}
                   {u.phone ? (
                     <Text style={[styles.sub, { color: colors.textMuted }]}>{u.phone}</Text>
                   ) : null}
@@ -621,44 +640,42 @@ export default function UserManagementScreen() {
               {/* Actions */}
               {isAdmin && !isMe && (
                 <View style={[styles.actions, { borderTopColor: colors.border }]}>
-                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primarySubtle }]} onPress={() => openEdit(u)}>
-                    <Ionicons name="pencil-outline" size={15} color={colors.primary} />
-                    <Text style={[styles.actionText, { color: colors.primary }]}>تعديل</Text>
-                  </TouchableOpacity>
-                  {/* إعادة إرسال الدعوة للحسابات المعلقة */}
-                  {u.status === 'pending' && (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: '#EBF5FB' }]}
-                      onPress={async () => {
-                        const sAuth = getSecondaryAuth();
-                        if (!sAuth) { toast('تعذّر تهيئة المصادقة'); return; }
-                        try {
-                          await sendPasswordResetEmail(sAuth, u.email);
-                          toast(`تم إعادة إرسال بريد الدعوة إلى ${u.email}`);
-                        } catch { toast('تعذّر إرسال البريد'); }
-                      }}
-                    >
-                      <Ionicons name="mail-outline" size={15} color="#2E86C1" />
-                      <Text style={[styles.actionText, { color: '#2E86C1' }]}>دعوة</Text>
-                    </TouchableOpacity>
+                  {u.kind === 'invite' ? (
+                    <>
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FEF9E7' }]} onPress={() => copyCode(u.code ?? u.id)}>
+                        <Ionicons name="copy-outline" size={15} color="#E67E22" />
+                        <Text style={[styles.actionText, { color: '#E67E22' }]}>نسخ الكود</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.dangerSubtle }]} onPress={() => setDelTarget(u)}>
+                        <Ionicons name="close-circle-outline" size={15} color={colors.danger} />
+                        <Text style={[styles.actionText, { color: colors.danger }]}>إلغاء الدعوة</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primarySubtle }]} onPress={() => openEdit(u)}>
+                        <Ionicons name="pencil-outline" size={15} color={colors.primary} />
+                        <Text style={[styles.actionText, { color: colors.primary }]}>تعديل</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, { backgroundColor: u.status === 'suspended' ? colors.successSubtle ?? '#E8F8F0' : '#FEF9E7' }]}
+                        onPress={() => toggleStatus(u)}
+                      >
+                        <Ionicons
+                          name={u.status === 'suspended' ? 'checkmark-circle-outline' : 'ban-outline'}
+                          size={15}
+                          color={u.status === 'suspended' ? colors.success : '#E67E22'}
+                        />
+                        <Text style={[styles.actionText, { color: u.status === 'suspended' ? colors.success : '#E67E22' }]}>
+                          {u.status === 'suspended' ? 'تفعيل' : 'إيقاف'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.dangerSubtle }]} onPress={() => setDelTarget(u)}>
+                        <Ionicons name="trash-outline" size={15} color={colors.danger} />
+                        <Text style={[styles.actionText, { color: colors.danger }]}>حذف</Text>
+                      </TouchableOpacity>
+                    </>
                   )}
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: u.status === 'suspended' ? colors.successSubtle ?? '#E8F8F0' : '#FEF9E7' }]}
-                    onPress={() => toggleStatus(u)}
-                  >
-                    <Ionicons
-                      name={u.status === 'suspended' ? 'checkmark-circle-outline' : 'ban-outline'}
-                      size={15}
-                      color={u.status === 'suspended' ? colors.success : '#E67E22'}
-                    />
-                    <Text style={[styles.actionText, { color: u.status === 'suspended' ? colors.success : '#E67E22' }]}>
-                      {u.status === 'suspended' ? 'تفعيل' : 'إيقاف'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.dangerSubtle }]} onPress={() => setDelTarget(u)}>
-                    <Ionicons name="trash-outline" size={15} color={colors.danger} />
-                    <Text style={[styles.actionText, { color: colors.danger }]}>حذف</Text>
-                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -691,6 +708,8 @@ const styles = StyleSheet.create({
   hint:       { textAlign: 'center', fontSize: Theme.fontSize.base, marginTop: 12 },
   loadingBox: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 60 },
   sectionLabel: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold, textAlign: 'right', marginTop: 12, marginBottom: 8 },
+  infoNote: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: Theme.radius.md, borderWidth: 1 },
+  infoNoteText: { flex: 1, fontSize: Theme.fontSize.xs, textAlign: 'right', lineHeight: 18 },
 
   // Filter tabs
   tabsRow: { flexDirection: 'row', paddingHorizontal: Theme.spacing.base, gap: 8, paddingVertical: 8 },
