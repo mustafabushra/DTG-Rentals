@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -24,10 +24,21 @@ export const db      = getFirestore(app);
 export const storage = getStorage(app);
 export default app;
 
-export function getSecondaryAuth(): Auth | null {
-  if (typeof window === 'undefined') return null;
+function getSecondaryApp() {
   const SECONDARY = 'secondary-user-creation';
   const existing  = getApps().find(a => a.name === SECONDARY);
-  const secondApp = existing ?? initializeApp(firebaseConfig, SECONDARY);
-  return getAuth(secondApp);
+  return existing ?? initializeApp(firebaseConfig, SECONDARY);
+}
+
+export function getSecondaryAuth(): Auth | null {
+  if (typeof window === 'undefined') return null;
+  return getAuth(getSecondaryApp());
+}
+
+// التطبيق الثانوي مع Firestore الخاص به — يُمكّن إنشاء حساب وكتابة بياناته
+// مصادقًا كالمستخدم الجديد دون لمس جلسة التطبيق الأساسي (لاستبدال كود الدعوة).
+export function getSecondary(): { auth: Auth; db: Firestore } | null {
+  if (typeof window === 'undefined') return null;
+  const secondApp = getSecondaryApp();
+  return { auth: getAuth(secondApp), db: getFirestore(secondApp) };
 }

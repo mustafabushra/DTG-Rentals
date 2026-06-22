@@ -1,7 +1,6 @@
 import * as admin from 'firebase-admin';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 
 admin.initializeApp();
@@ -274,93 +273,3 @@ export const weeklyIntegrityCheck = onSchedule(
     logger.info('[weeklyIntegrityCheck] completed for all orgs');
   },
 );
-
-// ─── [5] استبدال كود الدعوة → إنشاء حساب المستخدم وربطه بمؤسسته ─────────────
-// البوابة الآمنة الوحيدة التي يُنشأ عبرها مستخدم بـ orgId يخصّ مؤسسة قائمة (وليس uid).
-// قواعد Firestore تمنع المستخدم من فعل ذلك بنفسه عمداً؛ هنا الـ Admin SDK يتجاوزها
-// بعد التحقق من كود دعوة صالح (الكود نفسه هو "السر" الذي يصرّح بالانضمام).
-// تُستدعى بدون مصادقة (المستخدم لا يملك حساباً بعد) — الحماية بالكود + الاستهلاك لمرة واحدة.
-const OWNER_ROLES = ['owner', 'مالك'];
-
-export const redeemInvite = onCall({ region: REGION }, async (request) => {
-  const code     = String(request.data?.code ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const email    = String(request.data?.email ?? '').trim().toLowerCase();
-  const password = String(request.data?.password ?? '');
-
-  if (!code)                                          throw new HttpsError('invalid-argument', 'الكود مطلوب');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))       throw new HttpsError('invalid-argument', 'بريد إلكتروني غير صحيح');
-  if (password.length < 6)                            throw new HttpsError('invalid-argument', 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-
-  // البحث عن الدعوة عبر كل المؤسسات (المستخدم لا يعرف orgId)
-  const snap = await db.collectionGroup('invites')
-    .where('code', '==', code)
-    .where('status', '==', 'pending')
-    .limit(1)
-    .get();
-  if (snap.empty) throw new HttpsError('not-found', 'الكود غير صحيح أو استُخدم مسبقاً');
-
-  const inviteRef = snap.docs[0].ref;
-  const invite    = snap.docs[0].data();
-  const orgId     = inviteRef.parent.parent!.id;
-
-  if (invite['expiresAt'] && new Date(invite['expiresAt']).getTime() < Date.now()) {
-    throw new HttpsError('deadline-exceeded', 'انتهت صلاحية الكود — اطلب كوداً جديداً');
-  }
-  // حماية حرجة للعزل: دعوة بدور "مالك" يجب أن تحمل ownerId، وإلا سيرى المالك كل بيانات المؤسسة
-  if (OWNER_ROLES.includes(invite['role']) && !invite['ownerId']) {
-    throw new HttpsError('failed-precondition', 'الدعوة غير مكتملة (مالك بلا ربط) — راجع المدير');
-  }
-
-  // 1) إنشاء حساب المصادقة أولاً (نفشل مبكراً قبل المساس بالدعوة لو الإيميل مستخدم)
-  let uid: string;
-  try {
-    const userRecord = await admin.auth().createUser({ email, password, displayName: invite['name'] });
-    uid = userRecord.uid;
-  } catch (e: any) {
-    if (e.code === 'auth/email-already-exists') {
-      throw new HttpsError('already-exists', 'هذا البريد مسجّل مسبقاً — استخدم تسجيل الدخول');
-    }
-    logger.error('[redeemInvite] createUser failed', e);
-    throw new HttpsError('internal', 'تعذّر إنشاء الحساب');
-  }
-
-  // 2) استهلاك الدعوة + كتابة الملف الشخصي ضمن معاملة واحدة (حارس ضد إعادة الاستخدام المتزامن)
-  try {
-    await db.runTransaction(async tx => {
-      const fresh = await tx.get(inviteRef);
-      if (!fresh.exists || fresh.data()!['status'] !== 'pending') {
-        throw new HttpsError('failed-precondition', 'الكود استُخدم بالفعل');
-      }
-      tx.update(inviteRef, {
-        status: 'used',
-        usedBy: uid,
-        usedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      tx.set(db.doc(`users/${uid}`), {
-        name:      invite['name'],
-        email,
-        role:      invite['role'],
-        orgId,
-        ...(invite['ownerId'] ? { ownerId: invite['ownerId'] } : {}),
-        status:    'active',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      tx.set(db.collection('orgs').doc(orgId).collection('managedUsers').doc(uid), {
-        name:      invite['name'],
-        email,
-        role:      invite['role'],
-        ...(invite['ownerId'] ? { ownerId: invite['ownerId'] } : {}),
-        status:    'active',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
-  } catch (e) {
-    // خسرنا السباق أو فشلت الكتابة → نظّف حساب المصادقة اليتيم
-    await admin.auth().deleteUser(uid).catch(() => { /* تجاهل */ });
-    throw e instanceof HttpsError ? e : new HttpsError('internal', 'تعذّر إكمال التسجيل');
-  }
-
-  // 3) رمز مخصّص لتسجيل الدخول فوراً دون إعادة إدخال
-  const token = await admin.auth().createCustomToken(uid);
-  return { token };
-});

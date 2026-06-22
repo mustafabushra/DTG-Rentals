@@ -9,7 +9,7 @@ import { AppHeader } from '../components/ui/AppHeader';
 import { FormInput } from '../components/forms/FormInput';
 import { ConfirmModal } from '../components/ui/Modal';
 import {
-  collection, getDocs, setDoc, deleteDoc, doc, serverTimestamp, Timestamp,
+  collection, getDocs, setDoc, deleteDoc, doc, serverTimestamp, Timestamp, query, where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getActiveOrgId } from '../lib/firestoreService';
@@ -139,7 +139,11 @@ export default function UserManagementScreen() {
     try {
       const [usersSnap, invitesSnap] = await Promise.all([
         getDocs(colRef()),
-        getDocs(collection(db, 'orgs', getActiveOrgId(), 'invites')),
+        getDocs(query(
+          collection(db, 'inviteCodes'),
+          where('orgId', '==', getActiveOrgId()),
+          where('status', '==', 'pending'),
+        )),
       ]);
       const list: ManagedUser[] = usersSnap.docs.map(d => {
         const data = d.data();
@@ -268,7 +272,8 @@ export default function UserManagementScreen() {
         // Cloud Function آمنة (redeemInvite) تُنشئ الحساب وتربطه بالمؤسسة والمالك.
         const code = generateInviteCode();
         const org  = getActiveOrgId();
-        await setDoc(doc(db, 'orgs', org, 'invites', code), {
+        // top-level inviteCodes/{code} — يستبدله المالك client-side (بلا Cloud Function)
+        await setDoc(doc(db, 'inviteCodes', code), {
           code,
           name:      data.name,
           role:      data.role,
@@ -314,7 +319,7 @@ export default function UserManagementScreen() {
     try {
       if (delTarget.kind === 'invite') {
         // إلغاء دعوة معلّقة → حذف مستند الكود (يبطله فوراً)
-        await deleteDoc(doc(db, 'orgs', getActiveOrgId(), 'invites', delTarget.code ?? delTarget.id));
+        await deleteDoc(doc(db, 'inviteCodes', delTarget.code ?? delTarget.id));
       } else {
         await deleteDoc(doc(db, 'orgs', getActiveOrgId(), 'managedUsers', delTarget.id));
       }

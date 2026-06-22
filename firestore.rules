@@ -32,6 +32,19 @@ service cloud.firestore {
       return getUserData().get('status', 'active') in ['active', 'pending'];
     }
 
+    // التحقق أن مستند المستخدم المطلوب إنشاؤه يطابق دعوة كود معلّقة (لاستبدال الكود client-side).
+    // يمنع انتحال مؤسسة/دور/مالك: كلها يجب أن تساوي ما حدّده المدير في الدعوة.
+    function inviteData(code) {
+      return get(/databases/$(database)/documents/inviteCodes/$(code)).data;
+    }
+    function inviteMatches(data) {
+      return exists(/databases/$(database)/documents/inviteCodes/$(data.inviteCode))
+        && inviteData(data.inviteCode).status == 'pending'
+        && inviteData(data.inviteCode).orgId == data.orgId
+        && inviteData(data.inviteCode).role == data.role
+        && inviteData(data.inviteCode).get('ownerId', '') == data.get('ownerId', '');
+    }
+
     function isAdmin() {
       return isSignedIn() && isActive() &&
              userRole() in ['admin', 'مدير عام', 'مدير النظام'];
@@ -106,11 +119,16 @@ service cloud.firestore {
       // تسجيل ذاتي: مستندك أنت فقط، وبمؤسسة جديدة خاصة بك (orgId == uid)
       // — يمنع وضع orgId='main' للانضمام إلى مؤسسة قائمة والاطلاع على بياناتها.
       // أو: مدير يُنشئ مستخدماً داخل مؤسسته هو (مثل دعوة مالك تابع).
+      // أو: استبدال كود دعوة (client-side، بلا Cloud Function) — المستخدم ينشئ مستنده
+      //     بمؤسسة/دور/ownerId يجب أن تطابق دعوة pending موجودة في inviteCodes؛ فلا يقدر
+      //     ينتحل مؤسسة أو يصعّد دوره. الكود هو "السر" الذي يصرّح بالانضمام.
       allow create: if isSuperAdmin()
         || (isSignedIn() && request.auth.uid == uid
             && request.resource.data.orgId == uid)
         || (isSignedIn() && isAdmin()
-            && request.resource.data.orgId == userOrg());
+            && request.resource.data.orgId == userOrg())
+        || (isSignedIn() && request.auth.uid == uid
+            && inviteMatches(request.resource.data));
 
       // تحديث ذاتي: يجوز تعديل الملف الشخصي فقط — لا role/orgId/status/ownerId.
       // المدير يُحدّث مستخدمي مؤسسته فقط، ولا ينقلهم إلى مؤسسة أخرى.
@@ -182,6 +200,25 @@ service cloud.firestore {
     match /orgs/{orgId}/managedUsers/{uid} {
       allow read:  if isSuperAdmin() || (canRead()  && isSameOrg(orgId));
       allow write: if isSuperAdmin() || (isAdmin()  && isSameOrg(orgId));
+      // المستبدِل لكود الدعوة يضيف سجله الذاتي بعد إنشاء مستند users (الذي ضبط orgId=هذه المؤسسة)
+      allow create: if request.auth.uid == uid && isSameOrg(orgId);
+    }
+
+    // ── أكواد الدعوة (top-level) ───────────────────────────────────────────────
+    // استبدال client-side بلا Cloud Function. get: أي مسجّل دخول يعرف الكود بالضبط
+    // (لا list للعموم → لا تعداد). list: مدير على مؤسسته فقط (لعرض الدعوات المعلّقة).
+    match /inviteCodes/{code} {
+      allow get:  if isSignedIn();
+      allow list: if isSuperAdmin() || (isAdmin() && resource.data.orgId == userOrg());
+      allow create: if isSuperAdmin()
+        || (isAdmin() && request.resource.data.orgId == userOrg());
+      // استهلاك الكود: أي مسجّل دخول يحوّل pending→used (تغيير الحالة فقط)؛ أو المدير يلغي/يعدّل.
+      allow update: if isSuperAdmin()
+        || (isAdmin() && resource.data.orgId == userOrg())
+        || (resource.data.status == 'pending'
+            && request.resource.data.status == 'used'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'usedBy', 'usedAt']));
+      allow delete: if isSuperAdmin() || (isAdmin() && resource.data.orgId == userOrg());
     }
 
     // ── Per-document validation ───────────────────────────────────────────────
