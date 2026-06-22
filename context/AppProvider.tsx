@@ -235,7 +235,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const profile = await getUserProfile(firebaseUser.uid);
         if (gen !== loadGenRef.current) return; // stale — newer auth event took over
-        resolvedOrgId = (profile?.orgId as string) || firebaseUser.uid;
+        // المستخدمون الجدد دائماً لديهم orgId صريح (=uid). غيابه يعني حساباً قديماً
+        // أُنشئ قبل تعدد المؤسسات → ينتمي للمؤسسة الأصلية 'main' (لا uid، وإلا استعلم مؤسسة فارغة).
+        resolvedOrgId = (profile?.orgId as string) || 'main';
         scopeOwnerId = ((profile?.role === 'owner' || profile?.role === 'مالك') && profile?.ownerId)
           ? (profile.ownerId as string) : null;
         setCurrentUser(prev => ({

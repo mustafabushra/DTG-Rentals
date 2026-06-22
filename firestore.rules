@@ -22,8 +22,14 @@ service cloud.firestore {
       return getUserData().role;
     }
 
+    // توافق مع البيانات القديمة: مستندات أُنشئت قبل تعدد المؤسسات قد تنقصها هذه الحقول.
+    // غياب orgId يعني المؤسسة الأصلية 'main'؛ غياب status يعني حساباً نشطاً.
+    function userOrg() {
+      return getUserData().get('orgId', 'main');
+    }
+
     function isActive() {
-      return getUserData().status in ['active', 'pending'];
+      return getUserData().get('status', 'active') in ['active', 'pending'];
     }
 
     function isAdmin() {
@@ -50,7 +56,7 @@ service cloud.firestore {
     }
 
     function isSameOrg(orgId) {
-      return getUserData().orgId == orgId;
+      return userOrg() == orgId;
     }
 
     function isManager() {
@@ -95,7 +101,7 @@ service cloud.firestore {
       // قراءة: مستندك أنت، أو مدير يقرأ مستخدمي مؤسسته فقط.
       allow read: if isSuperAdmin()
         || (isSignedIn() && request.auth.uid == uid)
-        || (isSignedIn() && isAdmin() && resource.data.orgId == getUserData().orgId);
+        || (isSignedIn() && isAdmin() && resource.data.get('orgId', 'main') == userOrg());
 
       // تسجيل ذاتي: مستندك أنت فقط، وبمؤسسة جديدة خاصة بك (orgId == uid)
       // — يمنع وضع orgId='main' للانضمام إلى مؤسسة قائمة والاطلاع على بياناتها.
@@ -104,7 +110,7 @@ service cloud.firestore {
         || (isSignedIn() && request.auth.uid == uid
             && request.resource.data.orgId == uid)
         || (isSignedIn() && isAdmin()
-            && request.resource.data.orgId == getUserData().orgId);
+            && request.resource.data.orgId == userOrg());
 
       // تحديث ذاتي: يجوز تعديل الملف الشخصي فقط — لا role/orgId/status/ownerId.
       // المدير يُحدّث مستخدمي مؤسسته فقط، ولا ينقلهم إلى مؤسسة أخرى.
@@ -115,8 +121,8 @@ service cloud.firestore {
             && request.resource.data.get('status',  '') == resource.data.get('status',  '')
             && request.resource.data.get('ownerId', '') == resource.data.get('ownerId', ''))
         || (isSignedIn() && isAdmin()
-            && resource.data.orgId == getUserData().orgId
-            && request.resource.data.orgId == getUserData().orgId);
+            && resource.data.get('orgId', 'main') == userOrg()
+            && request.resource.data.get('orgId', 'main') == userOrg());
 
       allow delete: if isSuperAdmin();
     }
