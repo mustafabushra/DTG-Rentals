@@ -1391,6 +1391,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUnits(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));
     fs('units', id, data, 'update');
     const unit = units.find(u => u.id === id);
+
+    // عند تغيير مالك الوحدة: مرّر المالك الفعّال (مالك الوحدة الصريح أو مالك العقار الأب)
+    // إلى عقود/دفعات/صيانة هذه الوحدة — عزل الإيجار يتبع المستفيد على مستوى الوحدة.
+    if (data.ownerId !== undefined) {
+      const parentProp = properties.find(p => p.id === unit?.propertyId);
+      const effOwner = (data.ownerId || parentProp?.ownerId) as string | undefined;
+      const unitContractIds = contracts.filter(c => c.unitId === id).map(c => c.id);
+      contracts.filter(c => c.unitId === id).forEach(c => fs('contracts', c.id, { ownerId: effOwner }, 'update'));
+      setContracts(prev => prev.map(c => c.unitId === id ? { ...c, ownerId: effOwner } as Contract : c));
+      payments.filter(p => unitContractIds.includes(p.contractId)).forEach(p => fs('payments', p.id, { ownerId: effOwner }, 'update'));
+      setPayments(prev => prev.map(p => unitContractIds.includes(p.contractId) ? { ...p, ownerId: effOwner } as Payment : p));
+      maintenance.filter(m => m.unitId === id).forEach(m => fs('maintenance', m.id, { ownerId: effOwner }, 'update'));
+      setMaintenance(prev => prev.map(m => m.unitId === id ? { ...m, ownerId: effOwner } as Maintenance : m));
+    }
+
     addAuditEntry('edit', 'وحدة', `وحدة ${unit?.number || id}`, `تم تعديل بيانات الوحدة`);
   };
   const deleteUnit = (id: string) => {

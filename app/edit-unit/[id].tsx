@@ -24,7 +24,7 @@ export default function EditUnitScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { units, updateUnit } = useApp();
+  const { units, owners, updateUnit } = useApp();
 
   const unit = units.find(u => u.id === id);
 
@@ -32,7 +32,7 @@ export default function EditUnitScreen() {
     number: unit?.number || '', type: unit?.type || '' as UnitType | '',
     floor: unit?.floor?.toString() || '', area: unit?.area?.toString() || '',
     monthlyRent: unit?.monthlyRent?.toString() || '', currency: unit?.currency || '',
-    description: unit?.description || '',
+    description: unit?.description || '', ownerId: unit?.ownerId || '',
   });
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(unit?.features || []);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -47,6 +47,7 @@ export default function EditUnitScreen() {
         monthlyRent: unit.monthlyRent?.toString() || '',
         currency: unit.currency || '',
         description: unit.description || '',
+        ownerId: unit.ownerId || '',
       });
       setSelectedFeatures(unit.features || []);
     }
@@ -79,6 +80,7 @@ export default function EditUnitScreen() {
       monthlyRent: monthly, annualRent: monthly * 12,
       currency: form.currency || undefined,
       description: form.description.trim(), features: selectedFeatures,
+      ownerId: form.ownerId || undefined,
     });
     router.back();
   };
@@ -88,6 +90,11 @@ export default function EditUnitScreen() {
     { label: 'شقة غرفتين', value: 'apartment_2' }, { label: 'شقة 3 غرف', value: 'apartment_3' },
     { label: 'شقة 4 غرف', value: 'apartment_4' }, { label: 'فيلا', value: 'villa' },
     { label: 'مكتب', value: 'office' }, { label: 'محل', value: 'shop' },
+  ];
+
+  const ownerOptions = [
+    { label: 'مالك العقار (افتراضي)', value: '' },
+    ...owners.map(o => ({ label: o.name, value: o.id })),
   ];
 
   const set = (key: string) => (val: string) => {
@@ -118,6 +125,13 @@ export default function EditUnitScreen() {
         <FormInput label="المساحة (م²)" value={form.area} onChangeText={set('area')} keyboardType="decimal-pad" required icon="resize-outline" error={errors.area} />
         <FormInput label="الإيجار الشهري (﷼)" value={form.monthlyRent} onChangeText={set('monthlyRent')} keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
         <FormSelect label="عملة الوحدة / الدولة" value={form.currency} options={CURRENCY_OPTIONS} onSelect={set('currency')} placeholder="اختر العملة..." />
+
+        {/* مالك الوحدة — يتجاوز مالك العقار (لعزل إيجار الوحدة لمستفيد مختلف، مثل ابن المالك) */}
+        <FormSelect label="مالك الوحدة" value={form.ownerId} options={ownerOptions} onSelect={set('ownerId')} placeholder="مالك العقار (افتراضي)" />
+        <Text style={[styles.ownerHint, { color: colors.textMuted }]}>
+          حدّد مالكاً مختلفاً إذا كانت هذه الوحدة (وإيجارها) تخص شخصاً غير مالك العقار. يُحدّث العقود والدفعات تلقائياً.
+        </Text>
+
         <FormInput label="الوصف" value={form.description} onChangeText={set('description')} multiline numberOfLines={3} icon="document-text-outline" />
 
         <View style={styles.featuresSection}>
@@ -159,4 +173,5 @@ const styles = StyleSheet.create({
   featWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   featChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Theme.radius.full, borderWidth: 1 },
   featText: { fontSize: Theme.fontSize.sm },
+  ownerHint: { fontSize: Theme.fontSize.xs, textAlign: 'right', lineHeight: 18, marginTop: -8 },
 });
