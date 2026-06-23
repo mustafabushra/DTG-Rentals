@@ -43,10 +43,16 @@ export function OwnerCard({ owner, onDelete }: OwnerCardProps) {
   const color     = ownerColor(owner.name ?? '');
   const initials  = safeInitials(owner.name);
 
-  // إحصائيات المالك
-  const ownerProps   = properties.filter(p => p.ownerId === owner.id);
-  const propIds      = ownerProps.map(p => p.id);
-  const ownerUnits   = units.filter(u => propIds.includes(u.propertyId));
+  // إحصائيات المالك — تتضمن الوحدات التي يملكها داخل عقارات غيره (كل وحدة خارجية تُحسب كعقار)
+  const propMap = new Map(properties.map(p => [p.id, p]));
+  // الوحدات التي يملكها: صراحةً (unit.ownerId) أو بالوراثة من عقار يملكه بالكامل
+  const ownerUnits = units.filter(u =>
+    u.ownerId ? u.ownerId === owner.id : propMap.get(u.propertyId)?.ownerId === owner.id
+  );
+  const fullyOwnedProps = properties.filter(p => p.ownerId === owner.id);
+  // وحدات يملكها في عقارات غيره → كل واحدة تُحسب "عقاراً" مستقلاً (يطابق شاشة المالك)
+  const externalUnits   = ownerUnits.filter(u => propMap.get(u.propertyId)?.ownerId !== owner.id);
+  const propertyCount   = fullyOwnedProps.length + externalUnits.length;
   const activeContracts = contracts.filter(c =>
     c.status === 'active' && ownerUnits.find(u => u.id === c.unitId)
   );
@@ -122,7 +128,7 @@ export function OwnerCard({ owner, onDelete }: OwnerCardProps) {
         {/* إحصائيات */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={[styles.statVal, { color: color }]}>{ownerProps.length}</Text>
+            <Text style={[styles.statVal, { color: color }]}>{propertyCount}</Text>
             <Text style={[styles.statLbl, { color: colors.textMuted }]}>عقار</Text>
           </View>
           <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
