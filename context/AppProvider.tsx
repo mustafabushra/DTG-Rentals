@@ -1865,32 +1865,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     mimeType: string; size?: number; category: FileCategory;
     expiryDate?: string; notes?: string; uploadedBy?: string;
   }): Promise<Attachment> => {
-    // الملفات تُرفع إلى Firebase Storage (يتحمّل الملفات الكبيرة)، ونُخزّن في Firestore
-    // رابط التنزيل + مسار التخزين فقط — لا base64 داخل المستند. (حد المستند 1MB كان
-    // يُفشل الكتابة بصمت فتختفي الملفات.) الرفع يرمي عند الفشل فيُعرض الخطأ ولا يبقى
-    // سجل وهمي؛ ولا تُحدَّث الحالة المحلية إلا بعد ثبوت الحفظ.
-    const org         = getActiveOrgId();
-    const token       = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const safeName    = (data.name || 'file').replace(/[^\w.\-]+/g, '_').slice(0, 40) || 'file';
-    const storagePath = `orgs/${org}/attachments/${data.entityType}/${data.entityId}/${token}_${safeName}`;
+    // المشروع على خطة Spark بلا Firebase Storage → نحفظ الملف داخل مستند Firestore.
+    // حد المستند ~1MB كان يُفشل الكتابة بصمت فتختفي الملفات. الحل: نضغط الصور،
+    // ونرفض الملف الكبير برسالة واضحة قبل الحفظ، وننتظر تأكيد الكتابة (لا سجل وهمي).
+    const org   = getActiveOrgId();
+    const isImg = (data.mimeType || '').startsWith('image/');
 
-    // 1) رفع البايتات إلى Storage — التحقق من السلامة ضمنيّ: يرمي عند انقطاع الشبكة/الفشل
-    const { downloadUrl } = await uploadFile(storagePath, data.uri, data.mimeType);
-    if (!downloadUrl) throw new Error('فشل رفع الملف');
+    // رفض مبكر لغير الصور المتجاوزة الحد (الصور تُضغط، فلا تُرفض بحجمها الخام)
+    if (!isImg && data.size && data.size > 650 * 1024) {
+      throw new Error('الملف كبير جداً للحفظ (الحد ~650KB لغير الصور). اختر ملفاً أصغر أو صورة.');
+    }
 
-    // 2) سجل صغير يحمل الرابط الدائم + المسار (مرتبط بالكيان والمستخدم/المالك)
+    // تحويل لبيانات دائمة base64 (الصور تُضغط داخل toPersistentUri)
+    const uri = await toPersistentUri(data.uri);
+
+    // حارس نهائي: لا يتجاوز المستند حد Firestore (~1MB)
+    if (uri.length > 950 * 1024) {
+      throw new Error('الملف كبير جداً للحفظ بعد المعالجة (الحد ~1MB). اختر ملفاً أصغر.');
+    }
+
     const att = FileService.create({
       ...data,
-      uri: downloadUrl,
-      storagePath,
+      uri,
       uploadedBy: data.uploadedBy ?? currentUser.name,
       ...(isOwner && currentUser.ownerId ? { ownerContext: currentUser.ownerId } : {}),
     });
 
-    // 3) حفظ مؤكَّد (await) قبل العرض — فلا سجل وهمي يختفي عند فشل الكتابة
+    // حفظ مؤكَّد (await) قبل العرض — فشل الكتابة يُعرض، ولا يبقى سجل وهمي يختفي عند التحديث
     await setOne(org, 'attachments', att.id, att);
 
-    // 4) تحديث الحالة المحلية بعد ثبوت الحفظ
     setAttachments(prev => FileService.syncExpiryStatuses([...prev, att]));
     addAuditEntry('add', 'وثيقة', att.name,
       `رفع وثيقة "${att.name}" على ${data.entityType} — ${currentUser.name}`);
