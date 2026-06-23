@@ -24,7 +24,8 @@ export type DeletableEntity =
   | 'tenant'
   | 'contract'
   | 'maintenance'
-  | 'calendarEvent';
+  | 'calendarEvent'
+  | 'attachment';
 
 interface DeleteTarget {
   id: string;
@@ -229,6 +230,7 @@ export function useDelete(): UseDeleteReturn {
         case 'contract':      app.deleteContract(id);      break;
         case 'maintenance':   app.deleteMaintenance(id);   break;
         case 'calendarEvent': app.deleteCalendarEvent(id); break;
+        case 'attachment':    app.deleteAttachment(id);    break;
       }
 
       setPending(null);
