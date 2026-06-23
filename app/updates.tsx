@@ -1,9 +1,11 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { AppHeader } from '../components/ui/AppHeader';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { db } from '../lib/firebase';
 
 interface AppUpdate {
   id: string;
@@ -13,99 +15,37 @@ interface AppUpdate {
   description: string;
   icon: string;
   color: string;
+  order?: number;
 }
-
-const APP_UPDATES: AppUpdate[] = [
-  {
-    id: '9',
-    version: 'v1.0.9',
-    date: '2026-06-22',
-    title: 'خصوصية وعزل كامل لبيانات كل حساب',
-    description: 'أصبح لكل حساب مساحته الخاصة المعزولة تماماً — لا يستطيع أي حساب آخر رؤية بياناتك أو الوصول إليها بأي شكل. وعند التسجيل تختار نوع حسابك: «شركة» تدير عدة ملاك وعقاراتهم تحتها، أو «مالك مستقل» يدير عقاراته الخاصة فقط. وداخل الشركة الواحدة يرى كل مالك سجلاته هو فقط، بينما يطّلع المدير على الجميع — خصوصية وأمان كامل لبياناتك في كل وقت.',
-    icon: 'lock-closed-outline',
-    color: '#16A085',
-  },
-  {
-    id: '8',
-    version: 'v1.0.8',
-    date: '2026-06-18',
-    title: 'تصنيف العقارات حسب المدينة',
-    description: 'أضفنا ميزة التوزيع الجغرافي في لوحة التحكم! الآن يمكنك رؤية عدد العقارات المؤجرة والشاغرة في كل مدينة (الشارقة، دبي، عجمان، الخ) مباشرةً بدون مراجعة كل عقار يدوياً. كل مدينة تظهر تحت اسمها: عدد المؤجر 🟢 وعدد الشاغر 🟡 والإجمالي. كما أضفنا فلتر تصفية حسب المدينة في صفحة العقارات.',
-    icon: 'business-outline',
-    color: '#2E86C1',
-  },
-  {
-    id: '7',
-    version: 'v1.0.7',
-    date: '2026-06-18',
-    title: 'تحديث الفلاتر وأدوات البحث',
-    description: 'أضفنا خيار التصفية حسب المدينة في شاشة تصفية العقارات. تستطيع الآن اختيار مدينة معينة لعرض عقاراتها فقط، مما يسهل إدارة العقارات الموزعة على عدة مدن.',
-    icon: 'funnel-outline',
-    color: '#E67E22',
-  },
-  {
-    id: '6',
-    version: 'v1.0.6',
-    date: '2026-06-17',
-    title: 'تحديث نظام التأمين',
-    description: 'تحسينات عامة في أداء التطبيق وتسريع تحميل البيانات.',
-    icon: 'settings-outline',
-    color: '#8E44AD',
-  },
-  {
-    id: '5',
-    version: 'v1.0.5',
-    date: '2026-06-17',
-    title: 'تأمين الملفات للأبد (Absolute Persistence)',
-    description: 'قمنا بتطوير تقنية حصرية تضمن عدم ضياع أي ملف أو صورة بعد رفعها. الآن يتم دمج الملفات مباشرة في قاعدة البيانات الأساسية، مما يمنع ظهور رسالة "الملف تم نقله أو حذفه" نهائياً، ويضمن لك الوصول لمستنداتك في أي وقت ومن أي مكان بضمان 100%.',
-    icon: 'shield-checkmark-outline',
-    color: '#E67E22',
-  },
-  {
-    id: '4',
-    version: 'v1.0.4',
-    date: '2026-06-17',
-    title: 'تحسين نظام التخزين السحابي',
-    description: 'قمنا بتطوير نظام تخزين الملفات والصور ليعمل بشكل احترافي عبر السحاب. هذا يضمن ظهور الصور والمستندات بسرعة فائقة وبجودة عالية على جميع أنواع الأجهزة، مع حل مشكلة التعليق أثناء التحميل بشكل نهائي.',
-    icon: 'cloud-done-outline',
-    color: '#9B59B6',
-  },
-  {
-    id: '3',
-    version: 'v1.0.3',
-    date: '2026-06-17',
-    title: 'إصلاح مشكلة المرفقات والملفات',
-    description: 'تم حل مشكلة الملفات والصور التي لم تكن تظهر أبداً. الآن يمكنك رفع صور العقود، الهويات، والوصولات بكل سهولة وستبقى محفوظة وتظهر لك في أي وقت ومن أي جهاز.',
-    icon: 'attach-outline',
-    color: '#3498DB',
-  },
-  {
-    id: '2',
-    version: 'v1.0.2',
-    date: '2026-06-15',
-    title: 'تحسين سرعة حفظ البيانات',
-    description: 'قمنا بجعل التطبيق أسرع في حفظ المعلومات وتحديثها، لضمان عدم ضياع أي بيانات أثناء العمل حتى لو كان الاتصال ضعيفاً.',
-    icon: 'flash-outline',
-    color: '#F1C40F',
-  },
-  {
-    id: '1',
-    version: 'v1.0.1',
-    date: '2026-06-10',
-    title: 'إطلاق نظام إدارة العقارات',
-    description: 'البدء الفعلي للتطبيق مع ميزات إدارة الملاك، المستأجرين، العقارات، والوحدات، مع نظام متطور لمتابعة العقود والتحصيل المالي.',
-    icon: 'rocket-outline',
-    color: '#27AE60',
-  },
-];
 
 export default function UpdatesScreen() {
   const { colors } = useAppTheme();
+  const [updates, setUpdates] = useState<AppUpdate[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // اشتراك لحظي بسجل تحديثات التطبيق (appUpdates) — أي إضافة/تعديل/حذف ينعكس فوراً
+  // على كل الجلسات والتبويبات عبر onSnapshot. الترتيب: الأحدث أولاً (order تنازلياً).
+  useEffect(() => {
+    const q = query(collection(db, 'appUpdates'), orderBy('order', 'desc'));
+    const unsubscribe = onSnapshot(
+      q,
+      snap => {
+        // اللقطة هي مصدر الحقيقة الوحيد (مفتاح = معرّف المستند) → لا تكرار ولا أشباح
+        setUpdates(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<AppUpdate, 'id'>) })));
+        setLoading(false);
+      },
+      err => {
+        console.error('[updates] snapshot error:', err);
+        setLoading(false);
+      },
+    );
+    return () => unsubscribe();
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="آخر التحديثات" />
-      
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.introBox}>
           <Text style={[styles.introTitle, { color: colors.text }]}>ما الجديد؟</Text>
@@ -114,32 +54,43 @@ export default function UpdatesScreen() {
           </Text>
         </View>
 
-        <View style={styles.timelineContainer}>
-          {APP_UPDATES.map((update, index) => (
-            <View key={update.id} style={styles.updateItem}>
-              {/* Timeline Connector */}
-              <View style={styles.timelineLeft}>
-                <View style={[styles.iconCircle, { backgroundColor: update.color }]}>
-                  <Ionicons name={update.icon as any} size={22} color="#FFF" />
+        {loading ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : updates.length === 0 ? (
+          <View style={styles.stateBox}>
+            <Ionicons name="megaphone-outline" size={48} color={colors.textMuted} />
+            <Text style={[styles.stateText, { color: colors.textMuted }]}>لا توجد تحديثات بعد</Text>
+          </View>
+        ) : (
+          <View style={styles.timelineContainer}>
+            {updates.map((update, index) => (
+              <View key={update.id} style={styles.updateItem}>
+                {/* Timeline Connector */}
+                <View style={styles.timelineLeft}>
+                  <View style={[styles.iconCircle, { backgroundColor: update.color || colors.primary }]}>
+                    <Ionicons name={(update.icon || 'sparkles-outline') as any} size={22} color="#FFF" />
+                  </View>
+                  {index !== updates.length - 1 && (
+                    <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
+                  )}
                 </View>
-                {index !== APP_UPDATES.length - 1 && (
-                  <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
-                )}
-              </View>
 
-              {/* Update Card */}
-              <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.cardHeader}>
-                  <Text style={[styles.updateVersion, { color: update.color }]}>{update.version}</Text>
-                  <Text style={[styles.updateDate, { color: colors.textMuted }]}>{update.date}</Text>
+                {/* Update Card */}
+                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.updateVersion, { color: update.color || colors.primary }]}>{update.version}</Text>
+                    <Text style={[styles.updateDate, { color: colors.textMuted }]}>{update.date}</Text>
+                  </View>
+
+                  <Text style={[styles.updateTitle, { color: colors.text }]}>{update.title}</Text>
+                  <Text style={[styles.updateDesc, { color: colors.textSecondary }]}>{update.description}</Text>
                 </View>
-                
-                <Text style={[styles.updateTitle, { color: colors.text }]}>{update.title}</Text>
-                <Text style={[styles.updateDesc, { color: colors.textSecondary }]}>{update.description}</Text>
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -151,6 +102,8 @@ const styles = StyleSheet.create({
   introBox: { marginBottom: 24, paddingHorizontal: 4 },
   introTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 8, textAlign: 'right' },
   introSub: { fontSize: 15, lineHeight: 22, textAlign: 'right' },
+  stateBox: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 60 },
+  stateText: { fontSize: 15, textAlign: 'center' },
   timelineContainer: { paddingRight: 4 },
   updateItem: { flexDirection: 'row-reverse', gap: 16, marginBottom: 20 },
   timelineLeft: { alignItems: 'center', width: 44 },

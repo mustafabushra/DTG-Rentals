@@ -221,6 +221,13 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || (isAdmin() && resource.data.orgId == userOrg());
     }
 
+    // ── سجل تحديثات التطبيق (changelog عام، top-level) ─────────────────────────
+    // feed داخلي مشترك لكل المؤسسات: يقرؤه أي مستخدم مسجّل (live)، ويكتبه المطوّر فقط.
+    match /appUpdates/{updateId} {
+      allow read:  if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
     // ── Per-document validation ───────────────────────────────────────────────
     function validateDoc(col, data) {
       return col == 'properties'  ? validateProperty(data)
