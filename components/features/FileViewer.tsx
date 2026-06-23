@@ -36,9 +36,14 @@ export function FileViewer({ attachment, onClose }: Props) {
   const slideY = useRef(new Animated.Value(SCREEN_H)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
-  const isImage = attachment?.type === 'image';
-  const isPdf = attachment?.type === 'pdf';
-  const isDoc = attachment?.type === 'doc' || attachment?.type === 'other';
+  const mime    = attachment?.mimeType ?? '';
+  const isImage = attachment?.type === 'image' || mime.startsWith('image/');
+  const isPdf   = attachment?.type === 'pdf'   || mime === 'application/pdf';
+  const isText  = mime.startsWith('text/');
+  const isWeb   = Platform.OS === 'web';
+  // معاينة داخلية: الصور على كل المنصّات؛ PDF/النصوص داخلياً على الويب عبر iframe.
+  // غير ذلك (Word/Excel/مجهول، أو PDF على الجوال) → خيار تنزيل واضح.
+  const canInlineFrame = isWeb && (isPdf || isText);
 
   // OPEN animation
   const open = () => {
@@ -66,6 +71,11 @@ export function FileViewer({ attachment, onClose }: Props) {
 
   const handleShareExternal = async () => {
     try {
+      // على الويب: المشاركة الأصلية غير متاحة — افتح/نزّل عبر تبويب جديد
+      if (isWeb) {
+        if (typeof window !== 'undefined') window.open(attachment.uri, '_blank');
+        return;
+      }
       // For data URIs, download first then share
       if (attachment.uri.startsWith('data:')) {
         const ext = attachment.mimeType?.includes('pdf') ? '.pdf' : '.jpg';
@@ -86,6 +96,10 @@ export function FileViewer({ attachment, onClose }: Props) {
 
   const handleDownload = async () => {
     try {
+      if (isWeb) {
+        if (typeof window !== 'undefined') window.open(attachment.uri, '_blank');
+        return;
+      }
       if (attachment.uri.startsWith('data:')) {
         const ext = attachment.mimeType?.includes('pdf') ? '.pdf' : '.jpg';
         const fileUri = `${FileSystem.cacheDirectory}${attachment.name}${ext}`;
@@ -179,8 +193,19 @@ export function FileViewer({ attachment, onClose }: Props) {
               </ScrollView>
             )}
 
-            {/* PDF / DOC / OTHER — show file info + download/share buttons */}
-            {(isPdf || isDoc) && !error && renderNonImage()}
+            {/* PDF / نص — معاينة داخلية على الويب عبر iframe */}
+            {canInlineFrame && !error && (
+              <View style={{ flex: 1, backgroundColor: '#fff' }}>
+                {React.createElement('iframe', {
+                  src: attachment.uri,
+                  title: attachment.name,
+                  style: { width: '100%', height: '100%', border: 'none' },
+                })}
+              </View>
+            )}
+
+            {/* غير قابل للمعاينة داخلياً (Word/Excel/مجهول، أو PDF على الجوال) → تنزيل */}
+            {!isImage && !canInlineFrame && !error && renderNonImage()}
 
             {/* LOADER */}
             {imageLoading && !error && (

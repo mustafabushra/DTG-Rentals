@@ -1865,28 +1865,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     mimeType: string; size?: number; category: FileCategory;
     expiryDate?: string; notes?: string; uploadedBy?: string;
   }): Promise<Attachment> => {
-    // ✅ Use the SAME approach as property photos:
-    //   Convert file to persistent Base64 data URI and store directly in Firestore.
-    //   This avoids:
-    //     - "Not allowed to load local resource" error on web
-    //     - Firebase Storage permission issues for non-image files
-    //     - WebView platform limitations for PDFs
-    //     - Download URL expiry
-    const uri = await toPersistentUri(data.uri);
+    // الملفات تُرفع إلى Firebase Storage (يتحمّل الملفات الكبيرة)، ونُخزّن في Firestore
+    // رابط التنزيل + مسار التخزين فقط — لا base64 داخل المستند. (حد المستند 1MB كان
+    // يُفشل الكتابة بصمت فتختفي الملفات.) الرفع يرمي عند الفشل فيُعرض الخطأ ولا يبقى
+    // سجل وهمي؛ ولا تُحدَّث الحالة المحلية إلا بعد ثبوت الحفظ.
+    const org         = getActiveOrgId();
+    const token       = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const safeName    = (data.name || 'file').replace(/[^\w.\-]+/g, '_').slice(0, 40) || 'file';
+    const storagePath = `orgs/${org}/attachments/${data.entityType}/${data.entityId}/${token}_${safeName}`;
 
+    // 1) رفع البايتات إلى Storage — التحقق من السلامة ضمنيّ: يرمي عند انقطاع الشبكة/الفشل
+    const { downloadUrl } = await uploadFile(storagePath, data.uri, data.mimeType);
+    if (!downloadUrl) throw new Error('فشل رفع الملف');
+
+    // 2) سجل صغير يحمل الرابط الدائم + المسار (مرتبط بالكيان والمستخدم/المالك)
     const att = FileService.create({
       ...data,
-      uri,
+      uri: downloadUrl,
+      storagePath,
       uploadedBy: data.uploadedBy ?? currentUser.name,
       ...(isOwner && currentUser.ownerId ? { ownerContext: currentUser.ownerId } : {}),
     });
 
+    // 3) حفظ مؤكَّد (await) قبل العرض — فلا سجل وهمي يختفي عند فشل الكتابة
+    await setOne(org, 'attachments', att.id, att);
+
+    // 4) تحديث الحالة المحلية بعد ثبوت الحفظ
     setAttachments(prev => FileService.syncExpiryStatuses([...prev, att]));
-    fs('attachments', att.id, att, 'set');
     addAuditEntry('add', 'وثيقة', att.name,
       `رفع وثيقة "${att.name}" على ${data.entityType} — ${currentUser.name}`);
     return att;
-  }, [userId, currentUser.name, currentUser.ownerId, isOwner, fs]);
+  }, [userId, currentUser.name, currentUser.ownerId, isOwner]);
 
   const deleteAttachment = useCallback((id: string) => {
     // ✅ FIX: Also delete the file from Firebase Storage

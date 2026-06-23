@@ -117,6 +117,8 @@ export const FileService = {
     const map: Record<FileCategory, string> = {
       contract:    'عقد',
       id:          'هوية',
+      invoice:     'فاتورة',
+      permit:      'تصريح',
       property:    'عقار',
       payment:     'دفعة',
       maintenance: 'صيانة',
@@ -135,12 +137,11 @@ export const FileService = {
   },
 
   /**
-   * Validate a file before upload.
+   * Validate a file before upload. النوع غير مقيَّد (ندعم الصور وPDF وWord وExcel
+   * والنصوص...) — يُعرض ما يمكن معاينته داخلياً، والباقي يُنزَّل. نحرس الحجم فقط.
    */
   validate(file: { name: string; size?: number; mimeType: string }): string | null {
-    const allowed = ['image/jpeg', 'image/png', 'application/pdf'];
-    if (!allowed.includes(file.mimeType)) return 'نوع الملف غير مدعوم. المسموح: JPG, PNG, PDF';
-    if (file.size && file.size > 20 * 1024 * 1024) return 'حجم الملف يتجاوز الحد الأقصى (20MB)';
+    if (file.size && file.size > 50 * 1024 * 1024) return 'حجم الملف يتجاوز الحد الأقصى (50MB)';
     return null;
   },
 };

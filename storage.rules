@@ -3,9 +3,10 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
       allow read:  if request.auth != null;
+      // تطبيق خاص (مستخدمون مصادَقون فقط): نسمح بأي نوع ملف حتى 50MB.
+      // تقييد النوع سابقاً كان يرفض Word/Excel/النصوص بصمت فتختفي بعد الرفع.
       allow write: if request.auth != null
-                   && request.resource.size < 20 * 1024 * 1024
-                   && request.resource.contentType.matches('(image/.*)|(application/pdf)');
+                   && request.resource.size < 50 * 1024 * 1024;
     }
   }
 }

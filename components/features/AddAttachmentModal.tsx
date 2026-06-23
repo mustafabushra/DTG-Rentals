@@ -21,6 +21,7 @@ import { FormInput } from '../forms/FormInput';
 import { useApp } from '../../context/AppProvider';
 import { FileService } from '../../domain/services/FileService';
 import { Theme } from '../../constants/Theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import type { FileCategory } from '../../domain/models';
 
 type EntityType =
@@ -48,10 +49,7 @@ export function AddAttachmentModal({
   onSave: () => void;
 }) {
 
-  // ✅ FIX: safe theme access
-  const colors = Theme?.colors ?? {
-    primary: '#3b82f6'
-  };
+  const { colors } = useAppTheme();
 
   const {
     properties,
@@ -140,7 +138,8 @@ export function AddAttachmentModal({
         });
       } else {
         result = await DocumentPicker.getDocumentAsync({
-          type: ['application/pdf', 'image/jpeg', 'image/png']
+          type: '*/*',          // أي نوع (PDF/Word/Excel/نص/صور) — الحجم محروس في FileService.validate
+          copyToCacheDirectory: true,
         });
       }
 
@@ -391,11 +390,11 @@ const styles = StyleSheet.create({
   stepContainer: { gap: 16 },
   stepTitle: { fontSize: 18, fontWeight: 'bold', textAlign: 'right', marginBottom: 8 },
   pillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
-  pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', borderWeight: 1, borderColor: '#ddd' },
+  pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', borderColor: '#ddd' },
   pillActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
   pillText: { color: '#666', fontSize: 14 },
   pillTextActive: { color: '#fff', fontWeight: 'bold' },
-  searchInput: { backgroundColor: '#f5f5f5', padding: 12, borderRadius: 8, textAlign: 'right', borderWeight: 1, borderColor: '#eee' },
+  searchInput: { backgroundColor: '#f5f5f5', padding: 12, borderRadius: 8, textAlign: 'right', borderColor: '#eee' },
   entityItem: { padding: 14, borderRadius: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
   entityItemActive: { backgroundColor: '#3b82f610', borderColor: '#3b82f6' },
   entityText: { textAlign: 'right', color: '#333' },

@@ -187,6 +187,8 @@ export interface Attachment {
   notes?:         string;
   uploadedAt:     string;
   uploadedBy?:    string;
+  storagePath?:   string;   // مسار الملف في Firebase Storage (للحذف لاحقاً)
+  ownerContext?:  string;   // ownerId المالك (لعزل المرفقات داخل الشركة)
 }
 
 export interface EntityPhoto {
