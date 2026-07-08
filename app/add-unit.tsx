@@ -7,7 +7,7 @@ import { Theme } from '../constants/Theme';
 import { useApp } from '../context/AppProvider';
 import { FormInput } from '../components/forms/FormInput';
 import { FormSelect } from '../components/forms/FormSelect';
-import { Unit, UnitType } from '../data/mockData';
+import { Unit, UnitType, RentalModel } from '../data/mockData';
 import { FormContainer } from '../components/ui/FormContainer';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { CURRENCY_OPTIONS } from '../utils/currency';
@@ -23,7 +23,7 @@ export default function AddUnitScreen() {
   const { colors } = useAppTheme();
   const { properties, owners, addUnit } = useApp();
 
-  const [form, setForm] = useState({ propertyId: '', ownerId: '', number: '', type: '' as UnitType | '', floor: '', area: '', monthlyRent: '', currency: '', description: '' });
+  const [form, setForm] = useState({ propertyId: '', ownerId: '', number: '', type: '' as UnitType | '', floor: '', area: '', monthlyRent: '', currency: '', description: '', rentalModel: 'lease' as RentalModel, nightlyRate: '' });
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -34,14 +34,19 @@ export default function AddUnitScreen() {
     if (!form.type) e.type = 'نوع الوحدة مطلوب';
     if (!form.floor || isNaN(Number(form.floor))) e.floor = 'رقم الطابق مطلوب';
     if (!form.area || isNaN(Number(form.area))) e.area = 'المساحة مطلوبة';
-    if (!form.monthlyRent || isNaN(Number(form.monthlyRent))) e.monthlyRent = 'الإيجار الشهري مطلوب';
+    if (form.rentalModel === 'nightly') {
+      if (!form.nightlyRate || isNaN(Number(form.nightlyRate))) e.nightlyRate = 'سعر الليلة مطلوب';
+    } else if (!form.monthlyRent || isNaN(Number(form.monthlyRent))) {
+      e.monthlyRent = 'الإيجار الشهري مطلوب';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleSave = () => {
     if (!validate()) return;
-    const monthly = Number(form.monthlyRent);
+    const isNightly = form.rentalModel === 'nightly';
+    const monthly = Number(form.monthlyRent) || 0;
     const unit: Unit = {
       id: `u${Date.now()}`,
       propertyId: form.propertyId,
@@ -56,6 +61,8 @@ export default function AddUnitScreen() {
       description: form.description.trim(),
       features: selectedFeatures,
       ...(form.currency ? { currency: form.currency } : {}),
+      rentalModel: form.rentalModel,
+      ...(isNightly ? { nightlyRate: Number(form.nightlyRate) } : {}),
     };
     addUnit(unit);
     router.back();
@@ -128,7 +135,37 @@ export default function AddUnitScreen() {
         <FormSelect label="نوع الوحدة" value={form.type} options={typeOptions} onSelect={set('type')} required placeholder="اختر النوع..." error={errors.type} />
         <FormInput label="رقم الطابق" value={form.floor} onChangeText={set('floor')} placeholder="مثال: 2" keyboardType="number-pad" required icon="layers-outline" error={errors.floor} />
         <FormInput label="المساحة (م²)" value={form.area} onChangeText={set('area')} placeholder="مثال: 120" keyboardType="decimal-pad" required icon="resize-outline" error={errors.area} />
-        <FormInput label="الإيجار الشهري (﷼)" value={form.monthlyRent} onChangeText={set('monthlyRent')} placeholder="مثال: 5000" keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
+
+        {/* نوع التأجير: طويل الأجل (عقود) أو يومي (بيت مصيف — إيراد بالإشغال) */}
+        <View style={styles.segSection}>
+          <Text style={[styles.featLabel, { color: colors.text }]}>نوع التأجير</Text>
+          <View style={styles.segRow}>
+            {([
+              { key: 'lease',   label: 'طويل الأجل', icon: 'document-text-outline' },
+              { key: 'nightly', label: 'يومي (مصيف)', icon: 'calendar-outline' },
+            ] as const).map(opt => {
+              const active = form.rentalModel === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[styles.segBtn, {
+                    backgroundColor: active ? colors.primary : colors.inputBg,
+                    borderColor: active ? colors.primary : colors.border,
+                  }]}
+                  onPress={() => set('rentalModel')(opt.key)}
+                >
+                  <Ionicons name={opt.icon} size={15} color={active ? '#FFF' : colors.textSecondary} />
+                  <Text style={[styles.segText, { color: active ? '#FFF' : colors.textSecondary }]}>{opt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {form.rentalModel === 'nightly'
+          ? <FormInput label="سعر الليلة (﷼)" value={form.nightlyRate} onChangeText={set('nightlyRate')} placeholder="مثال: 450" keyboardType="number-pad" required icon="moon-outline" error={errors.nightlyRate} />
+          : <FormInput label="الإيجار الشهري (﷼)" value={form.monthlyRent} onChangeText={set('monthlyRent')} placeholder="مثال: 5000" keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
+        }
         <FormSelect label="عملة الوحدة / الدولة" value={form.currency} options={CURRENCY_OPTIONS} onSelect={set('currency')} placeholder="اختر العملة..." />
         <FormInput label="الوصف (اختياري)" value={form.description} onChangeText={set('description')} placeholder="وصف الوحدة..." multiline numberOfLines={3} icon="document-text-outline" />
 
@@ -173,6 +210,13 @@ const styles = StyleSheet.create({
   hintRow:  { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4, paddingHorizontal: 4 },
   hintText: { fontSize: Theme.fontSize.xs, flex: 1 },
   featuresSection: { gap: 8 },
+  segSection: { gap: 8 },
+  segRow: { flexDirection: 'row', gap: 8 },
+  segBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 11, borderRadius: Theme.radius.md, borderWidth: 1,
+  },
+  segText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
   featLabel: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
   featWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   featChip: {

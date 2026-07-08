@@ -545,6 +545,35 @@ export default function DashboardScreen() {
           )}
         </View>
 
+        {/* ── Holiday-Home revenue breakdown (only when nightly units exist) ── */}
+        {kpis.holidayUnitsCount > 0 && (
+          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 8 : 12 }]}>
+            <View style={[styles.hhCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.hhHeader}>
+                <Ionicons name="moon-outline" size={16} color={colors.purple} />
+                <Text style={[styles.hhTitle, { color: colors.text }]}>تفصيل الإيراد الشهري</Text>
+                <View style={[styles.hhBadge, { backgroundColor: colors.purple + '22' }]}>
+                  <Text style={[styles.hhBadgeText, { color: colors.purple }]}>إشغال {kpis.holidayOccupancyRate}%</Text>
+                </View>
+              </View>
+              <View style={styles.hhSplitRow}>
+                <View style={styles.hhSplitItem}>
+                  <Text style={[styles.hhSplitLabel, { color: colors.textMuted }]}>عقود طويلة</Text>
+                  <Text style={[styles.hhSplitVal, { color: colors.text }]}>{formatCurrency(kpis.leaseMonthlyRevenue)} ﷼</Text>
+                </View>
+                <View style={[styles.hhDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.hhSplitItem}>
+                  <Text style={[styles.hhSplitLabel, { color: colors.textMuted }]}>حجوزات يومية</Text>
+                  <Text style={[styles.hhSplitVal, { color: colors.purple }]}>{formatCurrency(kpis.holidayMonthlyRevenue)} ﷼</Text>
+                </View>
+              </View>
+              <Text style={[styles.hhHint, { color: colors.textMuted }]}>
+                إيراد الحجوزات يُحتسب فقط لليالي المشغولة فعلياً هذا الشهر ({kpis.holidayUnitsCount} وحدة مصيف)
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* ── Smart Alert ── */}
         {visibleAlert && (
           <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
@@ -1008,6 +1037,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.spacing.base,
     marginTop: Theme.spacing.xl,
   },
+  hhCard: { borderRadius: Theme.radius.lg, borderWidth: 1, padding: Theme.spacing.md, gap: 12 },
+  hhHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hhTitle: { flex: 1, fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
+  hhBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Theme.radius.full },
+  hhBadgeText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.bold },
+  hhSplitRow: { flexDirection: 'row', alignItems: 'center' },
+  hhSplitItem: { flex: 1, alignItems: 'center', gap: 3 },
+  hhSplitLabel: { fontSize: Theme.fontSize.xs },
+  hhSplitVal: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
+  hhDivider: { width: 1, height: 32 },
+  hhHint: { fontSize: Theme.fontSize.xs, textAlign: 'center', lineHeight: 16 },
   rowPair: {
     flexDirection: 'row',
     alignItems: 'stretch',

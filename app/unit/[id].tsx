@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -12,19 +12,21 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { AttachmentPanel } from '../../components/features/AttachmentPanel';
 import { PhotoGallery } from '../../components/features/PhotoGallery';
-import { formatCurrency, getUnitTypeLabel } from '../../data/mockData';
+import { formatCurrency, getUnitTypeLabel, formatDate } from '../../data/mockData';
 import { CurrencyText } from '../../components/ui/CurrencyText';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { BookingService } from '../../domain/services/BookingService';
 
 export default function UnitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
   const {
-    units, tenants, properties, maintenance, contracts,
+    units, tenants, properties, maintenance, contracts, bookings, cancelBooking,
     unitPhotos: allUnitPhotos, addUnitPhoto, removeUnitPhoto, setUnitMainPhoto,
     canWrite, canDelete, externalOwnedUnits,
   } = useApp();
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
 
   const unit     = units.find(u => u.id === id);
   // للوحدات الخارجية: properties لا تحتوي عقار المالك الأصلي → نبحث في externalOwnedUnits
@@ -35,6 +37,10 @@ export default function UnitDetailScreen() {
   const propertyName = property?.name ?? externalUnit?.parentPropertyName ?? null;
   const tenant   = unit?.currentTenantId ? tenants.find(t => t.id === unit.currentTenantId) ?? null : null;
   const unitMaintenance = maintenance.filter(m => m.unitId === id);
+  const isNightly = unit?.rentalModel === 'nightly';
+  const unitBookings = bookings
+    .filter(b => b.unitId === id)
+    .sort((a, b) => b.checkIn.localeCompare(a.checkIn));
   const unitContract = unit?.currentContractId ? contracts.find(c => c.id === unit.currentContractId) : null;
   const effectiveCurrency = unitContract?.currency ?? property?.currency ?? undefined;
   const unitPhotos = id ? (allUnitPhotos[id] ?? []) : [];
@@ -157,6 +163,51 @@ export default function UnitDetailScreen() {
           </View>
         )}
 
+        {/* Bookings (Holiday Home) */}
+        {isNightly && (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>الحجوزات ({unitBookings.filter(b => b.status === 'confirmed').length})</Text>
+              {canWrite && (
+                <TouchableOpacity onPress={() => router.push(`/add-booking?unitId=${id}`)}>
+                  <Text style={[styles.cardAction, { color: colors.secondary }]}>حجز جديد</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {unitBookings.length === 0 ? (
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>لا توجد حجوزات — الإيراد يُحتسب فقط لليالي المحجوزة</Text>
+            ) : (
+              unitBookings.map(b => {
+                const cancelled = b.status === 'cancelled';
+                return (
+                  <View key={b.id} style={[styles.bookingRow, { borderBottomColor: colors.border }]}>
+                    <View style={styles.bookingInfo}>
+                      <Text style={[styles.bookingGuest, { color: colors.text, textDecorationLine: cancelled ? 'line-through' : 'none' }]}>
+                        {b.guestName} · {b.nights} ليلة
+                      </Text>
+                      <Text style={[styles.bookingDates, { color: colors.textMuted }]}>
+                        {formatDate(b.checkIn)} ← {formatDate(b.checkOut)}
+                      </Text>
+                    </View>
+                    <View style={styles.bookingRight}>
+                      <Text style={[styles.bookingAmount, { color: cancelled ? colors.textMuted : colors.primary }]}>
+                        {formatCurrency(b.totalAmount)} {b.currency ?? ''}
+                      </Text>
+                      {cancelled
+                        ? <Text style={[styles.bookingCancelled, { color: colors.danger }]}>ملغي</Text>
+                        : canWrite && (
+                          <TouchableOpacity onPress={() => setCancelBookingId(b.id)} hitSlop={8}>
+                            <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
+                          </TouchableOpacity>
+                        )}
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+
         {/* Maintenance History */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
@@ -222,6 +273,15 @@ export default function UnitDetailScreen() {
         message={blocked ?? ''}
         variant="warning"
       />
+      <ConfirmModal
+        visible={!!cancelBookingId}
+        onClose={() => setCancelBookingId(null)}
+        onConfirm={() => { if (cancelBookingId) cancelBooking(cancelBookingId); setCancelBookingId(null); }}
+        title="إلغاء الحجز"
+        message="سيتم إلغاء هذا الحجز وتحرير لياليه، ولن يُحتسب إيراده. هل تريد المتابعة؟"
+        confirmLabel="إلغاء الحجز"
+        variant="danger"
+      />
     </View>
   );
 }
@@ -273,6 +333,13 @@ const styles = StyleSheet.create({
   tenantPhone: { fontSize: Theme.fontSize.sm, textAlign: 'right' },
   contractLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
   contractLinkText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.medium },
+  bookingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingVertical: 9, borderBottomWidth: 1 },
+  bookingInfo: { flex: 1 },
+  bookingGuest: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium, textAlign: 'right' },
+  bookingDates: { fontSize: Theme.fontSize.sm, textAlign: 'right', marginTop: 2 },
+  bookingRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  bookingAmount: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
+  bookingCancelled: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
   maintRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1 },
   maintInfo: { flex: 1 },
   maintTitle: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium, textAlign: 'right' },

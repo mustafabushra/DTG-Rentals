@@ -15,6 +15,9 @@ export type UnitStatus = 'rented' | 'vacant' | 'maintenance' | 'reserved';
 export type UnitType = 'studio' | 'apartment_1' | 'apartment_2' | 'apartment_3' | 'apartment_4' | 'villa' | 'office' | 'shop';
 export type ContractStatus = 'active' | 'expired' | 'cancelled' | 'terminated';
 export type PaymentStatus = 'paid' | 'pending' | 'overdue';
+// نموذج التأجير للوحدة: lease = إيجار طويل الأجل (افتراضي)، nightly = بيت مصيف/إيجار يومي
+export type RentalModel = 'lease' | 'nightly';
+export type BookingStatus = 'confirmed' | 'cancelled';
 export type PaymentMethod = 'transfer' | 'cash' | 'check';
 export type MaintenancePriority = 'urgent' | 'high' | 'medium' | 'low';
 export type MaintenanceStatus = 'new' | 'in_progress' | 'completed' | 'cancelled';
@@ -103,6 +106,34 @@ export interface Unit {
   currency?: string;         // عملة الوحدة — الأولوية: unit > contract > property > system
   currentTenantId?: string;
   currentContractId?: string;
+  // ── بيت المصيف (Holiday Home) ──────────────────────────────────────────────
+  // rentalModel افتراضياً 'lease'؛ غيابه يعني إيجار طويل الأجل (توافق مع البيانات القديمة).
+  // عند 'nightly' يُدار إيرادها بالإشغال (حجوزات) بدل الأقساط السنوية.
+  rentalModel?: RentalModel;
+  nightlyRate?: number;      // سعر الليلة (بعملة الوحدة) للوحدات nightly
+}
+
+// حجز بيت المصيف — سجل إقامة قصير الأجل مقابل وحدة nightly.
+// checkIn شامل، checkOut حصري (عدد الليالي = checkOut − checkIn).
+export interface Booking {
+  id: string;
+  unitId: string;
+  propertyId: string;
+  ownerId?: string;          // مالك الوحدة (للعزل والاستعلامات المحصورة، كبقية المجموعات الحساسة)
+  guestName: string;
+  guestPhone?: string;
+  checkIn: string;           // YYYY-MM-DD (شامل)
+  checkOut: string;          // YYYY-MM-DD (حصري)
+  nights: number;            // محسوب مسبقاً = عدد الليالي
+  nightlyRate: number;       // سعر الليلة وقت الحجز
+  totalAmount: number;       // محسوب مسبقاً (nights × nightlyRate، أو قيمة إجمالية مُدخلة)
+  paidAmount: number;        // المحصّل فعلياً (أساس نقدي)
+  status: BookingStatus;     // confirmed | cancelled
+  currency?: string;         // موروثة من الوحدة/العقار
+  notes?: string;
+  createdAt: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
 }
 
 export interface Contract {

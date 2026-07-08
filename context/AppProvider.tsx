@@ -2,8 +2,9 @@ import React, { createContext, useContext, useMemo, useState, useCallback, useEf
 import { Appearance, Alert, Platform, useColorScheme } from 'react-native';
 import {
   Owner, Tenant, Unit, Contract, Payment, Maintenance, AuditLog, CalendarEvent,
-  ContractStatus, UnitStatus, PropertyType,
+  ContractStatus, UnitStatus, PropertyType, Booking,
 } from '../data/mockData';
+import { BookingService } from '../domain/services/BookingService';
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
@@ -38,6 +39,7 @@ interface AppState {
   contracts: Contract[];
   payments: Payment[];
   maintenance: Maintenance[];
+  bookings: Booking[];
   auditLogs: AuditLog[];
   calendarEvents: CalendarEvent[];
   attachments: Attachment[];
@@ -78,6 +80,10 @@ interface AppContextType extends AppState {
   addMaintenance: (item: Maintenance) => void;
   updateMaintenance: (id: string, data: Partial<Maintenance>) => void;
   deleteMaintenance: (id: string) => void;
+  addBooking: (booking: Booking) => void;
+  updateBooking: (id: string, data: Partial<Booking>) => void;
+  cancelBooking: (id: string, reason?: string) => void;
+  deleteBooking: (id: string) => void;
   cancelContract: (id: string, reason: string) => void;
   addCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   deleteCalendarEvent: (id: string) => void;
@@ -104,6 +110,10 @@ interface AppContextType extends AppState {
     rentedUnits: number;
     vacantUnits: number;
     monthlyRevenue: number;
+    leaseMonthlyRevenue: number;
+    holidayMonthlyRevenue: number;
+    holidayOccupancyRate: number;
+    holidayUnitsCount: number;
     openMaintenanceRequests: number;
     overduePayments: number;
     activeContracts: number;
@@ -157,6 +167,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [contracts, setContracts]         = useState<Contract[]>([]);
   const [payments, setPayments]           = useState<Payment[]>([]);
   const [maintenance, setMaintenance]     = useState<Maintenance[]>([]);
+  const [bookings, setBookings]           = useState<Booking[]>([]);
   const [auditLogs, setAuditLogs]         = useState<AuditLog[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [attachments, setAttachments]       = useState<Attachment[]>([]);
@@ -212,7 +223,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setUserId(null);
         setDataLoading(false);
         setOwners([]); setProperties([]); setTenants([]); setUnits([]);
-        setContracts([]); setPayments([]); setMaintenance([]);
+        setContracts([]); setPayments([]); setMaintenance([]); setBookings([]);
         setAuditLogs([]); setCalendarEvents([]); setAttachments([]);
         return;
       }
@@ -273,7 +284,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ── دوال جلب تراعي عزل المالك ───────────────────────────────────────────
       // المالك التابع: استعلامات محصورة بـ where('ownerId','==',scopeOwnerId) على المجموعات الحساسة.
       // المدير/المالك المستقل: جلب كامل لمؤسسته.
-      const OWNER_SCOPED = new Set(['properties', 'units', 'contracts', 'payments', 'maintenance']);
+      const OWNER_SCOPED = new Set(['properties', 'units', 'contracts', 'payments', 'maintenance', 'bookings']);
       const fetchCol = (col: string) =>
         (scopeOwnerId && OWNER_SCOPED.has(col))
           ? getWhere(resolvedOrgId, col, [where('ownerId', '==', scopeOwnerId)])
@@ -455,10 +466,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (gen !== loadGenRef.current) return; // stale — skip
         try {
           const today = new Date().toISOString().split('T')[0];
-          const [tenantsData, paymentsData, maintenanceData, auditData, calendarData, attachmentsData, allPhotosData] = await Promise.all([
+          const [tenantsData, paymentsData, maintenanceData, bookingsData, auditData, calendarData, attachmentsData, allPhotosData] = await Promise.all([
             getAll(resolvedOrgId, 'tenants'),
             fetchCol('payments'),
             fetchCol('maintenance'),
+            fetchCol('bookings'),
             scopeOwnerId ? Promise.resolve([] as any[]) : getAll(resolvedOrgId, 'auditLogs'),
             getAll(resolvedOrgId, 'calendarEvents'),
             getAll(resolvedOrgId, 'attachments'),
@@ -469,6 +481,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const resolvedMaintenance = maintenanceData as Maintenance[];
           setTenants(resolvedTenants);
           setMaintenance(resolvedMaintenance);
+          setBookings(bookingsData as Booking[]);
           const rawPayments = paymentsData as Payment[];
           const updatedPayments = rawPayments.map(p => {
             if (p.status === 'pending' && p.dueDate < today) {
@@ -752,6 +765,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       : maintenance,
   [applyOwnerFilter, maintenance, visiblePropertyIds, visibleUnitIds]);
 
+  // الحجوزات (بيوت المصيف): تتبع الوحدات المملوكة مالياً للمالك (مثل العقود/الدفعات)
+  const visibleBookings = useMemo(() =>
+    applyOwnerFilter ? bookings.filter(b => financialUnitIds.has(b.unitId)) : bookings,
+  [applyOwnerFilter, bookings, financialUnitIds]);
+
   const visibleOwners = useMemo(() =>
     applyOwnerFilter ? owners.filter(o => o.id === currentUser.ownerId) : owners,
   [applyOwnerFilter, owners, currentUser.ownerId]);
@@ -894,11 +912,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const kpis = useMemo(() => {
     const activeContracts = visibleContracts.filter(c => c.status === 'active');
-    // Derive rented/vacant from active contracts, not stale unit.status
-    const rentedUnitIds = new Set(activeContracts.map(c => c.unitId));
+
+    // ── نموذج التأجير: كل وحدة تُوجَّه إلى حاسبة إيراد واحدة فقط (منع الاحتساب المزدوج) ──
+    const nightlyUnitIds = new Set(visibleUnits.filter(u => u.rentalModel === 'nightly').map(u => u.id));
+
+    // حدود الشهر الحالي (YYYY-MM-DD؛ نهاية حصرية = أول الشهر التالي)
+    const _now = new Date();
+    const _y = _now.getFullYear(), _m = _now.getMonth();
+    const _pad = (n: number) => String(n).padStart(2, '0');
+    const monthStart = `${_y}-${_pad(_m + 1)}-01`;
+    const monthEndExcl = _m === 11 ? `${_y + 1}-01-01` : `${_y}-${_pad(_m + 2)}-01`;
+    const today = `${_y}-${_pad(_m + 1)}-${_pad(_now.getDate())}`;
+
+    // بيوت المصيف المشغولة اليوم (حجز مؤكّد يغطّي اليوم؛ checkOut حصري)
+    const occupiedNightlyUnitIds = new Set(
+      visibleBookings
+        .filter(b => b.status === 'confirmed' && b.checkIn <= today && today < b.checkOut)
+        .map(b => b.unitId),
+    );
+
+    // Derive rented/vacant from active contracts + occupied holiday-home units (not stale unit.status)
+    const rentedUnitIds = new Set<string>([...activeContracts.map(c => c.unitId), ...occupiedNightlyUnitIds]);
     const rentedUnits = visibleUnits.filter(u => rentedUnitIds.has(u.id)).length;
     const vacantUnits = visibleUnits.length - rentedUnits;
-    const monthlyRevenue = activeContracts.reduce((sum, c) => sum + Math.round(c.annualValue / 12), 0);
+
+    // ── الإيراد الشهري: إيجار (تراكمي) + مصيف (إشغال) — منفصلان ومجموعان ──
+    // إيراد الإيجار يستثني وحدات المصيف (كي لا تُحتسب وحدة مرّتين إن بقي لها عقد).
+    const leaseMonthlyRevenue = activeContracts
+      .filter(c => !nightlyUnitIds.has(c.unitId))
+      .reduce((sum, c) => sum + Math.round(c.annualValue / 12), 0);
+    const holidayMonthlyRevenue = BookingService.revenueForPeriod(visibleBookings, monthStart, monthEndExcl);
+    const holidayOccupancyRate  = BookingService.occupancyRate(visibleBookings, nightlyUnitIds, monthStart, monthEndExcl);
+    const monthlyRevenue = leaseMonthlyRevenue + holidayMonthlyRevenue;
     const openMaintenanceRequests = visibleMaintenance.filter(m => m.status === 'new' || m.status === 'in_progress').length;
     const overduePayments = visiblePayments.filter(p => p.status === 'overdue').length;
     const pendingPayments = visiblePayments.filter(p => p.status === 'pending').length;
@@ -988,6 +1033,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       rentedUnits,
       vacantUnits,
       monthlyRevenue,
+      leaseMonthlyRevenue,
+      holidayMonthlyRevenue,
+      holidayOccupancyRate,
+      holidayUnitsCount: nightlyUnitIds.size,
       openMaintenanceRequests,
       overduePayments,
       activeContracts: activeContracts.length,
@@ -998,7 +1047,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       totalUnitsByCity: totalUnitsByCityObj,
       cityDisplayNames,
     };
-  }, [visibleUnits, visibleContracts, visiblePayments, visibleMaintenance, visibleProperties]);
+  }, [visibleUnits, visibleContracts, visiblePayments, visibleMaintenance, visibleProperties, visibleBookings]);
 
   // ─── City Management ────────────────────────────────────────────────────────
   const addCity = (city: City) => {
@@ -1735,6 +1784,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addAuditEntry('delete', 'طلب صيانة', item?.title || id, `تم حذف طلب الصيانة`);
   };
 
+  // ─── Bookings (بيوت المصيف) ────────────────────────────────────────────────
+  const addBooking = (booking: Booking) => {
+    // ختم مالك الوحدة للعزل (unit.ownerId الصريح أو مالك العقار الأب)
+    const unit = units.find(u => u.id === booking.unitId);
+    const bOwnerId = booking.ownerId
+      ?? unit?.ownerId
+      ?? properties.find(p => p.id === booking.propertyId)?.ownerId;
+    const finalBooking: Booking = bOwnerId ? { ...booking, ownerId: bOwnerId } : booking;
+    setBookings(prev => [...prev, finalBooking]);
+    fs('bookings', finalBooking.id, finalBooking, 'set');
+    addAuditEntry('add', 'حجز', finalBooking.guestName, `حجز جديد للضيف ${finalBooking.guestName} (${finalBooking.nights} ليلة)`);
+  };
+  const updateBooking = (id: string, data: Partial<Booking>) => {
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, ...data } : b));
+    fs('bookings', id, data, 'update');
+    const b = bookings.find(x => x.id === id);
+    addAuditEntry('edit', 'حجز', b?.guestName || id, `تم تحديث الحجز`);
+  };
+  const cancelBooking = (id: string, reason?: string) => {
+    const patch: Partial<Booking> = {
+      status: 'cancelled',
+      cancelledAt: new Date().toISOString(),
+      ...(reason ? { cancellationReason: reason } : {}),
+    };
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
+    fs('bookings', id, patch, 'update');
+    const b = bookings.find(x => x.id === id);
+    addAuditEntry('edit', 'حجز', b?.guestName || id, `تم إلغاء الحجز${reason ? `: ${reason}` : ''}`);
+  };
+  const deleteBooking = (id: string) => {
+    const b = bookings.find(x => x.id === id);
+    setBookings(prev => prev.filter(x => x.id !== id));
+    fs('bookings', id, {}, 'delete');
+    addAuditEntry('delete', 'حجز', b?.guestName || id, `تم حذف الحجز`);
+  };
+
   // ─── Calendar ─────────────────────────────────────────────────────────────
   const addCalendarEvent = (event: Omit<CalendarEvent, 'id'>) => {
     const newEvent: CalendarEvent = { ...event, id: `ce_${Date.now()}` };
@@ -2106,14 +2191,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!userId) return;
     const org = getActiveOrgId();
     const sOwner = (currentUser.role === 'owner' || currentUser.role === 'مالك') && currentUser.ownerId ? currentUser.ownerId : null;
-    const ownerScoped = new Set(['properties', 'units', 'contracts', 'payments', 'maintenance']);
+    const ownerScoped = new Set(['properties', 'units', 'contracts', 'payments', 'maintenance', 'bookings']);
     const fcol = (col: string) => (sOwner && ownerScoped.has(col)) ? getWhere(org, col, [where('ownerId', '==', sOwner)]) : getAll(org, col);
     const fOwners = async () => { if (!sOwner) return getAll(org, 'owners'); const o = await getOne(org, 'owners', sOwner); return o ? [o] : []; };
     setDataLoading(true);
     try {
       const [
         ownersData, propertiesData, unitsData, contractsData,
-        tenantsData, paymentsData, maintenanceData,
+        tenantsData, paymentsData, maintenanceData, bookingsData,
       ] = await Promise.all([
         fOwners(),
         fcol('properties'),
@@ -2122,6 +2207,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getAll(org, 'tenants'),
         fcol('payments'),
         fcol('maintenance'),
+        fcol('bookings'),
       ]);
       const { properties: migratedProps, units: migratedUnits } =
         migrateProperties(propertiesData as Property[], unitsData as Unit[]);
@@ -2134,6 +2220,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTenants(tenantsData as Tenant[]);
       setPayments(paymentsData as Payment[]);
       setMaintenance(maintenanceData as Maintenance[]);
+      setBookings(bookingsData as Booking[]);
 
       const [auditData, calendarData, attachmentsData] = await Promise.all([
         sOwner ? Promise.resolve([] as any[]) : getAll(org, 'auditLogs'),
@@ -2196,6 +2283,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       contracts:   visibleContracts,
       payments:    visiblePayments,
       maintenance: visibleMaintenance,
+      bookings:    visibleBookings,
       auditLogs:   visibleAuditLogs,
       calendarEvents, attachments: visibleAttachments, isAuthenticated, dataLoading, secondaryLoading,
       currentUser, kpis,
@@ -2212,6 +2300,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addContract, updateContract, deleteContract, terminateContract,
       addPayment, updatePayment, confirmPayment, cancelPayment, deletePayment,
       addMaintenance, updateMaintenance, deleteMaintenance,
+      addBooking, updateBooking, cancelBooking, deleteBooking,
       cancelContract, addCalendarEvent, deleteCalendarEvent,
       addAttachment, deleteAttachment,
       login, logout, updateProfile, importBackup, refreshData,

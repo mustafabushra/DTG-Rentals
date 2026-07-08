@@ -83,7 +83,7 @@ service cloud.firestore {
 
     // المجموعات الحساسة التي تخضع لعزل المالك (قراءة/كتابة محصورة بـ ownerId)
     function isOwnerScopedCol(col) {
-      return col in ['properties', 'units', 'contracts', 'payments', 'maintenance'];
+      return col in ['properties', 'units', 'contracts', 'payments', 'maintenance', 'bookings'];
     }
 
     // مراجع مشتركة يقرؤها أي عضو نشط في المؤسسة (المالك التابع أيضاً)
@@ -237,7 +237,20 @@ service cloud.firestore {
            : col == 'units'       ? validateUnit(data)
            : col == 'payments'    ? validatePayment(data)
            : col == 'maintenance' ? validateMaintenance(data)
+           : col == 'bookings'    ? validateBooking(data)
            : true; // allow other collections without strict validation
+    }
+
+    function validateBooking(data) {
+      return validString(data.unitId, 100) &&
+             validString(data.propertyId, 100) &&
+             validString(data.guestName, 200) &&
+             validString(data.checkIn, 20) &&
+             validString(data.checkOut, 20) &&
+             data.checkOut > data.checkIn &&
+             data.nightlyRate is number && data.nightlyRate > 0 &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.status in ['confirmed', 'cancelled'];
     }
 
     function validateProperty(data) {

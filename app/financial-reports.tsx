@@ -7,6 +7,7 @@ import { AppHeader } from '../components/ui/AppHeader';
 import { CurrencyText } from '../components/ui/CurrencyText';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { CURRENCIES, getCurrency, convertToSAR, formatAmount, type CurrencyCode } from '../utils/currency';
+import { BookingService } from '../domain/services/BookingService';
 
 type Period     = '1m' | '3m' | '6m' | '1y';
 type ActiveTab  = 'overview' | 'owners' | 'overdue' | 'countries';
@@ -43,7 +44,7 @@ export default function FinancialReportsScreen() {
   const { width } = useWindowDimensions();
   const isMobile  = width < 768;
   const isDesktop = width >= 1024;
-  const { payments, contracts, properties, units, owners, tenants } = useApp();
+  const { payments, contracts, properties, units, owners, tenants, bookings } = useApp();
 
   const [period,        setPeriod]        = useState<Period>('6m');
   const [activeTab,     setActiveTab]     = useState<ActiveTab>('overview');
@@ -81,17 +82,30 @@ export default function FinancialReportsScreen() {
       : properties.filter(p => (p.currency ?? 'SAR') === countryFilter),
   [properties, countryFilter]);
 
+  // عملة الحجز: من الحجز نفسه، أو من عملة العقار الأب
+  const bookingCurrency = (b: { currency?: string; propertyId: string }): CurrencyCode =>
+    (b.currency ?? (properties.find(p => p.id === b.propertyId)?.currency ?? 'SAR')) as CurrencyCode;
+
+  const filteredBookings = useMemo(() =>
+    countryFilter === 'all'
+      ? bookings
+      : bookings.filter(b => bookingCurrency(b) === countryFilter),
+  [bookings, properties, countryFilter]);
+
   // ── Main stats ─────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const now    = new Date();
+    const pad    = (n: number) => String(n).padStart(2, '0');
     const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
     const periodEnd = now.toISOString().split('T')[0];
+    // نهاية حصرية لحساب ليالي الحجوزات (اليوم التالي، بتوقيت محلي لتفادي انزياح UTC)
+    const periodEndExcl = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate() + 1)}`;
 
     const periodPayments = filteredPayments.filter(p =>
       (p.paidDate && p.paidDate >= cutoff) || (p.dueDate >= cutoff && p.status !== 'paid'),
     );
 
-    const totalRevenue = filteredContracts
+    const leaseRevenue = filteredContracts
       .filter(c => c.startDate <= periodEnd && c.endDate >= cutoff)
       .reduce((s: number, c: any) => {
         const overlapStart = c.startDate > cutoff    ? c.startDate : cutoff;
@@ -100,7 +114,15 @@ export default function FinancialReportsScreen() {
         return s + Math.round(c.annualValue * (overlapDays / 365));
       }, 0);
 
-    const collected      = periodPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
+    // إيراد بيوت المصيف: يُحتسب فقط لليالي المشغولة فعلياً ضمن الفترة (لا افتراض دخل مستمر)
+    const holidayRevenue = BookingService.revenueForPeriod(filteredBookings, cutoff, periodEndExcl);
+    const holidayCollected = filteredBookings
+      .filter(b => b.status === 'confirmed' && BookingService.nightsInPeriod(b, cutoff, periodEndExcl) > 0)
+      .reduce((s, b) => s + (b.paidAmount || 0), 0);
+
+    const totalRevenue = leaseRevenue + holidayRevenue;
+
+    const collected      = periodPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0) + holidayCollected;
     const overdue        = periodPayments.filter(p => p.status === 'overdue').reduce((s, p) => s + p.amount, 0);
     const collectionRate = totalRevenue > 0 ? Math.min(100, Math.round((collected / totalRevenue) * 100)) : 0;
 
@@ -112,28 +134,43 @@ export default function FinancialReportsScreen() {
       const monthPaid = filteredPayments
         .filter(p => p.paidDate?.startsWith(monthStr))
         .reduce((s, p) => s + p.amount, 0);
-      barData.push({ month: MONTHS_AR[d.getMonth()], value: monthPaid });
+      // إيراد الحجوزات المعترف به لهذا الشهر (ليالٍ مشغولة داخل حدوده)
+      const mStart   = `${monthStr}-01`;
+      const mEndExcl = d.getMonth() === 11
+        ? `${d.getFullYear() + 1}-01-01`
+        : `${d.getFullYear()}-${pad(d.getMonth() + 2)}-01`;
+      const monthHoliday = BookingService.revenueForPeriod(filteredBookings, mStart, mEndExcl);
+      barData.push({ month: MONTHS_AR[d.getMonth()], value: monthPaid + monthHoliday });
     }
 
-    // By property
+    // By property (عقود + حجوزات)
     const byProperty = filteredProperties.map(prop => {
       const propUnits     = units.filter(u => u.propertyId === prop.id);
-      const propContracts = filteredContracts.filter(c => propUnits.find(u => u.id === c.unitId) && c.status === 'active');
-      const revenue       = propContracts.reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0);
+      const propUnitIds   = new Set(propUnits.map(u => u.id));
+      const propContracts = filteredContracts.filter(c => propUnitIds.has(c.unitId) && c.status === 'active');
+      const leaseRev      = propContracts.reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0);
+      const holidayRev    = BookingService.revenueForPeriod(
+        filteredBookings.filter(b => propUnitIds.has(b.unitId)), cutoff, periodEndExcl);
       const currency      = (prop.currency ?? 'SAR') as CurrencyCode;
-      return { name: prop.name, revenue, currency };
+      return { name: prop.name, revenue: leaseRev + holidayRev, currency };
     }).filter(p => p.revenue > 0).sort((a, b) => b.revenue - a.revenue);
 
-    // By owner
+    // By owner (عقود + حجوزات)
     const byOwner = owners.map(owner => {
       const ownerProps     = filteredProperties.filter(p => p.ownerId === owner.id);
       const ownerUnits     = units.filter(u => ownerProps.find(p => p.id === u.propertyId));
-      const ownerContracts = filteredContracts.filter(c => ownerUnits.find(u => u.id === c.unitId));
+      const ownerUnitIds   = new Set(ownerUnits.map(u => u.id));
+      const ownerContracts = filteredContracts.filter(c => ownerUnitIds.has(c.unitId));
+      const ownerBookings  = filteredBookings.filter(b => ownerUnitIds.has(b.unitId));
       const ownerRevenue   = ownerContracts.filter(c => c.status === 'active')
-        .reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0);
+        .reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0)
+        + BookingService.revenueForPeriod(ownerBookings, cutoff, periodEndExcl);
       const ownerCollected = filteredPayments
         .filter(p => ownerContracts.find(c => c.id === p.contractId) && p.status === 'paid' && (p.paidDate ?? '') >= cutoff)
-        .reduce((s, p) => s + p.amount, 0);
+        .reduce((s, p) => s + p.amount, 0)
+        + ownerBookings
+          .filter(b => b.status === 'confirmed' && BookingService.nightsInPeriod(b, cutoff, periodEndExcl) > 0)
+          .reduce((s, b) => s + (b.paidAmount || 0), 0);
       return { name: owner.name, revenue: ownerRevenue, collected: ownerCollected, unitCount: ownerUnits.length };
     }).filter(o => o.unitCount > 0).sort((a, b) => b.revenue - a.revenue);
 
@@ -153,23 +190,30 @@ export default function FinancialReportsScreen() {
         };
       }).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
-    return { totalRevenue, collected, overdue, collectionRate, barData, byProperty, byOwner, overdueList };
-  }, [filteredPayments, filteredContracts, filteredProperties, units, owners, tenants, properties, contracts, months]);
+    return { totalRevenue, leaseRevenue, holidayRevenue, collected, overdue, collectionRate, barData, byProperty, byOwner, overdueList };
+  }, [filteredPayments, filteredContracts, filteredProperties, filteredBookings, units, owners, tenants, properties, contracts, months]);
 
   // ── Per-country breakdown (for "الدول" tab) ────────────────────────────────
   const byCountry = useMemo(() => {
     const now    = new Date();
+    const pad    = (n: number) => String(n).padStart(2, '0');
     const cutoff = new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
+    const periodEndExcl = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate() + 1)}`;
 
     return activeCurrencies.map(code => {
       const cContracts = contracts.filter(c => contractCurrency(c.id, contracts, units, properties) === code);
       const cPayments  = payments.filter(p => cContracts.find(c => c.id === p.contractId));
       const cProps     = properties.filter(p => (p.currency ?? 'SAR') === code);
+      const cBookings  = bookings.filter(b => bookingCurrency(b) === code);
 
       const revenue   = cContracts.filter(c => c.status === 'active')
-        .reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0);
+        .reduce((s, c) => s + Math.round(c.annualValue / 12 * months), 0)
+        + BookingService.revenueForPeriod(cBookings, cutoff, periodEndExcl);
       const collected = cPayments.filter(p => p.status === 'paid' && (p.paidDate ?? '') >= cutoff)
-        .reduce((s, p) => s + p.amount, 0);
+        .reduce((s, p) => s + p.amount, 0)
+        + cBookings
+          .filter(b => b.status === 'confirmed' && BookingService.nightsInPeriod(b, cutoff, periodEndExcl) > 0)
+          .reduce((s, b) => s + (b.paidAmount || 0), 0);
       const overdue   = cPayments.filter(p => p.status === 'overdue')
         .reduce((s, p) => s + p.amount, 0);
       const rate      = revenue > 0 ? Math.min(100, Math.round((collected / revenue) * 100)) : 0;
@@ -185,7 +229,7 @@ export default function FinancialReportsScreen() {
       };
     }).filter(c => c.propCount > 0 || c.contractCount > 0)
       .sort((a, b) => b.revenue - a.revenue);
-  }, [activeCurrencies, contracts, payments, properties, units, months]);
+  }, [activeCurrencies, contracts, payments, properties, units, bookings, months]);
 
   const maxBar = Math.max(...stats.barData.map(d => d.value), 1);
 
@@ -212,6 +256,8 @@ export default function FinancialReportsScreen() {
       `الدولة: ${filterLabel}`,
       '',
       `الإيرادات المتوقعة,${stats.totalRevenue}`,
+      `  منها عقود طويلة,${stats.leaseRevenue}`,
+      `  منها حجوزات يومية,${stats.holidayRevenue}`,
       `المحصّلة,${stats.collected}`,
       `المتأخرة,${stats.overdue}`,
       `نسبة التحصيل,${stats.collectionRate}%`,
@@ -456,6 +502,36 @@ export default function FinancialReportsScreen() {
             </View>
           ))}
         </View>
+
+        {/* ── Revenue split: lease (accrual) vs holiday (occupancy) ────────── */}
+        {stats.holidayRevenue > 0 && (
+          <View style={[styles.splitCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.splitHeader}>
+              <Ionicons name="layers-outline" size={15} color={colors.textSecondary} />
+              <Text style={[styles.splitTitle, { color: colors.text }]}>تفصيل الإيرادات المتوقعة</Text>
+            </View>
+            <View style={styles.splitRow}>
+              <View style={styles.splitItem}>
+                <View style={styles.splitDotRow}>
+                  <View style={[styles.splitDot, { backgroundColor: colors.primary }]} />
+                  <Text style={[styles.splitLabel, { color: colors.textSecondary }]}>عقود طويلة</Text>
+                </View>
+                <CurrencyText amount={stats.leaseRevenue} currency={countryFilter !== 'all' ? countryFilter : undefined} style={[styles.splitVal, { color: colors.text }]} />
+              </View>
+              <View style={[styles.splitDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.splitItem}>
+                <View style={styles.splitDotRow}>
+                  <View style={[styles.splitDot, { backgroundColor: colors.purple }]} />
+                  <Text style={[styles.splitLabel, { color: colors.textSecondary }]}>حجوزات يومية</Text>
+                </View>
+                <CurrencyText amount={stats.holidayRevenue} currency={countryFilter !== 'all' ? countryFilter : undefined} style={[styles.splitVal, { color: colors.purple }]} />
+              </View>
+            </View>
+            <Text style={[styles.splitHint, { color: colors.textMuted }]}>
+              إيراد الحجوزات يُحتسب فقط لليالي المشغولة فعلياً خلال الفترة
+            </Text>
+          </View>
+        )}
 
         {/* ══ OVERVIEW TAB ══ */}
         {activeTab === 'overview' && (
@@ -709,6 +785,17 @@ const styles = StyleSheet.create({
   kpiIcon:        { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   kpiVal:         { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
   kpiLbl:         { fontSize: Theme.fontSize.xs, textAlign: 'right' },
+  splitCard:      { marginHorizontal: Theme.spacing.base, marginTop: Theme.spacing.sm, padding: Theme.spacing.md, borderRadius: Theme.radius.lg, borderWidth: 1, gap: 10 },
+  splitHeader:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  splitTitle:     { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
+  splitRow:       { flexDirection: 'row', alignItems: 'center' },
+  splitItem:      { flex: 1, alignItems: 'center', gap: 4 },
+  splitDotRow:    { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  splitDot:       { width: 8, height: 8, borderRadius: 4 },
+  splitLabel:     { fontSize: Theme.fontSize.xs },
+  splitVal:       { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
+  splitDivider:   { width: 1, height: 34 },
+  splitHint:      { fontSize: Theme.fontSize.xs, textAlign: 'center', lineHeight: 16 },
 
   // Shared section
   section: {
