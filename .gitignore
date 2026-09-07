@@ -5,3 +5,5 @@ dist/
 build/
 ios/
 android/
+firebase-debug.log
+*-debug.log
