@@ -113,7 +113,6 @@ export interface Contract {
   endDate:              string;
   annualValue:          number;
   installmentsCount?:   number;
-  paymentCycles?:       number;
   status:               ContractStatus;
   notes?:               string;
   cancelledAt?:         string;

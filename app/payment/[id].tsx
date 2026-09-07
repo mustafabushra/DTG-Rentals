@@ -233,11 +233,14 @@ export default function PaymentDetailScreen() {
   }
 
   const contractPayments  = payments.filter(p => p.contractId === payment.contractId);
-  const totalInstallments = contract?.paymentCycles ?? contractPayments.length;
+  // installmentsCount هو الحقل الحقيقي على العقد؛ paymentCycles لم يوجد قط
+  // فكان هذا السطر يسقط دائماً إلى عدّ الدفعات بدل قراءة عدد الأقساط من العقد.
+  const totalInstallments = contract?.installmentsCount ?? contractPayments.length;
   const paidCount         = contractPayments.filter(p => p.status === 'paid').length;
   const paidTotal         = contractPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
   const remainingCount    = totalInstallments - paidCount;
-  const method            = payment.method ?? payment.paymentMethod ?? '';
+  // paymentMethod: اسم حقل قديم قد يوجد في مستندات سابقة — يُقرأ صراحةً كحقل خارجي
+  const method            = payment.method ?? (payment as { paymentMethod?: string }).paymentMethod ?? '';
 
   const statusColorMap: Record<string, string> = {
     paid: colors.success, pending: colors.warning, overdue: colors.danger,

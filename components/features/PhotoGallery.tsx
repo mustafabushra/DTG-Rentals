@@ -17,7 +17,6 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
-import type { EntityPhoto } from '../../domain/models';
 import {
   lightColors, darkColors, spacing, fontSize, fontWeight, radius,
 } from '../../constants/DesignTokens';
@@ -27,10 +26,20 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const GALLERY_H  = 240;
 const THUMB_SIZE = 72;
 
+export interface GalleryPhoto {
+  id:       string;
+  uri:      string;
+  isMain?:  boolean;
+  caption?: string;
+}
+
 interface PhotoGalleryProps {
   entityType: 'property' | 'unit';
   entityId:   string;
-  photos:     EntityPhoto[];
+  /** الشكل الأدنى الذي يحتاجه هذا المكوّن فعلاً — يقبل PropertyPhoto وEntityPhoto معاً.
+   *  كان النوع EntityPhoto الذي يفرض createdAt، والمكوّن لا يقرأه إطلاقاً، بينما
+   *  الصور الحقيقية تحمل uploadedAt ⇒ عدم تطابق في كل شاشة تمرّر صورها. */
+  photos:     GalleryPhoto[];
   editable?:  boolean;
   onAdd?:     (uri: string) => void;
   onRemove?:  (photoId: string) => void;
@@ -49,8 +58,8 @@ export function PhotoGallery({
   const [uploading,   setUploading]   = useState(false);
   const [showActions, setShowActions] = useState<string | null>(null); // photoId
 
-  const sliderRef   = useRef<FlatList<EntityPhoto>>(null);
-  const fsSliderRef = useRef<FlatList<EntityPhoto>>(null);
+  const sliderRef   = useRef<FlatList<GalleryPhoto>>(null);
+  const fsSliderRef = useRef<FlatList<GalleryPhoto>>(null);
 
   // ── Upload ──────────────────────────────────────────────────────────────────
 
@@ -135,7 +144,7 @@ export function PhotoGallery({
     }, 50);
   };
 
-  const confirmDelete = (photo: EntityPhoto) => {
+  const confirmDelete = (photo: GalleryPhoto) => {
     const doDelete = () => {
       onRemove?.(photo.id);
       setShowActions(null);
@@ -179,7 +188,7 @@ export function PhotoGallery({
 
   // ── Main slider ─────────────────────────────────────────────────────────────
 
-  const renderSlideItem = ({ item, index }: { item: EntityPhoto; index: number }) => (
+  const renderSlideItem = ({ item, index }: { item: GalleryPhoto; index: number }) => (
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={() => openFullscreen(index)}

@@ -40,6 +40,13 @@ export default function AuthActionScreen() {
       setStage('error');
       return;
     }
+    // auth = null أثناء التوليد الساكن (لا window). حارس صريح بدل تمرير null
+    // إلى Firebase حيث كان سيرمي استثناءً غير معالَج.
+    if (!auth) {
+      setErrMsg('تعذّر تهيئة المصادقة. أعد تحميل الصفحة.');
+      setStage('error');
+      return;
+    }
     verifyPasswordResetCode(auth, oobCode)
       .then(emailAddr => { setEmail(emailAddr); setStage('form'); })
       .catch(() => { setErrMsg('انتهت صلاحية الرابط. يرجى طلب رابط جديد.'); setStage('error'); });
@@ -51,6 +58,7 @@ export default function AuthActionScreen() {
     if (password !== confirm) errs.pw = 'كلمة المرور وتأكيدها غير متطابقتين';
     if (errs.pw) { setPwError(errs.pw); return; }
     setPwError('');
+    if (!auth) { setPwError('تعذّر تهيئة المصادقة. أعد تحميل الصفحة.'); return; }
     setSaving(true);
     try {
       await confirmPasswordReset(auth, oobCode, password);

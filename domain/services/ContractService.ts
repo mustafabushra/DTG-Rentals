@@ -66,30 +66,6 @@ export const ContractService = {
   },
 
   /**
-   * Installment amount based on payment cycle.
-   */
-  installmentAmount(contract: Contract): number {
-    return Math.round(contract.annualValue / contract.paymentCycles);
-  },
-
-  /**
-   * Generate all payment installment due dates.
-   */
-  generateInstallmentDates(contract: Contract): string[] {
-    const start  = new Date(contract.startDate);
-    const count  = contract.paymentCycles;
-    const dates: string[] = [];
-    const interval = 12 / count; // months between installments
-
-    for (let i = 0; i < count; i++) {
-      const d = new Date(start);
-      d.setMonth(d.getMonth() + Math.round(i * interval));
-      dates.push(d.toISOString().split('T')[0]);
-    }
-    return dates;
-  },
-
-  /**
    * Validate contract before save.
    * Returns map of field → error message, or empty object if valid.
    */
