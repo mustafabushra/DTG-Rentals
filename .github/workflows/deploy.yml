@@ -33,6 +33,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # بوابة الجودة: تفشل قبل البناء والنشر عند أي خطأ نوع أو اختبار منكسر،
+      # فلا يصل انحدار إلى الإنتاج لمجرد أن الحزمة بُنيت بنجاح.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
       - name: Build
         run: npm run build
 
