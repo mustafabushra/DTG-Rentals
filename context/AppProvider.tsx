@@ -208,6 +208,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
+   * مطبِّق لقطة عام: يوفّق الوارد من Firestore مع الحالة المحلية بدل استبدالها.
+   * أي سجل عدّله المستخدم بعد بدء الجلب يبقى بنسخته المحلية — اللقطة، بحكم توقيت
+   * إصدار القراءة، لا يمكن أن تحتوي ذلك التعديل.
+   */
+  const applySnapshot = useCallback(<T extends { id: string }>(
+    col: string,
+    fetched: T[],
+    setter: React.Dispatch<React.SetStateAction<T[]>>,
+    fetchStartedAt: number,
+  ) => {
+    setter(prev => reconcileSnapshot(col, fetched, prev, fetchStartedAt, localWritesRef.current));
+  }, []);
+
+  /**
    * طبّق لقطة دفعات قادمة من Firestore على الحالة المحلية:
    *  1) وفّقها مع أي تعديل محلي حدث بعد بدء الجلب (فلا تُرجع دفعة أُكِّد استلامها).
    *  2) وسم المتأخرات محلياً + كتابة مشروطة في قاعدة البيانات.
@@ -530,9 +544,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (gen !== loadGenRef.current) return;
           const resolvedTenants     = tenantsData     as Tenant[];
           const resolvedMaintenance = maintenanceData as Maintenance[];
-          setTenants(resolvedTenants);
-          setMaintenance(resolvedMaintenance);
-          setBookings(bookingsData as Booking[]);
+          applySnapshot('tenants',     resolvedTenants,           setTenants,     fetchStartedAt);
+          applySnapshot('maintenance', resolvedMaintenance,       setMaintenance, fetchStartedAt);
+          applySnapshot('bookings',    bookingsData as Booking[], setBookings,    fetchStartedAt);
           const rawPayments = paymentsData as Payment[];
           const resolvedPayments = applyPaymentsSnapshot(rawPayments, fetchStartedAt);
           console.log('[DATA_LOADED] secondary Firestore data ready', {
@@ -580,9 +594,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.log('[DATA_LOADED] cities ready', { count: resolvedCities.length });
 
       const resolvedAttachments = FileService.syncExpiryStatuses(attachmentsData as Attachment[]);
-      setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
-          setCalendarEvents(calendarData as CalendarEvent[]);
-          setAttachments(resolvedAttachments);
+      setAuditLogs(prev => reconcileSnapshot('auditLogs', auditData as AuditLog[], prev, fetchStartedAt, localWritesRef.current)
+            .sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+          applySnapshot('calendarEvents', calendarData as CalendarEvent[], setCalendarEvents, fetchStartedAt);
+          applySnapshot('attachments',    resolvedAttachments,             setAttachments,    fetchStartedAt);
 
           // Group individual photo docs by entityId
           const propPhotosMap: Record<string, PropertyPhoto[]> = {};
@@ -709,6 +724,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const deleteAllowed = _p.canDelete;
     if (op === 'delete' && !deleteAllowed) { showSaveError({ code: 'permission-denied' }, `delete ${col}/${id}`); return; }
     if ((op === 'set' || op === 'update') && !writeAllowed) { showSaveError({ code: 'permission-denied' }, `write ${col}/${id}`); return; }
+    // نقطة الاختناق الوحيدة لكل تعديلات المستخدم ⇒ أنسب مكان لتسجيل الكتابة المحلية،
+    // فلا يستطيع أي تحميل لاحق أن يُرجع هذا السجل بلقطة أقدم منه.
+    noteLocalWrite(col, id);
     try {
       // getActiveOrgId يرمي استثناءً متزامناً إن لم تُضبط المؤسسة النشطة —
       // فكان يتجاوز .catch أدناه ويقتل المُعالِج بعد تحديث الواجهة مباشرةً.
@@ -719,7 +737,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       showSaveError(e, `${op} ${col}/${id}`);
     }
-  }, [userId, currentUser.role, systemSettings, showSaveError]);
+  }, [userId, currentUser.role, systemSettings, showSaveError, noteLocalWrite]);
 
   // ─── صلاحيات المستخدم الحالي (مستمدة من إعدادات النظام الديناميكية) ────────
   const _perms  = resolvePermissions(currentUser.role, systemSettings);
@@ -1568,6 +1586,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     // ③ تحديث الـ state فوراً (optimistic)
+    // هذا المسار يكتب عبر transaction لا عبر fs()، فنسجّل الكتابات المحلية يدوياً
+    // حتى لا يمحو تحميلٌ جارٍ العقدَ الجديد وأقساطه بلقطة أقدم منه.
+    noteLocalWrite('contracts', finalContract.id);
+    noteLocalWrite('units', contract.unitId);
+    noteLocalWrite('tenants', contract.tenantId);
+    installments.forEach(p => noteLocalWrite('payments', p.id));
     setContracts(prev => [...prev, finalContract]);
     setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitPatch } : u));
     setTenants(prev => prev.map(t => t.id === contract.tenantId ? { ...t, contractIds: newContractIds } : t));
@@ -2297,24 +2321,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         migrateProperties(propertiesData as Property[], unitsData as Unit[]);
       const currencyMigratedProps = migratePropertyCurrencies(migratedProps, migratedUnits, contractsData as Contract[]);
       const currencyMigratedUnits = migrateUnitCurrencies(migratedUnits, currencyMigratedProps, contractsData as Contract[]);
-      setOwners(ownersData as Owner[]);
-      setProperties(currencyMigratedProps);
-      setUnits(currencyMigratedUnits);
-      setContracts(contractsData as Contract[]);
-      setTenants(tenantsData as Tenant[]);
-      // توفيق بدل استبدال: تحديث يدوي أثناء تأكيد دفعة يجب ألّا يُرجعها متأخرة
+      // توفيق بدل استبدال: تعديل يجريه المستخدم أثناء التحديث يجب ألّا يُرجعه الجلب
+      applySnapshot('owners',      ownersData as Owner[],        setOwners,     fetchStartedAt);
+      applySnapshot('properties',  currencyMigratedProps,        setProperties, fetchStartedAt);
+      applySnapshot('units',       currencyMigratedUnits,        setUnits,      fetchStartedAt);
+      applySnapshot('contracts',   contractsData as Contract[],  setContracts,  fetchStartedAt);
+      applySnapshot('tenants',     tenantsData as Tenant[],      setTenants,    fetchStartedAt);
       applyPaymentsSnapshot(paymentsData as Payment[], fetchStartedAt);
-      setMaintenance(maintenanceData as Maintenance[]);
-      setBookings(bookingsData as Booking[]);
+      applySnapshot('maintenance', maintenanceData as Maintenance[], setMaintenance, fetchStartedAt);
+      applySnapshot('bookings',    bookingsData as Booking[],        setBookings,    fetchStartedAt);
 
       const [auditData, calendarData, attachmentsData] = await Promise.all([
         sOwner ? Promise.resolve([] as any[]) : getAll(org, 'auditLogs'),
         getAll(org, 'calendarEvents'),
         getAll(org, 'attachments'),
       ]);
-      setAuditLogs((auditData as AuditLog[]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
-      setCalendarEvents(calendarData as CalendarEvent[]);
-      setAttachments(attachmentsData as Attachment[]);
+      setAuditLogs(prev => reconcileSnapshot('auditLogs', auditData as AuditLog[], prev, fetchStartedAt, localWritesRef.current)
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+      applySnapshot('calendarEvents', calendarData as CalendarEvent[], setCalendarEvents, fetchStartedAt);
+      applySnapshot('attachments',    attachmentsData as Attachment[], setAttachments,    fetchStartedAt);
     } catch (e) {
       console.error('refreshData error:', e);
     }
