@@ -8,7 +8,8 @@ import { BookingService } from '../domain/services/BookingService';
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
-import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction, withFieldDeletes } from '../lib/firestoreService';
+import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction, withFieldDeletes, updateIfFieldEquals } from '../lib/firestoreService';
+import { reconcileSnapshot, writeKey, pruneWrites, isLocallyNewer } from '../domain/services/SnapshotReconciler';
 import {
   SystemSettings, DEFAULT_SYSTEM_SETTINGS, resolvePermissions,
 } from '../constants/SystemDefaults';
@@ -179,6 +180,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId]               = useState<string | null>(null);
   // Tracks whether initial hydration is complete — prevents overwriting cache with empty state
   const hydrated = useRef(false);
+
+  // ─── سجل الكتابات المحلية (col/id → توقيت آخر تعديل محلي) ──────────────────
+  // كل تحميل يقرأ المجموعة كاملة ثم يستبدل الحالة المحلية بها. إذا عدّل المستخدم
+  // سجلاً بعد بدء الجلب (مثل تأكيد استلام دفعة) فاللقطة أقدم منه، ويجب ألّا تُرجعه.
+  // هذا السجل يُخبر مُوفِّق اللقطات أي السجلات تفوز نسختها المحلية.
+  const localWritesRef = useRef<Map<string, number>>(new Map());
+  const noteLocalWrite = useCallback((col: string, id: string) => {
+    pruneWrites(localWritesRef.current);
+    localWritesRef.current.set(writeKey(col, id), Date.now());
+  }, []);
+  // مرآة للحالة الحالية للدفعات — يحتاجها التحميل غير المتزامن للتوفيق دون إغلاق قديم
+  const paymentsRef = useRef<Payment[]>([]);
+
+  /**
+   * وسم دفعات كمتأخرة في قاعدة البيانات — **كتابة مشروطة ذرّية**.
+   * القرار مبني على لقطة قد تكون قديمة، لذا نشترط أن تكون الحالة المخزَّنة ما زالت
+   * 'pending'. بدون هذا الشرط تكتب اللقطة القديمة "متأخرة" فوق "مدفوعة" التي أكّدها
+   * المستخدم للتو — وهذا هو السبب الجذري لعودة الدفعات المؤكَّدة إلى قائمة المتأخرات.
+   */
+  const markOverdueInDb = useCallback((items: { id: string }[]) => {
+    items.forEach(p => {
+      updateIfFieldEquals(getActiveOrgId(), 'payments', p.id, 'status', 'pending', { status: 'overdue' })
+        .then(r => { if (r !== 'updated') console.log(`[PAYMENTS] overdue not written for ${p.id}: ${r}`); })
+        .catch(e => console.error(`[PAYMENTS] overdue write failed for ${p.id}`, e));
+    });
+  }, []);
+
+  /**
+   * طبّق لقطة دفعات قادمة من Firestore على الحالة المحلية:
+   *  1) وفّقها مع أي تعديل محلي حدث بعد بدء الجلب (فلا تُرجع دفعة أُكِّد استلامها).
+   *  2) وسم المتأخرات محلياً + كتابة مشروطة في قاعدة البيانات.
+   */
+  const applyPaymentsSnapshot = useCallback((fetched: Payment[], fetchStartedAt: number): Payment[] => {
+    const today  = new Date().toISOString().split('T')[0];
+    const merged = reconcileSnapshot('payments', fetched, paymentsRef.current, fetchStartedAt, localWritesRef.current);
+    const toMark: Payment[] = [];
+    const next = merged.map(p => {
+      if (p.status === 'pending' && p.dueDate < today
+          && !isLocallyNewer(localWritesRef.current, 'payments', p.id, fetchStartedAt)) {
+        toMark.push(p);
+        return { ...p, status: 'overdue' as const };
+      }
+      return p;
+    });
+    paymentsRef.current = next;
+    setPayments(next);
+    if (toMark.length > 0) markOverdueInDb(toMark);
+    return next;
+  }, [markOverdueInDb]);
   // Guards against concurrent data loads when auth fires multiple times quickly
   const loadingRef = useRef(false);
   // Cancellation token — incremented on every auth change, old async flows check before setState
@@ -465,7 +515,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         secondaryTimerRef.current = null;
         if (gen !== loadGenRef.current) return; // stale — skip
         try {
-          const today = new Date().toISOString().split('T')[0];
+          // لحظة إصدار القراءة: أي تعديل محلي بعدها لا يمكن أن يكون في هذه اللقطة
+          const fetchStartedAt = Date.now();
           const [tenantsData, paymentsData, maintenanceData, bookingsData, auditData, calendarData, attachmentsData, allPhotosData] = await Promise.all([
             getAll(resolvedOrgId, 'tenants'),
             fetchCol('payments'),
@@ -483,17 +534,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setMaintenance(resolvedMaintenance);
           setBookings(bookingsData as Booking[]);
           const rawPayments = paymentsData as Payment[];
-          const updatedPayments = rawPayments.map(p => {
-            if (p.status === 'pending' && p.dueDate < today) {
-              updateOne(getActiveOrgId(), 'payments', p.id, { status: 'overdue' }).catch(() => {});
-              return { ...p, status: 'overdue' as const };
-            }
-            return p;
-          });
-          setPayments(updatedPayments);
+          const resolvedPayments = applyPaymentsSnapshot(rawPayments, fetchStartedAt);
           console.log('[DATA_LOADED] secondary Firestore data ready', {
             tenants: resolvedTenants.length,
-            payments: updatedPayments.length,
+            payments: rawPayments.length,
             maintenance: resolvedMaintenance.length,
           });
 
@@ -562,7 +606,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Save cache only AFTER all secondary state is fully populated
       saveCache(uid, {
         tenants:     resolvedTenants,
-        payments:    updatedPayments,
+        payments:    resolvedPayments,
         maintenance: resolvedMaintenance,
         attachments: resolvedAttachments,
         cities:      resolvedCities,
@@ -605,9 +649,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toMark.forEach(p => markedOverdueRef.current.add(p.id));
     const ids = new Set(toMark.map(p => p.id));
     setPayments(prev => prev.map(p => ids.has(p.id) ? { ...p, status: 'overdue' as const } : p));
-    toMark.forEach(p => updateOne(getActiveOrgId(), 'payments', p.id, { status: 'overdue' }).catch(() => {}));
+    // كتابة مشروطة: 'pending' → 'overdue' فقط. لا يمكنها المرور فوق دفعة صارت 'paid'.
+    markOverdueInDb(toMark);
     console.log('[PAYMENTS] marked overdue:', toMark.map(p => p.id));
-  }, [payments, userId]);
+  }, [payments, userId, markOverdueInDb]);
+
+  // مزامنة مرآة الدفعات — يقرأها التوفيق داخل التحميلات غير المتزامنة
+  useEffect(() => { paymentsRef.current = payments; }, [payments]);
 
   // ─── Write-through cache: persist state to localStorage after every mutation ─
   // Guards against Firestore write failures (rules, network) causing data loss on re-login.
@@ -648,17 +696,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ─── Firestore sync helper (يكتب في مؤسسة المستخدم النشطة) ──────────
+  // كل مسارات الفشل هنا كانت صامتة: الحالة المحلية تتغيّر والمستخدم يظن أن الحفظ تم،
+  // بينما لم تصل الكتابة إلى قاعدة البيانات (فتعود البيانات القديمة عند إعادة التحميل).
+  // الآن كل إسقاط أو استثناء يظهر للمستخدم بدل أن يُبتلع.
   const fs = useCallback((col: string, id: string, data: any, op: 'set' | 'update' | 'delete') => {
-    if (!userId) return;
+    if (!userId) {
+      showSaveError({ code: 'unauthenticated' }, `${op} ${col}/${id}`);
+      return;
+    }
     const _p = resolvePermissions(currentUser.role, systemSettings);
     const writeAllowed  = _p.canAdd || _p.canEdit;
     const deleteAllowed = _p.canDelete;
-    if (op === 'delete' && !deleteAllowed) { console.warn('Permission denied: delete'); return; }
-    if ((op === 'set' || op === 'update') && !writeAllowed) { console.warn('Permission denied: write'); return; }
-    if (op === 'set')    setOne(getActiveOrgId(), col, id, data).catch(e => showSaveError(e, `set ${col}/${id}`));
-    if (op === 'update') updateOne(getActiveOrgId(), col, id, data).catch(e => showSaveError(e, `update ${col}/${id}`));
-    if (op === 'delete') deleteOne(getActiveOrgId(), col, id).catch(e => showSaveError(e, `delete ${col}/${id}`));
-  }, [userId, currentUser.role, showSaveError]);
+    if (op === 'delete' && !deleteAllowed) { showSaveError({ code: 'permission-denied' }, `delete ${col}/${id}`); return; }
+    if ((op === 'set' || op === 'update') && !writeAllowed) { showSaveError({ code: 'permission-denied' }, `write ${col}/${id}`); return; }
+    try {
+      // getActiveOrgId يرمي استثناءً متزامناً إن لم تُضبط المؤسسة النشطة —
+      // فكان يتجاوز .catch أدناه ويقتل المُعالِج بعد تحديث الواجهة مباشرةً.
+      const org = getActiveOrgId();
+      if (op === 'set')    setOne(org, col, id, data).catch(e => showSaveError(e, `set ${col}/${id}`));
+      if (op === 'update') updateOne(org, col, id, data).catch(e => showSaveError(e, `update ${col}/${id}`));
+      if (op === 'delete') deleteOne(org, col, id).catch(e => showSaveError(e, `delete ${col}/${id}`));
+    } catch (e) {
+      showSaveError(e, `${op} ${col}/${id}`);
+    }
+  }, [userId, currentUser.role, systemSettings, showSaveError]);
 
   // ─── صلاحيات المستخدم الحالي (مستمدة من إعدادات النظام الديناميكية) ────────
   const _perms  = resolvePermissions(currentUser.role, systemSettings);
@@ -1732,30 +1793,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Payment ──────────────────────────────────────────────────────────────
   const addPayment = (payment: Payment) => {
+    noteLocalWrite('payments', payment.id);
     setPayments(prev => [...prev, payment]);
     fs('payments', payment.id, payment, 'set');
     addAuditEntry('add', 'دفعة', payment.receiptNumber, `تم تسجيل دفعة جديدة ${payment.receiptNumber}`);
   };
   const updatePayment = (id: string, data: Partial<Payment>) => {
+    noteLocalWrite('payments', id);
     setPayments(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
-    fs('payments', id, data, 'update');
+    fs('payments', id, withFieldDeletes(data), 'update');
   };
+  /**
+   * تأكيد استلام دفعة — **idempotent**: الضغط مرتين لا يولّد إيصالاً ثانياً
+   * ولا يغيّر تاريخ السداد المسجَّل. حالة الدفعة في قاعدة البيانات هي مرجع الحقيقة.
+   */
   const confirmPayment = (id: string) => {
+    const existing = payments.find(p => p.id === id);
+    if (!existing) { console.warn(`[PAYMENTS] confirm: الدفعة ${id} غير موجودة`); return; }
+    if (existing.status === 'paid') {
+      console.log(`[PAYMENTS] confirm: الدفعة ${id} مؤكَّدة مسبقاً — تجاهُل`);
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
-    const receipt = `${RECEIPT_PREFIX}-${today.replace(/-/g, '')}-${Math.floor(Math.random() * 9000) + 1000}`;
+    const receipt = existing.receiptNumber?.trim()
+      || `${RECEIPT_PREFIX}-${today.replace(/-/g, '')}-${Math.floor(Math.random() * 9000) + 1000}`;
     const update = { status: 'paid' as const, paidDate: today, receiptNumber: receipt };
+    noteLocalWrite('payments', id);
     setPayments(prev => prev.map(p => p.id === id ? { ...p, ...update } : p));
     fs('payments', id, update, 'update');
     addAuditEntry('edit', 'دفعة', receipt, `تأكيد استلام الدفعة — المستخدم: ${currentUser.name}`);
   };
   const cancelPayment = (id: string) => {
     const update = { status: 'pending' as const, paidDate: undefined, receiptNumber: '' };
+    noteLocalWrite('payments', id);
+    // إعادة الدفعة إلى "معلقة" تعني أنها مرشّحة للوسم كمتأخرة من جديد
+    markedOverdueRef.current.delete(id);
     setPayments(prev => prev.map(p => p.id === id ? { ...p, ...update } : p));
     fs('payments', id, { status: 'pending', paidDate: null, receiptNumber: '' }, 'update');
     addAuditEntry('edit', 'دفعة', id, `إلغاء تأكيد الدفعة — المستخدم: ${currentUser.name}`);
   };
   const deletePayment = (id: string) => {
     const p = payments.find(x => x.id === id);
+    noteLocalWrite('payments', id);
     setPayments(prev => prev.filter(x => x.id !== id));
     fs('payments', id, {}, 'delete');
     addAuditEntry('delete', 'دفعة', p?.receiptNumber || id, `حذف الدفعة المعلقة`);
@@ -2200,6 +2279,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const fOwners = async () => { if (!sOwner) return getAll(org, 'owners'); const o = await getOne(org, 'owners', sOwner); return o ? [o] : []; };
     setDataLoading(true);
     try {
+      const fetchStartedAt = Date.now();
       const [
         ownersData, propertiesData, unitsData, contractsData,
         tenantsData, paymentsData, maintenanceData, bookingsData,
@@ -2222,7 +2302,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setUnits(currencyMigratedUnits);
       setContracts(contractsData as Contract[]);
       setTenants(tenantsData as Tenant[]);
-      setPayments(paymentsData as Payment[]);
+      // توفيق بدل استبدال: تحديث يدوي أثناء تأكيد دفعة يجب ألّا يُرجعها متأخرة
+      applyPaymentsSnapshot(paymentsData as Payment[], fetchStartedAt);
       setMaintenance(maintenanceData as Maintenance[]);
       setBookings(bookingsData as Booking[]);
 

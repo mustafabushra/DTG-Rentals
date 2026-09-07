@@ -109,6 +109,33 @@ export async function deleteAll(orgId: string, col: string): Promise<void> {
   await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
 }
 
+/**
+ * تحديث مشروط وذرّي: لا يكتب إلا إذا كانت قيمة الحقل في قاعدة البيانات مطابقة للمتوقع.
+ *
+ * ضروري لأي كتابة تنبع من "قراءة ثم قرار" (مثل وسم الدفعات المتأخرة تلقائياً):
+ * اللقطة التي بُني عليها القرار قد تكون قديمة، فبدون هذا الشرط تكتب الحالة القديمة
+ * فوق حالة أحدث كتبها المستخدم للتو (مثل دفعة أكّد استلامها ⇒ تعود "متأخرة").
+ *
+ * يرجع: 'updated' كُتبت | 'skipped' القيمة الحالية مختلفة فلم تُكتب | 'missing' المستند غير موجود.
+ */
+export async function updateIfFieldEquals(
+  orgId: string,
+  col: string,
+  id: string,
+  field: string,
+  expected: unknown,
+  patch: DocumentData,
+): Promise<'updated' | 'skipped' | 'missing'> {
+  return runTransaction(db, async tx => {
+    const ref  = orgDoc(orgId, col, id);
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return 'missing' as const;
+    if (snap.data()?.[field] !== expected) return 'skipped' as const;
+    tx.set(ref, stripUndefined({ ...patch, updatedAt: serverTimestamp() }), { merge: true });
+    return 'updated' as const;
+  });
+}
+
 // ─── Atomic contract creation ─────────────────────────────────────────────────
 // Writes contract + unit update + tenant contractIds + all payments in one
 // transaction so a network drop mid-way can never leave partial data.
