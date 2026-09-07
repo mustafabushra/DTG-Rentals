@@ -8,7 +8,7 @@ import { BookingService } from '../domain/services/BookingService';
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
-import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction } from '../lib/firestoreService';
+import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction, withFieldDeletes } from '../lib/firestoreService';
 import {
   SystemSettings, DEFAULT_SYSTEM_SETTINGS, resolvePermissions,
 } from '../constants/SystemDefaults';
@@ -1798,9 +1798,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const updateBooking = (id: string, data: Partial<Booking>) => {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, ...data } : b));
-    fs('bookings', id, data, 'update');
+    // undefined هنا يعني "امسح الحقل" (هاتف الضيف، ملاحظات، cancelledAt عند إعادة التفعيل)
+    fs('bookings', id, withFieldDeletes(data), 'update');
     const b = bookings.find(x => x.id === id);
-    addAuditEntry('edit', 'حجز', b?.guestName || id, `تم تحديث الحجز`);
+    const detail = data.status === 'confirmed' && b?.status === 'cancelled'
+      ? `تمت إعادة تفعيل الحجز (${b?.checkIn} ← ${b?.checkOut})`
+      : 'تم تحديث الحجز';
+    addAuditEntry('edit', 'حجز', b?.guestName || id, detail);
   };
   const cancelBooking = (id: string, reason?: string) => {
     const patch: Partial<Booking> = {

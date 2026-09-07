@@ -12,6 +12,11 @@
  */
 import type { Booking } from '../../data/mockData';
 
+/** Today as 'YYYY-MM-DD' (UTC) — module-level so it can serve as a default argument. */
+function todayIso(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 /** Parse 'YYYY-MM-DD' → integer day number (days since epoch, UTC). NaN if malformed. */
 function dayNum(date: string): number {
   const parts = date?.split('-');
@@ -136,9 +141,13 @@ export const BookingService = {
   /**
    * Validate a booking form. Returns map of field → Arabic error, empty if valid.
    * `existing` is the full booking list used for conflict detection.
+   * Pass `excludeId` when editing so a booking doesn't clash with its own dates.
    */
   validate(
-    data: { unitId?: string; guestName?: string; checkIn?: string; checkOut?: string; nightlyRate?: number },
+    data: {
+      unitId?: string; guestName?: string; checkIn?: string; checkOut?: string;
+      nightlyRate?: number; paidAmount?: number; totalAmount?: number;
+    },
     existing: Booking[],
     excludeId?: string,
   ): Record<string, string> {
@@ -158,7 +167,52 @@ export const BookingService = {
         }
       }
     }
+    if (typeof data.paidAmount === 'number') {
+      if (data.paidAmount < 0) {
+        errors.paidAmount = 'المبلغ المحصّل لا يمكن أن يكون سالباً';
+      } else if (typeof data.totalAmount === 'number' && data.totalAmount > 0 && data.paidAmount > data.totalAmount) {
+        errors.paidAmount = 'المبلغ المحصّل أكبر من إجمالي الحجز';
+      }
+    }
     return errors;
+  },
+
+  /** Today as 'YYYY-MM-DD' (UTC), the date convention used throughout bookings. */
+  todayIso,
+
+  /**
+   * Confirmed bookings on a unit that are current or still upcoming (checkOut > today).
+   * These block switching the unit away from the nightly model — past stays don't,
+   * since their revenue is already recognised and their nights are behind us.
+   */
+  activeOrFuture(bookings: Booking[], unitId: string, today: string = todayIso()): Booking[] {
+    return bookings.filter(b =>
+      b.unitId === unitId &&
+      b.status === 'confirmed' &&
+      dayNum(b.checkOut) > dayNum(today),
+    );
+  },
+
+  /**
+   * Guard for changing a unit's rental model. Returns an Arabic reason when the
+   * switch must be blocked, or null when it is safe.
+   *   lease → nightly : blocked by an active long-term contract on the unit.
+   *   nightly → lease : blocked by a current/upcoming confirmed booking.
+   */
+  modeSwitchBlockReason(
+    from: string | undefined,
+    to: string,
+    ctx: { hasActiveContract: boolean; activeOrFutureBookings: number },
+  ): string | null {
+    const current = from === 'nightly' ? 'nightly' : 'lease';
+    if (current === to) return null;
+    if (to === 'nightly' && ctx.hasActiveContract) {
+      return 'لا يمكن تحويل الوحدة إلى تأجير يومي وعليها عقد إيجار نشط. أنهِ العقد أولاً.';
+    }
+    if (to === 'lease' && ctx.activeOrFutureBookings > 0) {
+      return `لا يمكن تحويل الوحدة إلى تأجير طويل الأجل ولديها ${ctx.activeOrFutureBookings} حجز قائم أو قادم. ألغِ الحجوزات أولاً.`;
+    }
+    return null;
   },
 
   /** Is a unit managed as a Holiday Home? */

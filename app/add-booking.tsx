@@ -65,6 +65,8 @@ export default function AddBookingScreen() {
         checkIn: form.checkIn,
         checkOut: form.checkOut,
         nightlyRate: Number(form.nightlyRate) || 0,
+        paidAmount: Number(form.paidAmount) || 0,
+        totalAmount: total,
       },
       bookings,
     );
@@ -123,7 +125,7 @@ export default function AddBookingScreen() {
             <FormDatePicker label="تاريخ الوصول" value={form.checkIn} onChange={set('checkIn')} required error={errors.checkIn} />
             <FormDatePicker label="تاريخ المغادرة" value={form.checkOut} onChange={set('checkOut')} required error={errors.checkOut} minDate={form.checkIn} />
             <FormInput label={`سعر الليلة (${currency})`} value={form.nightlyRate} onChangeText={set('nightlyRate')} placeholder="مثال: 450" keyboardType="number-pad" required icon="moon-outline" error={errors.nightlyRate} />
-            <FormInput label={`المبلغ المحصّل (${currency})`} value={form.paidAmount} onChangeText={set('paidAmount')} placeholder="0" keyboardType="number-pad" icon="cash-outline" />
+            <FormInput label={`المبلغ المحصّل (${currency})`} value={form.paidAmount} onChangeText={set('paidAmount')} placeholder="0" keyboardType="number-pad" icon="cash-outline" error={errors.paidAmount} />
             <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} placeholder="ملاحظات الحجز..." multiline numberOfLines={2} icon="document-text-outline" />
 
             {/* الإجمالي المحسوب لحظياً */}

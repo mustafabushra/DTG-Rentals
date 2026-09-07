@@ -13,6 +13,7 @@ import { UnitType, RentalModel } from '../../data/mockData';
 import { FormContainer } from '../../components/ui/FormContainer';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { CURRENCY_OPTIONS } from '../../utils/currency';
+import { BookingService } from '../../domain/services/BookingService';
 
 const FEATURE_OPTIONS = [
   'مكيف مركزي', 'مطبخ مجهز', 'باركنج', 'أمن 24 ساعة', 'تراس',
@@ -24,9 +25,18 @@ export default function EditUnitScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { units, owners, updateUnit } = useApp();
+  const { units, owners, contracts, bookings, updateUnit } = useApp();
 
   const unit = units.find(u => u.id === id);
+
+  // ── حراس تبديل نموذج التأجير ───────────────────────────────────────────────
+  // تحويل الوحدة بين "طويل الأجل" و"يومي" يغيّر طريقة احتساب إيرادها كلياً،
+  // فيُمنع ما دامت مرتبطة بالتزام قائم بالنموذج الحالي (عقد نشط أو حجز قادم).
+  const hasActiveContract = contracts.some(c => c.unitId === id && c.status === 'active');
+  const activeOrFutureBookings = BookingService.activeOrFuture(bookings, id || '').length;
+  const switchBlockReason = (target: RentalModel) => BookingService.modeSwitchBlockReason(
+    unit?.rentalModel, target, { hasActiveContract, activeOrFutureBookings },
+  );
 
   const [form, setForm] = useState({
     number: unit?.number || '', type: unit?.type || '' as UnitType | '',
@@ -75,6 +85,9 @@ export default function EditUnitScreen() {
     } else if (!form.monthlyRent || isNaN(Number(form.monthlyRent))) {
       e.monthlyRent = 'الإيجار الشهري مطلوب';
     }
+    // خط الدفاع الأخير: حتى لو تغيّرت الحالة بعد فتح الشاشة (عقد أو حجز جديد)
+    const blocked = switchBlockReason(form.rentalModel);
+    if (blocked) e.rentalModel = blocked;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -143,22 +156,40 @@ export default function EditUnitScreen() {
               { key: 'lease',   label: 'طويل الأجل', icon: 'document-text-outline' },
               { key: 'nightly', label: 'يومي (مصيف)', icon: 'calendar-outline' },
             ] as const).map(opt => {
-              const active = form.rentalModel === opt.key;
+              const active  = form.rentalModel === opt.key;
+              const blocked = !active && !!switchBlockReason(opt.key);
               return (
                 <TouchableOpacity
                   key={opt.key}
+                  disabled={blocked}
                   style={[styles.segBtn, {
                     backgroundColor: active ? colors.primary : colors.inputBg,
                     borderColor: active ? colors.primary : colors.border,
+                    opacity: blocked ? 0.45 : 1,
                   }]}
-                  onPress={() => set('rentalModel')(opt.key)}
+                  onPress={() => {
+                    const reason = switchBlockReason(opt.key);
+                    if (reason) { setErrors(e => ({ ...e, rentalModel: reason })); return; }
+                    setErrors(e => { const n = { ...e }; delete n.rentalModel; return n; });
+                    set('rentalModel')(opt.key);
+                  }}
                 >
-                  <Ionicons name={opt.icon} size={15} color={active ? '#FFF' : colors.textSecondary} />
+                  <Ionicons
+                    name={blocked ? 'lock-closed-outline' : opt.icon}
+                    size={15}
+                    color={active ? '#FFF' : colors.textSecondary}
+                  />
                   <Text style={[styles.segText, { color: active ? '#FFF' : colors.textSecondary }]}>{opt.label}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
+          {(errors.rentalModel || switchBlockReason(unit.rentalModel === 'nightly' ? 'lease' : 'nightly')) && (
+            <Text style={[styles.switchHint, { color: errors.rentalModel ? colors.danger : colors.textMuted }]}>
+              {errors.rentalModel
+                || switchBlockReason(unit.rentalModel === 'nightly' ? 'lease' : 'nightly')}
+            </Text>
+          )}
         </View>
 
         {form.rentalModel === 'nightly'
@@ -217,6 +248,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11, borderRadius: Theme.radius.md, borderWidth: 1,
   },
   segText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  switchHint: { fontSize: Theme.fontSize.xs, textAlign: 'right', lineHeight: 18 },
   featLabel: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.semibold },
   featWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   featChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Theme.radius.full, borderWidth: 1 },

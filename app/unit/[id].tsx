@@ -193,13 +193,17 @@ export default function UnitDetailScreen() {
                       <Text style={[styles.bookingAmount, { color: cancelled ? colors.textMuted : colors.primary }]}>
                         {formatCurrency(b.totalAmount)} {b.currency ?? ''}
                       </Text>
-                      {cancelled
-                        ? <Text style={[styles.bookingCancelled, { color: colors.danger }]}>ملغي</Text>
-                        : canWrite && (
-                          <TouchableOpacity onPress={() => setCancelBookingId(b.id)} hitSlop={8}>
-                            <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
-                          </TouchableOpacity>
-                        )}
+                      {cancelled && <Text style={[styles.bookingCancelled, { color: colors.danger }]}>ملغي</Text>}
+                      {canWrite && (
+                        <TouchableOpacity onPress={() => router.push(`/edit-booking/${b.id}`)} hitSlop={8}>
+                          <Ionicons name="create-outline" size={18} color={colors.secondary} />
+                        </TouchableOpacity>
+                      )}
+                      {!cancelled && canWrite && (
+                        <TouchableOpacity onPress={() => setCancelBookingId(b.id)} hitSlop={8}>
+                          <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );

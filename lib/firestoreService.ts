@@ -1,6 +1,6 @@
 import {
   collection, doc, getDocs, getDoc,
-  addDoc, setDoc, deleteDoc,
+  addDoc, setDoc, deleteDoc, deleteField,
   runTransaction, query, where,
   serverTimestamp,
   type DocumentData, type QueryConstraint,
@@ -15,6 +15,18 @@ export function setActiveOrgId(orgId: string | null): void { _activeOrgId = orgI
 export function getActiveOrgId(): string {
   if (!_activeOrgId) throw new Error('Active org not set — user not authenticated');
   return _activeOrgId;
+}
+
+/**
+ * حوّل الحقول ذات القيمة undefined إلى حذف فعلي للحقل من المستند.
+ * كل الكتابات هنا merge، لذا الحقل الذي يُمرَّر undefined يُحذَف من الـ patch
+ * ويبقى في Firestore بقيمته القديمة. استخدم هذا عندما يعني المسح "امسح الحقل"
+ * (مثال: إزالة هاتف الضيف، أو مسح cancelledAt عند إعادة تفعيل حجز).
+ */
+export function withFieldDeletes(data: DocumentData): DocumentData {
+  return Object.fromEntries(
+    Object.entries(data).map(([k, v]) => [k, v === undefined ? deleteField() : v]),
+  );
 }
 
 function stripUndefined(obj: DocumentData): DocumentData {
