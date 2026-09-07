@@ -495,7 +495,7 @@ export default function FinancialReportsScreen() {
                 <Ionicons name={kpi.icon as any} size={18} color={kpi.color} />
               </View>
               {'amount' in kpi
-                ? <CurrencyText amount={kpi.amount} currency={countryFilter !== 'all' ? countryFilter : undefined} style={[styles.kpiVal, { color: kpi.color }]} />
+                ? <CurrencyText amount={kpi.amount ?? 0} currency={countryFilter !== 'all' ? countryFilter : undefined} style={[styles.kpiVal, { color: kpi.color }]} />
                 : <Text style={[styles.kpiVal, { color: kpi.color }]}>{kpi.text}</Text>
               }
               <Text style={[styles.kpiLbl, { color: colors.textMuted }]}>{kpi.label}</Text>

@@ -3,6 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import type { ComponentProps } from 'react';
+import type { FileCategory } from '../domain/models';
 import { router } from 'expo-router';
 import { Theme } from '../constants/Theme';
 import { useApp } from '../context/AppProvider';
@@ -34,7 +36,7 @@ export default function AttachmentsScreen() {
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
   const categories = useMemo(() => {
-    const cats = new Set<string>();
+    const cats = new Set<FileCategory>();
     attachments.forEach(a => {
       if (a.category) cats.add(a.category);
     });
@@ -91,7 +93,7 @@ export default function AttachmentsScreen() {
           />
         ) : (
           <ResponsiveGrid>{filtered.map(att => {
-            const icon = FileService.typeIcon(att.type);
+            const icon = FileService.typeIcon(att.type) as ComponentProps<typeof Ionicons>['name'];
             const categoryLabel = att.category ? FileService.categoryLabel(att.category) : 'عام';
 
             return (

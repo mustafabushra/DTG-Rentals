@@ -113,7 +113,8 @@ export const FileService = {
   /**
    * Category Arabic label.
    */
-  categoryLabel(category: FileCategory): string {
+  categoryLabel(category?: FileCategory): string {
+    if (!category) return 'أخرى';
     const map: Record<FileCategory, string> = {
       contract:    'عقد',
       id:          'هوية',

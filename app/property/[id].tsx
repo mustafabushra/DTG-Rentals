@@ -81,7 +81,7 @@ export default function PropertyDetailScreen() {
         {/* ── Property Info Card ── */}
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.infoTitleRow}>
-            <StatusBadge status={property.status} />
+            {property.status && <StatusBadge status={property.status} />}
             <Text style={[styles.infoTitle, { color: colors.text }]}>{property.name}</Text>
           </View>
           <View style={styles.infoRow}>

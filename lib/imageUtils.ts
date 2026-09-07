@@ -109,7 +109,9 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
     }
     byteArrays.push(new Uint8Array(byteNumbers));
   }
-  return new Blob(byteArrays, { type: mimeType });
+  // BlobPart في lib.dom الحديثة صار Uint8Array<ArrayBuffer> بينما القيمة هنا
+  // Uint8Array<ArrayBufferLike> — فرق تعريفات لا فرق سلوك وقت التشغيل.
+  return new Blob(byteArrays as unknown as BlobPart[], { type: mimeType });
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

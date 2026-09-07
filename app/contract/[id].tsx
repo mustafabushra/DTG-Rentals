@@ -264,7 +264,7 @@ export default function ContractDetailScreen() {
             {formatDate(contract.startDate)} — {formatDate(contract.endDate)}
           </Text>
           {/* Action buttons row */}
-          {(isAdmin || canWrite) && (contract.status === 'active' || contract.status === 'pending') && (() => {
+          {(isAdmin || canWrite) && contract.status === 'active' && (() => {
             const btnColor = statusColors[contract.status] ?? '#27AE60';
             return (
               <View style={styles.bannerActions}>
@@ -356,7 +356,7 @@ export default function ContractDetailScreen() {
               {i > 0 && <View style={[styles.div, { backgroundColor: colors.border }]} />}
               <View style={styles.kpi}>
                 {'amount' in kpi
-                  ? <CurrencyText amount={kpi.amount} currency={contract.currency} style={[styles.kpiVal, { color: kpi.color }]} />
+                  ? <CurrencyText amount={kpi.amount ?? 0} currency={contract.currency} style={[styles.kpiVal, { color: kpi.color }]} />
                   : <Text style={[styles.kpiVal, { color: kpi.color }]} numberOfLines={1}>{kpi.text}</Text>
                 }
                 <Text style={[styles.kpiLbl, { color: colors.textMuted }]}>{kpi.label}</Text>

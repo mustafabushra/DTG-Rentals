@@ -11,7 +11,7 @@ export type MaintenanceStatus = 'new' | 'in_progress' | 'completed' | 'cancelled
 export type UnitStatus        = 'rented' | 'vacant' | 'maintenance' | 'reserved';
 export type FilterStatus      = 'all' | ContractStatus | PaymentStatus | MaintenanceStatus | UnitStatus;
 
-export type PropertyType      = 'apartment' | 'villa' | 'office' | 'shop' | 'building' | 'tower';
+export type PropertyType      = 'apartment' | 'villa' | 'office' | 'shop' | 'building' | 'tower' | 'land';
 export type UnitType          = 'studio' | 'apartment' | 'villa' | 'office' | 'shop' | 'floor' | string;
 export type UnitStructure     = 'single' | 'multi';
 export type PaymentMethod     = 'bank_transfer' | 'cash' | 'check' | 'transfer';
