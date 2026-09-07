@@ -392,8 +392,10 @@ export default function PaymentDetailScreen() {
           <AttachmentPanel entityType="payment" entityId={id!} />
         </View>
 
-        {/* ── Confirm (pending only) ── */}
-        {payment.status === 'pending' && canWrite && (
+        {/* ── Confirm (أي دفعة غير مسدَّدة — معلقة كانت أو متأخرة) ──
+            الدفعة المتأخرة هي الأولى بالتأكيد لا العكس: فوات الاستحقاق لا يعني
+            أنها تحتاج مساراً آخر (تسجيل دفعة)، بل مجرد أنها لم تُسدَّد بعد. */}
+        {(payment.status === 'pending' || payment.status === 'overdue') && canWrite && (
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: colors.success + '15', borderColor: colors.success }]}
             onPress={() => setShowConfirm(true)}
