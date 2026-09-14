@@ -18,6 +18,7 @@ import { OfflineBanner } from '../components/ui/OfflineBanner';
 import { PWAInstallPrompt } from '../components/ui/PWAInstallPrompt';
 import { OnboardingTour } from '../components/ui/OnboardingTour';
 import { initSessionManager } from '../lib/sessionManager';
+import { shouldEnterApp, signedOutRedirect } from '../lib/authRouting';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -122,6 +123,7 @@ function StackContent() {
 
 function AuthWatcher({ onReady }: { onReady: () => void }) {
   const pathname = usePathname();
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   // Keep a ref so the onAuthChange closure always reads the current pathname
   // without needing to re-subscribe every time the URL changes.
   const pathnameRef = useRef(pathname);
@@ -139,30 +141,17 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
         if (!sessionCleanupRef.current) {
           sessionCleanupRef.current = initSessionManager(() => router.replace('/login'));
         }
-        // Only navigate to tabs when explicitly on the login screen.
-        // If pathname is '/' we are already inside the app (tabs index) — do NOT navigate
-        // because router.replace('/(tabs)') from '/' causes Expo Router to remount the root.
-        if (pathnameRef.current === '/login' || pathnameRef.current === '/about' || pathnameRef.current === '/register-code') {
-          console.log('[AUTH_STATE_CHANGED] user=signed-in → navigating to tabs');
-          // في وضع PWA standalone نحتاج reload كامل عشان يتحدث الـ view بعد تسجيل الدخول
-          const isStandalone = typeof window !== 'undefined' &&
-            (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-          if (isStandalone) {
-            window.location.replace('/');
-          } else {
-            router.replace('/(tabs)');
-          }
-        } else {
-          console.log('[AUTH_STATE_CHANGED] user=signed-in → already in app, no navigation');
-        }
+        // الانتقال بعد الدخول يتولاه الحارس التفاعلي أدناه لا هذه اللقطة:
+        // هذا النداء يقع مرة واحدة عند تغيّر حالة المصادقة، وقد يقع قبل أن يستقر
+        // المسار، فيُقرَّر "لا تنقّل" ولا يُعاد النظر أبداً — وهو سبب بقاء المستخدم
+        // على شاشة الدخول حتى يحدّث الصفحة يدوياً.
       } else {
         sessionCleanupRef.current?.();
         sessionCleanupRef.current = null;
-        const PUBLIC_ROUTES = ['/login', '/register-code', '/about', '/privacy-policy', '/terms-of-service', '/contact-us'];
-        if (!PUBLIC_ROUTES.includes(pathnameRef.current)) {
-          console.log('[AUTH_STATE_CHANGED] user=signed-out → navigating to about/login');
-          // Root path → about page (public landing), all others → login
-          router.replace(pathnameRef.current === '/' ? '/about' : '/login');
+        const target = signedOutRedirect(pathnameRef.current);
+        if (target) {
+          console.log('[AUTH_STATE_CHANGED] user=signed-out → navigating to', target);
+          router.replace(target as any);
         }
       }
     };
@@ -182,6 +171,7 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
       onReady();
 
       const loggedIn = !!user;
+      setSignedIn(loggedIn);
       // Only act when auth state actually changes (prevents double-navigate on rapid events)
       if (lastState !== loggedIn) {
         lastState = loggedIn;
@@ -196,6 +186,23 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
       sessionCleanupRef.current = null;
     };
   }, []);
+
+  /**
+   * حارس الدخول: متى اجتمع "مسجَّل دخول" و"ما زال على شاشة عامة" ⇒ انتقل.
+   * تفاعلي لا لقطة واحدة، فلا يهمّ أيّهما استقر أولاً — حالة المصادقة أم المسار.
+   * لا ينطلق إلا من الشاشات العامة، فلا يُعيد تركيب الجذر عندما يكون المستخدم
+   * داخل التطبيق أصلاً (المسار '/').
+   */
+  useEffect(() => {
+    if (!shouldEnterApp(signedIn, pathname)) return;
+    console.log('[AUTH_GUARD] signed-in on', pathname, '→ entering app');
+    // في وضع PWA standalone نحتاج reload كامل عشان يتحدث الـ view بعد تسجيل الدخول
+    const isStandalone = typeof window !== 'undefined' &&
+      (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+    if (isStandalone) window.location.replace('/');
+    else router.replace('/(tabs)');
+  }, [signedIn, pathname]);
+
   return null;
 }
 
