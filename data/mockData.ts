@@ -153,6 +153,9 @@ export interface Contract {
   cancelledAt?: string;
   cancelledBy?: string;
   cancellationReason?: string;
+  renewalRemindedAt?: string;   // آخر تذكير تجديد أُرسل للمستأجر (ISO كامل)
+  renewedAt?: string;           // تاريخ آخر تجديد — سجل تاريخي للمدد السابقة
+  previousEndDate?: string;     // نهاية الفترة السابقة قبل التجديد
 }
 
 export interface Payment {

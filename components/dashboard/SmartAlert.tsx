@@ -105,8 +105,9 @@ export function buildSmartAlert(input: AlertInput): SmartAlertData | null {
       id: 'expiring_contracts',
       type: 'danger',
       message: `${expiringContracts.length} عقد${expiringContracts.length === 1 ? '' : ' عقود'} تنتهي هذا الشهر ولم يتم تجديد أي منها`,
-      actionLabel: 'عرض العقود',
-      actionRoute: '/(tabs)/contracts',
+      // يقود إلى أداة التجديد لا إلى قائمة عرض
+      actionLabel: 'بدء التجديد',
+      actionRoute: '/renewals',
     };
   }
 

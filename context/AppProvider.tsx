@@ -5,6 +5,7 @@ import {
   ContractStatus, UnitStatus, PropertyType, Booking,
 } from '../data/mockData';
 import { BookingService } from '../domain/services/BookingService';
+import { RenewalService } from '../domain/services/RenewalService';
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
@@ -76,6 +77,10 @@ interface AppContextType extends AppState {
   addPayment: (payment: Payment) => void;
   updatePayment: (id: string, data: Partial<Payment>) => void;
   confirmPayment: (id: string) => void;
+  /** يجدّد العقد لفترة جديدة مع حفظ كل سجل الفترة السابقة. */
+  renewContract: (id: string) => { startDate: string; endDate: string } | null;
+  /** يسجّل إرسال تذكير تجديد لهذه العقود. */
+  markContractsReminded: (ids: string[]) => void;
   /** يسجّل أن تذكيراً أُرسل للمستأجر بهذه الدفعات (لتتبّع من ذُكِّر ومتى). */
   markPaymentsReminded: (ids: string[]) => void;
   cancelPayment: (id: string) => void;
@@ -1613,6 +1618,88 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addAuditEntry('add', 'عقد', contract.contractNumber, `تم إضافة عقد جديد ${contract.contractNumber}`);
   };
 
+  /**
+   * تجديد العقد لفترة جديدة — **مسار مستقل عن updateContract عمداً**.
+   *
+   * التجديد كان يُنفَّذ بتغيير التواريخ عبر updateContract، فيُفعّل إعادة توليد
+   * الأقساط التي تحذف كل دفعة غير مسدَّدة (status !== 'paid') — أي أن **متأخرات
+   * الفترة السابقة كانت تُمحى نهائياً عند التجديد**، ودَين المستأجر يختفي بلا أثر.
+   * ولو كانت الفترة السابقة مسدَّدة بالكامل كان يُولَّد قسط واحد بقيمة صفر بدل
+   * جدول السنة الجديدة، لأن الصيغة تطرح المدفوع من قيمة العقد.
+   *
+   * هنا: سجل الفترة السابقة يبقى كما هو (مدفوعاً كان أو متأخراً)، ويُضاف جدول
+   * كامل للفترة الجديدة بترقيم يكمل من حيث انتهى الترقيم السابق.
+   */
+  const renewContract = (id: string) => {
+    const contract = contracts.find(c => c.id === id);
+    if (!contract) return null;
+
+    const term = RenewalService.nextTerm(contract.startDate, contract.endDate);
+    if (term.startDate === contract.startDate) return null;   // تواريخ معطوبة — لا نجدّد على عمى
+
+    const existing  = payments.filter(p => p.contractId === id);
+    const lastNumber = existing.reduce((max, p) => Math.max(max, p.installmentNumber ?? 0), 0);
+
+    const schedule = RenewalService.generateSchedule({
+      startDate:         term.startDate,
+      endDate:           term.endDate,
+      annualValue:       contract.annualValue,
+      installmentsCount: contract.installmentsCount,
+      startingNumber:    lastNumber + 1,
+    });
+
+    const stamp = new Date().toISOString();
+    const contractPatch: Partial<Contract> = {
+      startDate:       term.startDate,
+      endDate:         term.endDate,
+      status:          'active',
+      renewedAt:       stamp,
+      previousEndDate: contract.endDate,
+    };
+
+    const newPayments: Payment[] = schedule.map(inst => ({
+      id: `pay_${id}_${inst.installmentNumber}_${Date.now()}`,
+      receiptNumber: `RCP-PENDING-${inst.installmentNumber}`,
+      contractId: id,
+      ...(contract.ownerId ? { ownerId: contract.ownerId } : {}),
+      amount: inst.amount,
+      dueDate: inst.dueDate,
+      status: 'pending' as const,
+      installmentNumber: inst.installmentNumber,
+      ...(contract.currency ? { currency: contract.currency } : {}),
+    }));
+
+    // الوحدة تعود مؤجَّرة — الانتهاء التلقائي كان قد حرّرها
+    const unitPatch = {
+      status: 'rented' as UnitStatus,
+      currentTenantId: contract.tenantId,
+      currentContractId: id,
+    };
+
+    setContracts(prev => prev.map(c => c.id === id ? { ...c, ...contractPatch } : c));
+    setPayments(prev => [...prev, ...newPayments]);
+    setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitPatch } : u));
+
+    fs('contracts', id, contractPatch, 'update');
+    newPayments.forEach(p => fs('payments', p.id, p, 'set'));
+    fs('units', contract.unitId, unitPatch, 'update');
+
+    addAuditEntry('edit', 'عقد', contract.contractNumber,
+      `تجديد العقد حتى ${term.endDate} — ${schedule.length} أقساط جديدة (سجل الفترة السابقة محفوظ)`);
+    return term;
+  };
+
+  /** تسجيل إرسال تذكير تجديد — بعد فتح المراسلة فعلاً. */
+  const markContractsReminded = (ids: string[]) => {
+    if (ids.length === 0) return;
+    const now = new Date().toISOString();
+    const idSet = new Set(ids);
+    setContracts(prev => prev.map(c => idSet.has(c.id) ? { ...c, renewalRemindedAt: now } : c));
+    ids.forEach(cid => fs('contracts', cid, { renewalRemindedAt: now }, 'update'));
+    addAuditEntry('edit', 'عقد', 'تذكير',
+      `إرسال تذكير تجديد بخصوص ${ids.length === 1 ? 'عقد واحد' : `${ids.length} عقود`}`);
+  };
+
   const updateContract = (id: string, data: Partial<Contract>) => {
     const contract = contracts.find(c => c.id === id);
     if (!contract) return;
@@ -2430,6 +2517,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addUnit, updateUnit, deleteUnit,
       addContract, updateContract, deleteContract, terminateContract,
       addPayment, updatePayment, confirmPayment, cancelPayment, deletePayment, markPaymentsReminded,
+      renewContract, markContractsReminded,
       addMaintenance, updateMaintenance, deleteMaintenance,
       addBooking, updateBooking, cancelBooking, deleteBooking,
       cancelContract, addCalendarEvent, deleteCalendarEvent,

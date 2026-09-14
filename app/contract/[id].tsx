@@ -7,6 +7,7 @@ import { useApp } from '../../context/AppProvider';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { DeleteButton } from '../../components/ui/DeleteButton';
 import { ConfirmModal, AlertModal } from '../../components/ui/Modal';
+import { RenewalService } from '../../domain/services/RenewalService';
 import { useDelete } from '../../hooks/useDelete';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -36,7 +37,7 @@ const statusBg: Record<string, string> = {
 export default function ContractDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
-  const { contracts, payments, tenants, units, properties, currentUser, terminateContract, updateContract, canWrite, canDelete } = useApp();
+  const { contracts, payments, tenants, units, properties, currentUser, terminateContract, updateContract, renewContract, canWrite, canDelete } = useApp();
 
   // ── Terminate modal state ──────────────────────────────────────────────────
   const [showConfirm,       setShowConfirm]       = useState(false);
@@ -82,15 +83,11 @@ export default function ContractDetailScreen() {
 
   // ── Terminate handlers ────────────────────────────────────────────────────
 
+  // التجديد يمرّ عبر renewContract لا updateContract: الثاني يُعيد توليد الأقساط
+  // فيحذف كل دفعة غير مسدَّدة — أي أن متأخرات الفترة السابقة كانت تُمحى.
   const handleRenew = () => {
     if (!contract) return;
-    const start = new Date(contract.startDate);
-    const end   = new Date(contract.endDate);
-    const durationMs = end.getTime() - start.getTime();
-    const newStart = new Date(end.getTime() + 24 * 60 * 60 * 1000);
-    const newEnd   = new Date(newStart.getTime() + durationMs);
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
-    updateContract(id!, { startDate: fmt(newStart), endDate: fmt(newEnd) });
+    renewContract(id!);
     setShowRenewConfirm(false);
   };
 
@@ -149,7 +146,7 @@ export default function ContractDetailScreen() {
             </View>
             <Text style={[styles.dialogTitle, { color: colors.text }]}>تجديد العقد</Text>
             <Text style={[styles.dialogSub, { color: colors.textSecondary }]}>
-              سيتم تجديد العقد بنفس المدة والقيمة والأقساط تبدأ من اليوم التالي لانتهاء العقد الحالي.
+              سيتم تجديد العقد بنفس المدة والقيمة، وتبدأ أقساط الفترة الجديدة من اليوم التالي لانتهاء الفترة الحالية. تبقى دفعات الفترة السابقة كما هي — المسدَّدة والمتأخرة على حدٍّ سواء.
             </Text>
             <View style={styles.dialogBtns}>
               <TouchableOpacity
@@ -293,8 +290,12 @@ export default function ContractDetailScreen() {
               </View>
             );
           })()}
-          {/* Renew button — for expired contracts */}
-          {(isAdmin || canWrite) && contract.status === 'expired' && (
+          {/* التجديد متاح للمنتهي وللقائم الذي قارب الانتهاء — التجديد المبكر هو
+              الحالة الطبيعية، والانتظار حتى ينتهي يُفرِّغ الوحدة بلا داعٍ */}
+          {(isAdmin || canWrite)
+            && (contract.status === 'expired'
+                || (contract.status === 'active'
+                    && RenewalService.daysUntilExpiry(contract.endDate) <= 60)) && (
             <View style={styles.bannerActions}>
               <TouchableOpacity
                 style={styles.renewBtn}
