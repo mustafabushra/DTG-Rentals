@@ -169,6 +169,8 @@ export interface Payment {
   referenceNumber?: string;
   notes?: string;
   currency?: string;  // inherited from contract at creation time
+  remindedAt?: string;      // آخر تذكير أُرسل للمستأجر بهذه الدفعة (ISO كامل)
+  remindersCount?: number;  // عدد التذكيرات المُرسلة — يمنع الإلحاح غير المقصود
 }
 
 export interface Maintenance {

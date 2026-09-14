@@ -17,6 +17,7 @@ const MENU_ITEMS = [
   { icon: 'grid-outline',          label: 'الوحدات',         route: '/units' },
   { icon: 'people-outline',        label: 'المستأجرون',      route: '/tenants' },
   { icon: 'cash-outline',          label: 'الدفعات',         route: '/payments' },
+  { icon: 'megaphone-outline',     label: 'مركز التحصيل',    route: '/collections' },
   { icon: 'bar-chart-outline',     label: 'التقارير المالية', route: '/financial-reports' },
   { icon: 'construct-outline',     label: 'الصيانة',         route: '/maintenance' },
   { icon: 'location-outline',      label: 'إدارة المدن',     route: '/cities' },

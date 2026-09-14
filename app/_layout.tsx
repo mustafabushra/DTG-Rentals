@@ -76,6 +76,7 @@ function StackContent() {
       <Stack.Screen name="tenants" options={{ headerShown: false }} />
       <Stack.Screen name="units" options={{ headerShown: false }} />
       <Stack.Screen name="payments" options={{ headerShown: false }} />
+      <Stack.Screen name="collections" options={{ headerShown: false }} />
       <Stack.Screen name="maintenance" options={{ headerShown: false }} />
       <Stack.Screen name="filter-properties" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />

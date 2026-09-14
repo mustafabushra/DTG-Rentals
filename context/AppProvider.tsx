@@ -76,6 +76,8 @@ interface AppContextType extends AppState {
   addPayment: (payment: Payment) => void;
   updatePayment: (id: string, data: Partial<Payment>) => void;
   confirmPayment: (id: string) => void;
+  /** يسجّل أن تذكيراً أُرسل للمستأجر بهذه الدفعات (لتتبّع من ذُكِّر ومتى). */
+  markPaymentsReminded: (ids: string[]) => void;
   cancelPayment: (id: string) => void;
   deletePayment: (id: string) => void;
   addMaintenance: (item: Maintenance) => void;
@@ -1847,6 +1849,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fs('payments', id, update, 'update');
     addAuditEntry('edit', 'دفعة', receipt, `تأكيد استلام الدفعة — المستخدم: ${currentUser.name}`);
   };
+  /**
+   * تسجيل إرسال تذكير — يُستدعى بعد فتح واتساب فعلاً لا قبله.
+   * لا يغيّر حالة الدفعة إطلاقاً: التذكير ليس سداداً.
+   */
+  const markPaymentsReminded = (ids: string[]) => {
+    if (ids.length === 0) return;
+    const now = new Date().toISOString();
+    const idSet = new Set(ids);
+    setPayments(prev => prev.map(p => idSet.has(p.id)
+      ? { ...p, remindedAt: now, remindersCount: (p.remindersCount ?? 0) + 1 }
+      : p));
+    ids.forEach(id => {
+      const p = payments.find(x => x.id === id);
+      fs('payments', id, { remindedAt: now, remindersCount: (p?.remindersCount ?? 0) + 1 }, 'update');
+    });
+    const names = ids.length === 1 ? 'دفعة واحدة' : `${ids.length} دفعات`;
+    addAuditEntry('edit', 'دفعة', 'تذكير', `إرسال تذكير تحصيل بخصوص ${names}`);
+  };
+
   const cancelPayment = (id: string) => {
     const update = { status: 'pending' as const, paidDate: undefined, receiptNumber: '' };
     noteLocalWrite('payments', id);
@@ -2408,7 +2429,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTenant, updateTenant, deleteTenant,
       addUnit, updateUnit, deleteUnit,
       addContract, updateContract, deleteContract, terminateContract,
-      addPayment, updatePayment, confirmPayment, cancelPayment, deletePayment,
+      addPayment, updatePayment, confirmPayment, cancelPayment, deletePayment, markPaymentsReminded,
       addMaintenance, updateMaintenance, deleteMaintenance,
       addBooking, updateBooking, cancelBooking, deleteBooking,
       cancelContract, addCalendarEvent, deleteCalendarEvent,

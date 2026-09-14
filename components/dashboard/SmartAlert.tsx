@@ -116,8 +116,9 @@ export function buildSmartAlert(input: AlertInput): SmartAlertData | null {
       id: 'low_collection',
       type: 'warning',
       message: `معدل التحصيل ${collectionRate}% — ${overduePayments} دفعة متأخرة تحتاج متابعة`,
-      actionLabel: 'عرض الدفعات المتأخرة',
-      actionRoute: '/payments',
+      // التنبيه يقود إلى أداة العلاج لا إلى قائمة عرض: مركز التحصيل يذكّر بضغطة
+      actionLabel: 'بدء التحصيل',
+      actionRoute: '/collections',
     };
   }
 
