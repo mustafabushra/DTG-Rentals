@@ -11,7 +11,7 @@ import { FormDatePicker } from '../../components/forms/FormDatePicker';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormContainer } from '../../components/ui/FormContainer';
-import { ConfirmModal } from '../../components/ui/Modal';
+import { ConfirmModal, AlertModal } from '../../components/ui/Modal';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { COUNTRY_CURRENCY_OPTIONS, getCurrency } from '../../utils/currency';
 
@@ -33,6 +33,8 @@ export default function EditContractScreen() {
     currency: contract?.currency || 'SAR',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingData, setPendingData] = useState<any>(null);
 
@@ -68,9 +70,18 @@ export default function EditContractScreen() {
     return Object.keys(e).length === 0;
   };
 
-  const doSave = (data: any) => {
-    updateContract(id, data);
-    router.back();
+  /**
+   * لا يُغلَق النموذج إلا بعد تأكيد الحفظ. الرفض (قيمة أقل من الالتزامات
+   * المسجَّلة، تواريخ تُخرج سجلاً محفوظاً، فشل شبكة…) يظهر بنصّه ويبقي
+   * المستخدم على بياناته ليصحّحها — لا خروج صامت ولا نجاح غير محفوظ.
+   */
+  const doSave = async (data: any) => {
+    if (saving) return;
+    setSaving(true);
+    const res = await updateContract(id, data);
+    setSaving(false);
+    if (res.ok) { router.back(); return; }
+    setSaveError(res.error ?? 'تعذّر حفظ التعديل.');
   };
 
   const handleSave = () => {
@@ -140,6 +151,13 @@ export default function EditContractScreen() {
         <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} multiline numberOfLines={3} icon="document-text-outline" />
       </ScrollView></FormContainer>
 
+      <AlertModal
+        visible={!!saveError}
+        onClose={() => setSaveError(null)}
+        title="تعذّر حفظ التعديل"
+        message={saveError ?? ''}
+        variant="warning"
+      />
       <ConfirmModal
         visible={showConfirm}
         onClose={() => { setShowConfirm(false); setPendingData(null); }}

@@ -8,6 +8,7 @@ import { AppHeader } from '../../components/ui/AppHeader';
 import { DeleteButton } from '../../components/ui/DeleteButton';
 import { ConfirmModal, AlertModal } from '../../components/ui/Modal';
 import { RenewalService } from '../../domain/services/RenewalService';
+import { ContractScheduleService } from '../../domain/services/ContractScheduleService';
 import { useDelete } from '../../hooks/useDelete';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -46,6 +47,8 @@ export default function ContractDetailScreen() {
   const [termResult,        setTermResult]        = useState<{ tenantName: string; tenantPhone: string; tenantEmail: string; terminationDate: string; reason: string } | null>(null);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showRenewConfirm,  setShowRenewConfirm]  = useState(false);
+  const [renewBusy, setRenewBusy] = useState(false);
+  const [renewResult, setRenewResult] = useState<{ title: string; message: string; variant: 'info' | 'warning' } | null>(null);
 
   const isAdmin = isAdminRole(currentUser.role);
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
@@ -62,11 +65,17 @@ export default function ContractDetailScreen() {
     const pending = contractPayments.filter(p => p.status === 'pending');
     const overdue = contractPayments.filter(p => p.status === 'overdue');
     const paidAmount = paid.reduce((s, p) => s + p.amount, 0);
-    const remaining = contract.annualValue - paidAmount;
+    // غير المسدَّد = مجموع الأقساط المعلّقة والمتأخرة فعلاً في السجل.
+    // الصيغة القديمة (القيمة السنوية − كل المدفوع) كانت تخصم مدفوعات الفترات
+    // السابقة من قيمة الفترة الحالية، فتُظهر رقماً خاطئاً (أو سالباً) بعد التجديد.
+    const unsettled = ContractScheduleService.unsettledTotal(contractPayments, { contractId: contract.id });
+    const unsettledThisTerm = ContractScheduleService.unsettledTotal(contractPayments, {
+      contractId: contract.id, from: contract.startDate, to: contract.endDate,
+    });
     const startDate = new Date(contract.startDate);
     const endDate = new Date(contract.endDate);
     const months = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    return { paid: paid.length, pending: pending.length, overdue: overdue.length, paidAmount, remaining, months };
+    return { paid: paid.length, pending: pending.length, overdue: overdue.length, paidAmount, unsettled, unsettledThisTerm, months };
   }, [contract, contractPayments]);
 
   if (!contract || !stats) {
@@ -85,10 +94,16 @@ export default function ContractDetailScreen() {
 
   // التجديد يمرّ عبر renewContract لا updateContract: الثاني يُعيد توليد الأقساط
   // فيحذف كل دفعة غير مسدَّدة — أي أن متأخرات الفترة السابقة كانت تُمحى.
-  const handleRenew = () => {
-    if (!contract) return;
-    renewContract(id!);
+  const handleRenew = async () => {
+    if (!contract || renewBusy) return;
+    setRenewBusy(true);
+    const res = await renewContract(id!);
+    setRenewBusy(false);
     setShowRenewConfirm(false);
+    // لا يُعرض نجاح إلا بعد تأكيد الحفظ؛ والفشل يظهر بنصّه
+    setRenewResult(res.ok && res.term
+      ? { title: 'تم التجديد', message: `العقد سارٍ حتى ${formatDate(res.term.endDate)}. دفعات الفترة السابقة بقيت كما هي.`, variant: 'info' as const }
+      : { title: 'تعذّر التجديد', message: res.error ?? 'لم يتغيّر شيء.', variant: 'warning' as const });
   };
 
   const handleConfirmTerminate = () => {
@@ -351,7 +366,7 @@ export default function ContractDetailScreen() {
             { label: 'القيمة السنوية', amount: contract.annualValue, color: colors.primary },
             { label: 'المدة', text: `${stats.months} شهر`, color: colors.text },
             { label: 'الأقساط المدفوعة', text: `${stats.paid}/${contract.installmentsCount}`, color: colors.success },
-            { label: 'المتبقي', amount: stats.remaining, color: stats.remaining > 0 ? colors.warning : colors.success },
+            { label: 'غير المسدَّد', amount: stats.unsettled, color: stats.unsettled > 0 ? colors.warning : colors.success },
           ].map((kpi, i) => (
             <React.Fragment key={kpi.label}>
               {i > 0 && <View style={[styles.div, { backgroundColor: colors.border }]} />}
@@ -499,6 +514,13 @@ export default function ContractDetailScreen() {
         title="لا يمكن الحذف"
         message={blocked ?? ''}
         variant="warning"
+      />
+      <AlertModal
+        visible={!!renewResult}
+        onClose={() => setRenewResult(null)}
+        title={renewResult?.title ?? ''}
+        message={renewResult?.message ?? ''}
+        variant={renewResult?.variant ?? 'info'}
       />
     </View>
   );

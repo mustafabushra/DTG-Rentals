@@ -136,6 +136,84 @@ export async function updateIfFieldEquals(
   });
 }
 
+/** خطأ معاملة برمز ثابت — يُترجم إلى رسالة عربية في طبقة الواجهة. */
+export class TxError extends Error {
+  constructor(public code: string, message?: string) { super(message ?? code); this.name = 'TxError'; }
+}
+
+/**
+ * إعادة جدولة أقساط عقد ذرّياً: تعديل العقد + حذف الأقساط المعلّقة المستبدَلة +
+ * إنشاء الجديدة في معاملة واحدة. إما أن تنجح كلها أو لا يتغيّر شيء — فلا يبقى
+ * عقد معدَّل بجدول ناقص.
+ *
+ * `expectEndDate` حارس تفاؤلي: يرفض الطلب المبني على فترة تغيّرت من جهاز آخر.
+ */
+export async function runContractRescheduleTransaction(p: {
+  orgId: string;
+  contractId: string;
+  contractPatch: DocumentData;
+  removePaymentIds: string[];
+  createPayments: { id: string; data: DocumentData }[];
+  expectEndDate?: string;
+}): Promise<void> {
+  const now = serverTimestamp();
+  await runTransaction(db, async tx => {
+    const contractRef = orgDoc(p.orgId, 'contracts', p.contractId);
+    const snap = await tx.get(contractRef);
+    if (!snap.exists()) throw new TxError('CONTRACT_MISSING');
+    if (p.expectEndDate !== undefined && snap.data()?.endDate !== p.expectEndDate) {
+      throw new TxError('TERM_CHANGED');
+    }
+
+    tx.set(contractRef, stripUndefined({ ...p.contractPatch, updatedAt: now }), { merge: true });
+    for (const id of p.removePaymentIds) tx.delete(orgDoc(p.orgId, 'payments', id));
+    for (const { id, data } of p.createPayments) {
+      tx.set(orgDoc(p.orgId, 'payments', id), stripUndefined({ ...data, createdAt: now, updatedAt: now }));
+    }
+  });
+}
+
+/**
+ * تجديد عقد ذرّياً — يقرأ العقد والوحدة **من الخادم** لا من الحالة المحلية:
+ *  - يرفض إن تغيّرت فترة العقد بعد بناء الطلب (TERM_CHANGED).
+ *  - يرفض إن صارت الوحدة مرتبطة بعقد آخر (UNIT_CONFLICT).
+ * معرّفات الأقساط ثابتة مشتقّة من الفترة، فإعادة المحاولة أو الضغط المزدوج
+ * يكتب المستندات نفسها بدل أن يضاعف الجدول.
+ */
+export async function runRenewalTransaction(p: {
+  orgId: string;
+  contractId: string;
+  unitId: string;
+  expectEndDate: string;
+  contractPatch: DocumentData;
+  unitPatch: DocumentData;
+  payments: { id: string; data: DocumentData }[];
+}): Promise<void> {
+  const now = serverTimestamp();
+  await runTransaction(db, async tx => {
+    const contractRef = orgDoc(p.orgId, 'contracts', p.contractId);
+    const unitRef     = orgDoc(p.orgId, 'units', p.unitId);
+
+    // كل القراءات قبل أي كتابة (شرط معاملات Firestore)
+    const contractSnap = await tx.get(contractRef);
+    const unitSnap     = await tx.get(unitRef);
+
+    if (!contractSnap.exists()) throw new TxError('CONTRACT_MISSING');
+    if (contractSnap.data()?.endDate !== p.expectEndDate) throw new TxError('TERM_CHANGED');
+
+    if (unitSnap.exists()) {
+      const current = unitSnap.data()?.currentContractId;
+      if (current && current !== p.contractId) throw new TxError('UNIT_CONFLICT');
+    }
+
+    tx.set(contractRef, stripUndefined({ ...p.contractPatch, updatedAt: now }), { merge: true });
+    tx.set(unitRef, stripUndefined({ ...p.unitPatch, updatedAt: now }), { merge: true });
+    for (const { id, data } of p.payments) {
+      tx.set(orgDoc(p.orgId, 'payments', id), stripUndefined({ ...data, createdAt: now, updatedAt: now }));
+    }
+  });
+}
+
 // ─── Atomic contract creation ─────────────────────────────────────────────────
 // Writes contract + unit update + tenant contractIds + all payments in one
 // transaction so a network drop mid-way can never leave partial data.

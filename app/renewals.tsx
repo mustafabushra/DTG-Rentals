@@ -26,7 +26,8 @@ export default function RenewalsScreen() {
   const { contracts, tenants, units, properties, renewContract, markContractsReminded, canWrite } = useApp();
   const [windowDays, setWindowDays] = useState<number>(30);
   const [confirmRenew, setConfirmRenew] = useState<RenewalRow | null>(null);
-  const [alert, setAlert] = useState<{ title: string; message: string } | null>(null);
+  const [alert, setAlert] = useState<{ title: string; message: string; variant?: 'info' | 'warning' } | null>(null);
+  const [renewing, setRenewing] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -66,13 +67,17 @@ export default function RenewalsScreen() {
     if (canWrite) markContractsReminded([row.contractId]);
   };
 
-  const doRenew = () => {
-    if (!confirmRenew) return;
-    const term = renewContract(confirmRenew.contractId);
+  // لا يُعرض نجاح إلا بعد تأكيد حفظ المعاملة؛ والفشل يظهر بنصّه لا بصمت
+  const doRenew = async () => {
+    if (!confirmRenew || renewing) return;
+    const row = confirmRenew;
+    setRenewing(true);
+    const res = await renewContract(row.contractId);
+    setRenewing(false);
     setConfirmRenew(null);
-    setAlert(term
-      ? { title: 'تم التجديد', message: `العقد ${confirmRenew.contractNumber} صار سارياً حتى ${formatDate(term.endDate)}، وأُضيف جدول أقساط الفترة الجديدة. دفعات الفترة السابقة بقيت كما هي.` }
-      : { title: 'تعذّر التجديد', message: 'تواريخ العقد غير صالحة. عدّلها من صفحة العقد أولاً.' });
+    setAlert(res.ok && res.term
+      ? { title: 'تم التجديد', message: `العقد ${row.contractNumber} صار سارياً حتى ${formatDate(res.term.endDate)}، وأُضيف جدول أقساط الفترة الجديدة. دفعات الفترة السابقة بقيت كما هي.`, variant: 'info' as const }
+      : { title: 'تعذّر التجديد', message: res.error ?? 'لم يتغيّر شيء.', variant: 'warning' as const });
   };
 
   return (
@@ -170,7 +175,7 @@ export default function RenewalsScreen() {
         visible={!!confirmRenew}
         onClose={() => setConfirmRenew(null)}
         onConfirm={doRenew}
-        title="تجديد العقد"
+        title={renewing ? 'جارٍ التجديد...' : 'تجديد العقد'}
         message={confirmRenew
           ? `سيُجدَّد عقد ${confirmRenew.tenantName} بنفس المدة والقيمة (${confirmRenew.annualValue.toLocaleString('en-US')})، وتبدأ الفترة الجديدة في اليوم التالي لانتهاء الحالية. تبقى دفعات الفترة السابقة كما هي — المسدَّدة والمتأخرة على حدٍّ سواء.`
           : ''}
@@ -181,6 +186,7 @@ export default function RenewalsScreen() {
         onClose={() => setAlert(null)}
         title={alert?.title ?? ''}
         message={alert?.message ?? ''}
+        variant={alert?.variant}
       />
     </View>
   );

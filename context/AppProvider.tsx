@@ -6,10 +6,11 @@ import {
 } from '../data/mockData';
 import { BookingService } from '../domain/services/BookingService';
 import { RenewalService } from '../domain/services/RenewalService';
+import { ContractScheduleService } from '../domain/services/ContractScheduleService';
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
-import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction, withFieldDeletes, updateIfFieldEquals } from '../lib/firestoreService';
+import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction, withFieldDeletes, updateIfFieldEquals, runContractRescheduleTransaction, runRenewalTransaction, TxError } from '../lib/firestoreService';
 import { reconcileSnapshot, writeKey, pruneWrites, isLocallyNewer } from '../domain/services/SnapshotReconciler';
 import {
   SystemSettings, DEFAULT_SYSTEM_SETTINGS, resolvePermissions,
@@ -71,14 +72,15 @@ interface AppContextType extends AppState {
   updateUnit: (id: string, data: Partial<Unit>) => void;
   deleteUnit: (id: string) => void;
   addContract: (contract: Contract) => void;
-  updateContract: (id: string, data: Partial<Contract>) => void;
+  /** يرجع نتيجة صريحة: الرفض يقع قبل أي كتابة، والنجاح بعد تأكيد الحفظ. */
+  updateContract: (id: string, data: Partial<Contract>) => Promise<{ ok: boolean; error?: string }>;
   deleteContract: (id: string) => void;
   terminateContract: (id: string, reason: string) => { tenantName: string; tenantPhone: string; tenantEmail: string; terminationDate: string };
   addPayment: (payment: Payment) => void;
   updatePayment: (id: string, data: Partial<Payment>) => void;
   confirmPayment: (id: string) => void;
   /** يجدّد العقد لفترة جديدة مع حفظ كل سجل الفترة السابقة. */
-  renewContract: (id: string) => { startDate: string; endDate: string } | null;
+  renewContract: (id: string) => Promise<{ ok: boolean; error?: string; term?: { startDate: string; endDate: string } }>;
   /** يسجّل إرسال تذكير تجديد لهذه العقود. */
   markContractsReminded: (ids: string[]) => void;
   /** يسجّل أن تذكيراً أُرسل للمستأجر بهذه الدفعات (لتتبّع من ذُكِّر ومتى). */
@@ -1630,23 +1632,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    * هنا: سجل الفترة السابقة يبقى كما هو (مدفوعاً كان أو متأخراً)، ويُضاف جدول
    * كامل للفترة الجديدة بترقيم يكمل من حيث انتهى الترقيم السابق.
    */
-  const renewContract = (id: string) => {
+  // قفل التنفيذ: يمنع ازدواج الطلب عند الضغط المزدوج قبل إعادة الرسم
+  const renewInFlightRef = useRef<Set<string>>(new Set());
+
+  /**
+   * تجديد العقد لفترة جديدة — **معاملة ذرّية تقرأ من الخادم**.
+   *
+   * التجديد كان يُنفَّذ سابقاً بتغيير التواريخ عبر updateContract فيُعيد توليد
+   * الأقساط ويحذف كل دفعة غير مسدَّدة — أي أن متأخرات الفترة السابقة كانت تُمحى.
+   * وهنا يُحفظ السجل كاملاً ويُضاف جدول الفترة الجديدة فقط.
+   *
+   * الحمايات: قفل محلي ضد الضغط المزدوج، حارس TERM_CHANGED على الخادم ضد فترة
+   * تغيّرت، حارس UNIT_CONFLICT ضد وحدة ارتبطت بعقد آخر، ومعرّفات أقساط ثابتة
+   * مشتقّة من الفترة فإعادة المحاولة تكتب المستندات نفسها بدل مضاعفتها.
+   */
+  const renewContract = async (id: string): Promise<{ ok: boolean; error?: string; term?: { startDate: string; endDate: string } }> => {
+    if (renewInFlightRef.current.has(id)) {
+      return { ok: false, error: 'طلب التجديد قيد التنفيذ بالفعل.' };
+    }
     const contract = contracts.find(c => c.id === id);
-    if (!contract) return null;
+    if (!contract) return { ok: false, error: 'العقد غير موجود.' };
 
     const term = RenewalService.nextTerm(contract.startDate, contract.endDate);
-    if (term.startDate === contract.startDate) return null;   // تواريخ معطوبة — لا نجدّد على عمى
+    if (term.startDate === contract.startDate) {
+      return { ok: false, error: 'تواريخ العقد غير صالحة. صحّحها من صفحة العقد قبل التجديد.' };
+    }
 
-    const existing  = payments.filter(p => p.contractId === id);
+    const existing   = payments.filter(p => p.contractId === id);
     const lastNumber = existing.reduce((max, p) => Math.max(max, p.installmentNumber ?? 0), 0);
-
-    const schedule = RenewalService.generateSchedule({
+    const schedule   = RenewalService.generateSchedule({
       startDate:         term.startDate,
       endDate:           term.endDate,
       annualValue:       contract.annualValue,
       installmentsCount: contract.installmentsCount,
       startingNumber:    lastNumber + 1,
     });
+    if (schedule.length === 0) {
+      return { ok: false, error: 'تعذّر بناء جدول الفترة الجديدة. تحقّق من قيمة العقد وعدد الأقساط.' };
+    }
 
     const stamp = new Date().toISOString();
     const contractPatch: Partial<Contract> = {
@@ -1656,9 +1679,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       renewedAt:       stamp,
       previousEndDate: contract.endDate,
     };
-
+    // معرّف ثابت مشتقّ من الفترة ورقم القسط ⇒ إعادة المحاولة لا تضاعف الجدول
     const newPayments: Payment[] = schedule.map(inst => ({
-      id: `pay_${id}_${inst.installmentNumber}_${Date.now()}`,
+      id: `pay_${id}_t${term.startDate}_n${inst.installmentNumber}`,
       receiptNumber: `RCP-PENDING-${inst.installmentNumber}`,
       contractId: id,
       ...(contract.ownerId ? { ownerId: contract.ownerId } : {}),
@@ -1668,25 +1691,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       installmentNumber: inst.installmentNumber,
       ...(contract.currency ? { currency: contract.currency } : {}),
     }));
-
-    // الوحدة تعود مؤجَّرة — الانتهاء التلقائي كان قد حرّرها
     const unitPatch = {
       status: 'rented' as UnitStatus,
       currentTenantId: contract.tenantId,
       currentContractId: id,
     };
 
-    setContracts(prev => prev.map(c => c.id === id ? { ...c, ...contractPatch } : c));
-    setPayments(prev => [...prev, ...newPayments]);
-    setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitPatch } : u));
+    renewInFlightRef.current.add(id);
+    try {
+      await runRenewalTransaction({
+        orgId: getActiveOrgId(),
+        contractId: id,
+        unitId: contract.unitId,
+        expectEndDate: contract.endDate,
+        contractPatch,
+        unitPatch,
+        payments: newPayments.map(p => ({ id: p.id, data: p })),
+      });
+    } catch (e: any) {
+      const code = e instanceof TxError ? e.code : e?.code;
+      const msg =
+        code === 'UNIT_CONFLICT'    ? 'الوحدة مرتبطة الآن بعقد آخر. أنهِ ذلك العقد أو اختر وحدة أخرى قبل التجديد.'
+      : code === 'TERM_CHANGED'     ? 'تغيّرت مدة هذا العقد من جهاز آخر. أعد فتح الصفحة ثم حاول مجدداً.'
+      : code === 'CONTRACT_MISSING' ? 'العقد لم يعد موجوداً في قاعدة البيانات.'
+      : code === 'permission-denied'? 'ليس لديك صلاحية تجديد هذا العقد.'
+      : 'تعذّر حفظ التجديد. لم يتغيّر شيء — تحقّق من الاتصال وحاول مجدداً.';
+      console.error('[CONTRACT_RENEW] transaction failed', e);
+      return { ok: false, error: msg };
+    } finally {
+      renewInFlightRef.current.delete(id);
+    }
 
-    fs('contracts', id, contractPatch, 'update');
-    newPayments.forEach(p => fs('payments', p.id, p, 'set'));
-    fs('units', contract.unitId, unitPatch, 'update');
+    // نجحت المعاملة ⇒ الآن فقط تُحدَّث الحالة المحلية والكاش
+    noteLocalWrite('contracts', id);
+    noteLocalWrite('units', contract.unitId);
+    newPayments.forEach(p => noteLocalWrite('payments', p.id));
+    setContracts(prev => prev.map(c => c.id === id ? { ...c, ...contractPatch } : c));
+    setPayments(prev => {
+      const ids = new Set(newPayments.map(p => p.id));
+      return [...prev.filter(p => !ids.has(p.id)), ...newPayments];   // لا تكرار عند الإعادة
+    });
+    setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitPatch } : u));
 
     addAuditEntry('edit', 'عقد', contract.contractNumber,
       `تجديد العقد حتى ${term.endDate} — ${schedule.length} أقساط جديدة (سجل الفترة السابقة محفوظ)`);
-    return term;
+    return { ok: true, term };
   };
 
   /** تسجيل إرسال تذكير تجديد — بعد فتح المراسلة فعلاً. */
@@ -1700,59 +1749,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       `إرسال تذكير تجديد بخصوص ${ids.length === 1 ? 'عقد واحد' : `${ids.length} عقود`}`);
   };
 
-  const updateContract = (id: string, data: Partial<Contract>) => {
+  /**
+   * تعديل عقد قائم. المسار المالي (قيمة/عدد أقساط/تواريخ) يمرّ بثلاث مراحل:
+   *  ① تخطيط نقي يرفض الغامض والمستحيل **قبل أي كتابة**،
+   *  ② معاملة ذرّية تحفظ العقد وتستبدل الأقساط المعلّقة معاً،
+   *  ③ تحديث الحالة المحلية بعد تأكيد الحفظ لا قبله.
+   * السجل التاريخي (مسدَّد/متأخر/ملغى) لا يُحذف ولا يُعاد تأريخه في أي حال.
+   */
+  const updateContract = async (id: string, data: Partial<Contract>): Promise<{ ok: boolean; error?: string }> => {
     const contract = contracts.find(c => c.id === id);
-    if (!contract) return;
+    if (!contract) return { ok: false, error: 'العقد غير موجود.' };
 
-    const updatedContract = { ...contract, ...data };
     const today = new Date().toISOString().split('T')[0];
 
-    // Auto-expire / auto-activate based on new endDate
-    let finalData = { ...data };
-    if (data.endDate) {
-      if (data.endDate < today && contract.status === 'active') {
-        finalData.status = 'expired';
-      } else if (data.endDate >= today && contract.status === 'expired') {
-        // تمديد عقد منتهي → يرجع نشطاً تلقائياً
-        finalData.status = 'active';
-      }
-    }
-
-    setContracts(prev => prev.map(c => c.id === id ? { ...c, ...finalData } : c));
-    fs('contracts', id, finalData, 'update');
-
-    // Sync unit status based on contract status change
-    const newStatus = finalData.status ?? contract.status;
-    if (['terminated', 'expired', 'cancelled'].includes(newStatus) && contract.status === 'active') {
-      const unitUpdate: Partial<Unit> = { status: 'vacant' as UnitStatus, currentTenantId: undefined, currentContractId: undefined };
-      setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitUpdate } : u));
-      fs('units', contract.unitId, { status: 'vacant', currentTenantId: null, currentContractId: null }, 'update');
-    } else if (newStatus === 'active' && contract.status === 'expired') {
-      // عقد رجع نشطاً → الوحدة مؤجرة مجدداً
-      setUnits(prev => prev.map(u => u.id === contract.unitId
-        ? { ...u, status: 'rented' as UnitStatus, currentTenantId: contract.tenantId, currentContractId: id }
-        : u
-      ));
-      fs('units', contract.unitId, { status: 'rented', currentTenantId: contract.tenantId, currentContractId: id }, 'update');
-    }
-
-    // If only currency changed (no financial change), update all pending payments' currency
-    const currencyChanged = data.currency !== undefined && data.currency !== contract.currency;
-    if (currencyChanged && !(
-      (data.annualValue !== undefined && data.annualValue !== contract.annualValue) ||
-      (data.installmentsCount !== undefined && data.installmentsCount !== contract.installmentsCount) ||
-      (data.startDate !== undefined && data.startDate !== contract.startDate) ||
-      (data.endDate   !== undefined && data.endDate   !== contract.endDate)
-    )) {
-      const pendingIds = payments.filter(p => p.contractId === id && p.status !== 'paid').map(p => p.id);
-      setPayments(prev => prev.map(p =>
-        p.contractId === id && p.status !== 'paid' ? { ...p, currency: data.currency } : p,
-      ));
-      pendingIds.forEach(pid => fs('payments', pid, { currency: data.currency }, 'update'));
-    }
-
-    // Regenerate pending installments if financial or date fields changed
-    // Use Number() coercion to handle Firestore returning numeric fields as strings
+    // الحقول المالية التي تستوجب إعادة جدولة
     const financialChanged =
       (data as any)._forceRegenerate === true ||
       (data.annualValue       !== undefined && Number(data.annualValue)       !== Number(contract.annualValue))       ||
@@ -1760,67 +1770,115 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       (data.startDate         !== undefined && data.startDate                 !== contract.startDate)                 ||
       (data.endDate           !== undefined && data.endDate                   !== contract.endDate);
 
-    if (financialChanged) {
-      const paidPayments    = payments.filter(p => p.contractId === id && p.status === 'paid');
-      const pendingPayments = payments.filter(p => p.contractId === id && p.status !== 'paid');
-
-      // Delete old pending installments
-      pendingPayments.forEach(p => fs('payments', p.id, {}, 'delete'));
-
-      const paidTotal       = paidPayments.reduce((s, p) => s + p.amount, 0);
-      const newCount        = updatedContract.installmentsCount;
-      const paidCount       = paidPayments.length;
-      const remainingCount  = Math.max(newCount - paidCount, 1);
-      // إذا كان المدفوع أكبر من القيمة الجديدة (تصحيح خطأ إدخال)، نوزع القيمة الجديدة نسبياً
-      const remainingValue  = paidTotal < updatedContract.annualValue
-        ? updatedContract.annualValue - paidTotal
-        : Math.round((updatedContract.annualValue / newCount) * remainingCount);
-
-      // نبدأ توزيع المواعيد من اليوم (أو من startDate إن كان مستقبلياً) حتى endDate
-      // هذا يمنع توليد أقساط بتواريخ في الماضي عند تعديل عقد قديم
-      const todayMs         = Date.now();
-      const startMs         = new Date(updatedContract.startDate).getTime();
-      const endMs           = new Date(updatedContract.endDate).getTime();
-      const scheduleFromMs  = Math.max(todayMs, startMs); // لا نبدأ من الماضي
-      const remainingSpanMs = Math.max(endMs - scheduleFromMs, 0);
-      const baseAmt         = Math.floor(remainingValue / remainingCount);
-      const remainder       = remainingValue - baseAmt * remainingCount;
-
-      const newInstallments: Payment[] = Array.from({ length: remainingCount }, (_, i) => {
-        // توزيع متساوٍ من scheduleFromMs إلى endMs
-        const dueMs   = remainingCount === 1
-          ? endMs
-          : scheduleFromMs + Math.round(((i + 1) / remainingCount) * remainingSpanMs);
-        const amount  = i === remainingCount - 1 ? baseAmt + remainder : baseAmt;
-        const installmentIndex = paidCount + i;
-        const p: Payment = {
-          id: `pay_${id}_${installmentIndex + 1}_r${Date.now()}`,
-          receiptNumber: `RCP-PENDING-${installmentIndex + 1}`,
-          contractId: id,
-          ...(updatedContract.ownerId ? { ownerId: updatedContract.ownerId } : {}),
-          amount,
-          dueDate: new Date(Math.min(dueMs, endMs)).toISOString().split('T')[0],
-          status: 'pending',
-          installmentNumber: installmentIndex + 1,
-          ...(updatedContract.currency ? { currency: updatedContract.currency } : {}),
-        };
-        fs('payments', p.id, p, 'set');
-        return p;
-      });
-
-      setPayments(prev => [
-        ...prev.filter(p => p.contractId !== id || p.status === 'paid'),
-        ...newInstallments,
-      ]);
-
-      console.log('[CONTRACT_UPDATE] payments regenerated', {
-        contractId: id, paidCount, remainingCount, remainingValue,
-        newInstallments: newInstallments.map(p => ({ id: p.id, amount: p.amount, dueDate: p.dueDate })),
-      });
+    // ── حالة العقد وفق التواريخ الجديدة ──────────────────────────────────
+    const finalData: Partial<Contract> = { ...data };
+    delete (finalData as any)._forceRegenerate;
+    if (data.endDate) {
+      if (data.endDate < today && contract.status === 'active')        finalData.status = 'expired';
+      else if (data.endDate >= today && contract.status === 'expired') finalData.status = 'active';
     }
 
-    addAuditEntry('edit', 'عقد', contract.contractNumber || id,
-      `تم تعديل العقد${financialChanged ? ' (إعادة توليد الأقساط)' : ''}`);
+    // ── المسار المالي: خطّط ثم احفظ ذرّياً ────────────────────────────────
+    if (financialChanged) {
+      const plan = ContractScheduleService.planReschedule({
+        contract: {
+          id: contract.id,
+          startDate:         contract.startDate,
+          endDate:           contract.endDate,
+          annualValue:       contract.annualValue,
+          installmentsCount: contract.installmentsCount,
+          ownerId:           contract.ownerId,
+          currency:          contract.currency,
+        },
+        payments,
+        patch: {
+          startDate:         data.startDate,
+          endDate:           data.endDate,
+          annualValue:       data.annualValue       !== undefined ? Number(data.annualValue)       : undefined,
+          installmentsCount: data.installmentsCount !== undefined ? Number(data.installmentsCount) : undefined,
+          currency:          data.currency,
+        },
+        today,
+      });
+
+      if (!plan.ok) return { ok: false, error: plan.reason };   // لم تُكتب حرف
+
+      const nextTerms = { ...contract, ...finalData };
+      const newPayments: Payment[] = plan.create.map(inst => ({
+        id: inst.id,
+        receiptNumber: `RCP-PENDING-${inst.installmentNumber}`,
+        contractId: id,
+        ...(nextTerms.ownerId ? { ownerId: nextTerms.ownerId } : {}),
+        amount: inst.amount,
+        dueDate: inst.dueDate,
+        status: 'pending' as const,
+        installmentNumber: inst.installmentNumber,
+        ...(nextTerms.currency ? { currency: nextTerms.currency } : {}),
+      }));
+
+      try {
+        await runContractRescheduleTransaction({
+          orgId: getActiveOrgId(),
+          contractId: id,
+          contractPatch: finalData,
+          removePaymentIds: plan.removeIds,
+          createPayments: newPayments.map(p => ({ id: p.id, data: p })),
+          expectEndDate: contract.endDate,
+        });
+      } catch (e: any) {
+        const code = e instanceof TxError ? e.code : e?.code;
+        const msg =
+          code === 'TERM_CHANGED'    ? 'تغيّرت مدة هذا العقد من جهاز آخر. أعد فتح الصفحة ثم حاول مجدداً.'
+        : code === 'CONTRACT_MISSING'? 'العقد لم يعد موجوداً في قاعدة البيانات.'
+        : code === 'permission-denied' ? 'ليس لديك صلاحية تعديل هذا العقد.'
+        : 'تعذّر حفظ التعديل. لم يتغيّر شيء — تحقّق من الاتصال وحاول مجدداً.';
+        console.error('[CONTRACT_UPDATE] transaction failed', e);
+        return { ok: false, error: msg };
+      }
+
+      // نجح الحفظ ⇒ الآن فقط تُحدَّث الحالة المحلية
+      const removed = new Set(plan.removeIds);
+      noteLocalWrite('contracts', id);
+      newPayments.forEach(p => noteLocalWrite('payments', p.id));
+      plan.removeIds.forEach(pid => noteLocalWrite('payments', pid));
+      setContracts(prev => prev.map(c => c.id === id ? { ...c, ...finalData } : c));
+      setPayments(prev => [...prev.filter(p => !removed.has(p.id)), ...newPayments]);
+      syncUnitForContractStatus(contract, finalData.status ?? contract.status, id);
+      addAuditEntry('edit', 'عقد', contract.contractNumber || id,
+        `تعديل العقد وإعادة جدولة المتبقي (${plan.create.length} قسطاً) — `
+        + `محفوظ لهذه الفترة ${plan.preservedInTerm}، ولفترات سابقة ${plan.preservedPrior}`);
+      return { ok: true };
+    }
+
+    // ── المسار غير المالي ────────────────────────────────────────────────
+    setContracts(prev => prev.map(c => c.id === id ? { ...c, ...finalData } : c));
+    fs('contracts', id, finalData, 'update');
+    syncUnitForContractStatus(contract, finalData.status ?? contract.status, id);
+
+    // تغيير العملة وحده ينعكس على الأقساط غير المسدَّدة
+    if (data.currency !== undefined && data.currency !== contract.currency) {
+      const ids = payments.filter(p => p.contractId === id && p.status !== 'paid').map(p => p.id);
+      setPayments(prev => prev.map(p =>
+        p.contractId === id && p.status !== 'paid' ? { ...p, currency: data.currency } : p));
+      ids.forEach(pid => fs('payments', pid, { currency: data.currency }, 'update'));
+    }
+
+    addAuditEntry('edit', 'عقد', contract.contractNumber || id, 'تم تعديل العقد');
+    return { ok: true };
+  };
+
+  /** مزامنة حالة الوحدة مع حالة العقد — مستخرجة لأن مسارَي التعديل يستعملانها. */
+  const syncUnitForContractStatus = (contract: Contract, newStatus: ContractStatus, id: string) => {
+    if (['terminated', 'expired', 'cancelled'].includes(newStatus) && contract.status === 'active') {
+      const patch: Partial<Unit> = { status: 'vacant' as UnitStatus, currentTenantId: undefined, currentContractId: undefined };
+      setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...patch } : u));
+      fs('units', contract.unitId, { status: 'vacant', currentTenantId: null, currentContractId: null }, 'update');
+    } else if (newStatus === 'active' && contract.status === 'expired') {
+      setUnits(prev => prev.map(u => u.id === contract.unitId
+        ? { ...u, status: 'rented' as UnitStatus, currentTenantId: contract.tenantId, currentContractId: id }
+        : u));
+      fs('units', contract.unitId, { status: 'rented', currentTenantId: contract.tenantId, currentContractId: id }, 'update');
+    }
   };
 
   const deleteContract = (id: string) => {
