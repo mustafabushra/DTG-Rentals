@@ -7,3 +7,5 @@ ios/
 android/
 firebase-debug.log
 *-debug.log
+.env.local
+.env.*.local

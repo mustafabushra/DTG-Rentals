@@ -27,20 +27,61 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-// ── معرّف المستند الثابت + محتوى التحديث ──────────────────────────────────────
-const UPDATE_ID = 'holiday-homes';
-const UPDATE = {
-  version:     'ميزة جديدة',
-  date:        '8 يوليو 2026',
-  title:       'بيوت المصيف (الإيجار اليومي)',
-  description:
-    'أصبح بإمكانك إدارة الوحدات كبيوت مصيف بالإيجار اليومي. فعّل «نوع التأجير: يومي» على أي وحدة، ' +
-    'ثم أضف حجوزات بتواريخ الوصول والمغادرة وسعر الليلة. يُحتسب الإيراد فقط لليالي المحجوزة فعلياً ' +
-    '(لا حجز = لا إيراد)، ويظهر منفصلاً عن إيرادات العقود طويلة الأجل في لوحة التحكم والتقارير المالية، ' +
-    'مع عرض نسبة الإشغال. يمنع النظام الحجوزات المتعارضة تلقائياً.',
-  icon:        'moon-outline',
-  color:       '#8B5CF6',
-};
+// ── سجلّ التحديثات ─────────────────────────────────────────────────────────────
+// معرّف ثابت لكل سجل ⇒ إعادة التشغيل تُحدّث ولا تُكرّر. الترتيب يُحسب تلقائياً
+// بحيث يظهر الأحدث في القمة، ويُضاف فقط ما لم يُنشر بعد.
+const UPDATES = [
+  {
+    id:      'collections-center',
+    version: 'ميزة جديدة',
+    date:    '15 سبتمبر 2026',
+    title:   'مركز التحصيل',
+    description:
+      'شاشة واحدة تجمع كل المستحقات: من تأخّر، وكم، ومنذ متى، ومن ذُكِّر ومتى. لكل مستأجر زر ' +
+      'تذكير يفتح واتساب برسالة جاهزة تغطي كل أقساطه المستحقة في رسالة واحدة — لا رسالة لكل قسط. ' +
+      'النبرة تتغيّر بين المطالبة بمتأخر والتذكير قبل الاستحقاق، ومفتاح الدولة يُشتق من عملة العقار. ' +
+      'يُسجَّل التذكير بعد فتح المراسلة فعلاً، فتعرف من وصلته الرسالة ومن لم تصله بلا إلحاح مكرر.',
+    icon:  'megaphone-outline',
+    color: '#0F9D58',
+  },
+  {
+    id:      'contract-renewals',
+    version: 'ميزة جديدة',
+    date:    '15 سبتمبر 2026',
+    title:   'تجديد العقود',
+    description:
+      'العقود المنتهية والتي تنتهي خلال 30 أو 60 أو 90 يوماً، مرتّبة بالإلحاح، مع «القيمة المعرّضة» ' +
+      'التي قد تخسرها لو لم تُجدَّد. لكل عقد رسالة واتساب جاهزة (استفسار قبل الانتهاء ومتابعة بعده) ' +
+      'وتجديد بضغطة. وصار زر التجديد يظهر قبل انتهاء العقد لا بعده فقط، فلا تُفرَّغ الوحدة بلا داعٍ.',
+    icon:  'refresh-outline',
+    color: '#1E88E5',
+  },
+  {
+    id:      'booking-editing',
+    version: 'تحسين',
+    date:    '15 سبتمبر 2026',
+    title:   'تعديل الحجوزات وحماية نوع التأجير',
+    description:
+      'صار بإمكانك تعديل أي حجز (الضيف، التواريخ، سعر الليلة، المحصّل) وإعادة تفعيل حجز ملغى بعد ' +
+      'إعادة فحص التعارض. ويمنع النظام تحويل وحدة عليها عقد نشط إلى تأجير يومي، أو وحدة عليها ' +
+      'حجز قائم إلى تأجير طويل الأجل — مع بيان السبب.',
+    icon:  'create-outline',
+    color: '#8B5CF6',
+  },
+  {
+    id:      'reliability-sep-2026',
+    version: 'إصلاحات',
+    date:    '15 سبتمبر 2026',
+    title:   'موثوقية الدفعات والعقود',
+    description:
+      'دفعة أكّدت استلامها كانت أحياناً تعود «متأخرة» بعد التحديث — أُصلح السبب الجذري ولن تتكرر. ' +
+      'وزر تأكيد الاستلام صار يظهر للدفعات المتأخرة أيضاً فلا تحتاج مسار تسجيل دفعة. ' +
+      'وتعديل قيمة عقد لم يعد يمسّ المدفوعات والمتأخرات المسجَّلة إطلاقاً، ويرفض التعديل بسبب واضح ' +
+      'إن كانت القيمة الجديدة أقل من الالتزامات المحفوظة. وأُصلح الدخول الذي كان يتطلب تحديث الصفحة.',
+    icon:  'shield-checkmark-outline',
+    color: '#D4880A',
+  },
+];
 
 async function main() {
   const email = process.env.SUPERADMIN_EMAIL || 'mustafabushra1779@gmail.com';
@@ -59,15 +100,27 @@ async function main() {
   await signInWithEmailAndPassword(auth, email, password);
   console.log('✅ تم تسجيل الدخول');
 
-  // ترتيب أعلى من كل السجلات الحالية ليظهر التحديث في القمة (order تنازلي)
+  // ترتيب أعلى من كل السجلات الحالية ليظهر الأحدث في القمة (order تنازلي)
   const snap = await getDocs(collection(db, 'appUpdates'));
+  const existing = new Map();
   let maxOrder = 0;
-  snap.forEach(d => { const o = d.data().order; if (typeof o === 'number' && o > maxOrder) maxOrder = o; });
-  const order = maxOrder + 1;
+  snap.forEach(d => {
+    existing.set(d.id, d.data());
+    const o = d.data().order;
+    if (typeof o === 'number' && o > maxOrder) maxOrder = o;
+  });
 
-  await setDoc(doc(db, 'appUpdates', UPDATE_ID), { ...UPDATE, order }, { merge: true });
-  console.log(`✅ تمت إضافة/تحديث السجل "${UPDATE.title}" (order=${order})`);
-  console.log('💡 سيظهر فوراً في صفحة «آخر التحديثات» عبر onSnapshot.');
+  let order = maxOrder;
+  for (const { id, ...update } of UPDATES) {
+    const had = existing.has(id);
+    // السجل الجديد يأخذ ترتيباً أعلى؛ الموجود يحتفظ بترتيبه فلا تتبعثر القائمة
+    const nextOrder = had ? (existing.get(id).order ?? ++order) : ++order;
+    await setDoc(doc(db, 'appUpdates', id), { ...update, order: nextOrder }, { merge: true });
+    console.log(`${had ? '↻ تحديث' : '✅ إضافة'}  ${id.padEnd(22)} order=${nextOrder}  ${update.title}`);
+  }
+
+  console.log(`
+💡 ${UPDATES.length} سجلات مُعالَجة — تظهر فوراً في صفحة «آخر التحديثات» عبر onSnapshot.`);
   process.exit(0);
 }
 
