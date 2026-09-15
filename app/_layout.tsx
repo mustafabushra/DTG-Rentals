@@ -15,6 +15,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { OfflineBanner } from '../components/ui/OfflineBanner';
+import { OwnerPreviewBanner } from '../components/ui/OwnerPreviewBanner';
 import { PWAInstallPrompt } from '../components/ui/PWAInstallPrompt';
 import { OnboardingTour } from '../components/ui/OnboardingTour';
 import { initSessionManager } from '../lib/sessionManager';
@@ -242,6 +243,7 @@ export default function RootLayout() {
               <AuthWatcher onReady={() => setAuthReady(true)} />
               {authReady ? (
                 <>
+                  <OwnerPreviewBanner />
                   <ThemedApp />
                   <OfflineBanner />
                   <PWAInstallPrompt />

@@ -7,6 +7,7 @@ import {
 import { BookingService } from '../domain/services/BookingService';
 import { RenewalService } from '../domain/services/RenewalService';
 import { ContractScheduleService } from '../domain/services/ContractScheduleService';
+import { derivePreview, canWriteDuringPreview } from '../domain/services/ownerPreview';
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
@@ -85,6 +86,13 @@ interface AppContextType extends AppState {
   markContractsReminded: (ids: string[]) => void;
   /** يسجّل أن تذكيراً أُرسل للمستأجر بهذه الدفعات (لتتبّع من ذُكِّر ومتى). */
   markPaymentsReminded: (ids: string[]) => void;
+  // ── معاينة "بعين المالك" (قراءة فقط، للمدير) ──────────────────────────────
+  /** معرّف المالك المُعايَن حالياً، أو null. */
+  previewOwnerId: string | null;
+  /** هل نحن في وضع المعاينة الآن؟ (يجعل canWrite/canDelete = false) */
+  previewing: boolean;
+  startOwnerPreview: (ownerId: string) => void;
+  stopOwnerPreview: () => void;
   cancelPayment: (id: string) => void;
   deletePayment: (id: string) => void;
   addMaintenance: (item: Maintenance) => void;
@@ -178,6 +186,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [payments, setPayments]           = useState<Payment[]>([]);
   const [maintenance, setMaintenance]     = useState<Maintenance[]>([]);
   const [bookings, setBookings]           = useState<Booking[]>([]);
+  // معاينة "بعين المالك": المدير يرى ما يراه مالك معيّن بلا الدخول بحسابه.
+  // قراءة فقط — لا تُحفظ عبر الجلسات حتى لا يعلق المستخدم فيها بعد إعادة التحميل.
+  const [previewOwnerId, setPreviewOwnerId] = useState<string | null>(null);
   const [auditLogs, setAuditLogs]         = useState<AuditLog[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [attachments, setAttachments]       = useState<Attachment[]>([]);
@@ -698,7 +709,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let title   = 'فشل حفظ البيانات';
     let message = 'تعذّر حفظ التغييرات. يُرجى المحاولة مجدداً.';
 
-    if (e?.code === 'permission-denied' || e?.message?.includes('permission')) {
+    if (e?.code === 'preview-readonly') {
+      title   = 'وضع المعاينة';
+      message = 'أنت تعاين بيانات مالك — العرض فقط. اخرج من المعاينة لتتمكن من التعديل.';
+    } else if (e?.code === 'permission-denied' || e?.message?.includes('permission')) {
       title   = 'ليس لديك صلاحية';
       message = 'حسابك لا يملك صلاحية تنفيذ هذه العملية. تواصل مع مدير النظام.';
     } else if (e?.code === 'unavailable' || e?.message?.includes('network') || e?.message?.includes('offline')) {
@@ -720,6 +734,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ─── Firestore sync helper (يكتب في مؤسسة المستخدم النشطة) ──────────
+  // ─── صلاحيات المستخدم الحالي (مستمدة من إعدادات النظام الديناميكية) ────────
+  const _perms  = resolvePermissions(currentUser.role, systemSettings);
+  const isAdmin   = _perms.canManageUsers;
+  const isOwner   = currentUser.role === 'owner' || currentUser.role === 'مالك';
+
+  // المعاينة متاحة لمن يملك إدارة المستخدمين فقط، وهي **قراءة فقط**:
+  // الكتابة باسم المالك تُفسد سجل التدقيق في نظام مالي (من نفّذ فعلاً؟)،
+  // والمدير يستطيع التعديل بصفته أصلاً — فوضع الكتابة خطر بلا قدرة جديدة.
+  const { previewing, effectiveOwnerId, applyOwnerFilter } = derivePreview({
+    isAdmin,
+    previewOwnerId,
+    isOwnerRole:        isOwner,
+    ownerDataIsolation: systemSettings.ownerDataIsolation,
+    currentUserOwnerId: currentUser.ownerId,
+  });
+  const canWrite  = canWriteDuringPreview(previewing, _perms.canAdd || _perms.canEdit);
+  const canDelete = canWriteDuringPreview(previewing, _perms.canDelete);
+
   // كل مسارات الفشل هنا كانت صامتة: الحالة المحلية تتغيّر والمستخدم يظن أن الحفظ تم،
   // بينما لم تصل الكتابة إلى قاعدة البيانات (فتعود البيانات القديمة عند إعادة التحميل).
   // الآن كل إسقاط أو استثناء يظهر للمستخدم بدل أن يُبتلع.
@@ -731,6 +763,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const _p = resolvePermissions(currentUser.role, systemSettings);
     const writeAllowed  = _p.canAdd || _p.canEdit;
     const deleteAllowed = _p.canDelete;
+    if (previewing) {
+      // حاجز خلفي: المعاينة قراءة فقط. لو تسرّب زر كتابة إلى الواجهة، تُمنع هنا.
+      showSaveError({ code: 'preview-readonly' }, `${op} ${col}/${id}`);
+      return;
+    }
     if (op === 'delete' && !deleteAllowed) { showSaveError({ code: 'permission-denied' }, `delete ${col}/${id}`); return; }
     if ((op === 'set' || op === 'update') && !writeAllowed) { showSaveError({ code: 'permission-denied' }, `write ${col}/${id}`); return; }
     // نقطة الاختناق الوحيدة لكل تعديلات المستخدم ⇒ أنسب مكان لتسجيل الكتابة المحلية،
@@ -746,16 +783,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       showSaveError(e, `${op} ${col}/${id}`);
     }
-  }, [userId, currentUser.role, systemSettings, showSaveError, noteLocalWrite]);
+  }, [userId, currentUser.role, systemSettings, showSaveError, noteLocalWrite, previewing]);
 
-  // ─── صلاحيات المستخدم الحالي (مستمدة من إعدادات النظام الديناميكية) ────────
-  const _perms  = resolvePermissions(currentUser.role, systemSettings);
-  const isAdmin   = _perms.canManageUsers;
-  const canWrite  = _perms.canAdd || _perms.canEdit;
-  const canDelete = _perms.canDelete;
-  const isOwner   = currentUser.role === 'owner' || currentUser.role === 'مالك';
-  // فلترة بيانات المالك مفعّلة إذا كان المستخدم مالكاً + الإعداد مفعّل + يملك ownerId
-  const applyOwnerFilter = isOwner && systemSettings.ownerDataIsolation && !!currentUser.ownerId;
 
   // ─── فلترة البيانات للمالك (مشروطة بإعداد ownerDataIsolation) ──────────────
 
@@ -763,7 +792,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // id مسبوق بـ "uasprop_" يميّزها عن العقارات الحقيقية
   const externalOwnedUnits = useMemo(() => {
     if (!applyOwnerFilter) return [] as (Unit & { parentPropertyName?: string })[];
-    const oid = currentUser.ownerId;
+    const oid = effectiveOwnerId;
     if (!oid) return [] as (Unit & { parentPropertyName?: string })[];
     return units
       .filter(u => {
@@ -776,11 +805,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...u,
         parentPropertyName: properties.find(p => p.id === u.propertyId)?.name,
       }));
-  }, [applyOwnerFilter, currentUser.ownerId, units, properties]);
+  }, [applyOwnerFilter, effectiveOwnerId, units, properties]);
 
   const visibleProperties = useMemo(() => {
     if (!applyOwnerFilter) return properties;
-    const ownedProps = properties.filter(p => p.ownerId === currentUser.ownerId);
+    const ownedProps = properties.filter(p => p.ownerId === effectiveOwnerId);
     // كل وحدة خارجية تظهر كعقار مستقل في القائمة والإحصائيات
     const synthProps = externalOwnedUnits.map(u => ({
       id: `uasprop_${u.id}`,
@@ -788,13 +817,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       location: u.parentPropertyName ?? '',
       type: 'apartment' as PropertyType,
       totalUnits: 1,
-      ownerId: currentUser.ownerId!,
+      ownerId: effectiveOwnerId!,
       unitStructure: 'single' as const,
       createdAt: new Date().toISOString(),
       _unitId: u.id,
     } as Property & { _unitId: string }));
     return [...ownedProps, ...synthProps];
-  }, [applyOwnerFilter, currentUser.ownerId, properties, externalOwnedUnits]);
+  }, [applyOwnerFilter, effectiveOwnerId, properties, externalOwnedUnits]);
 
   const visiblePropertyIds = useMemo(() =>
     new Set(visibleProperties.map(p => p.id)),
@@ -802,7 +831,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const visibleUnits = useMemo(() => {
     if (!applyOwnerFilter) return units;
-    const oid = currentUser.ownerId;
+    const oid = effectiveOwnerId;
     if (!oid) return [];
     return units.filter(u => {
       // وحدة مملوكة له مباشرة (في عقاره أو عقار آخر)
@@ -811,12 +840,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const prop = properties.find(p => p.id === u.propertyId);
       return prop?.ownerId === oid;
     });
-  }, [applyOwnerFilter, units, currentUser.ownerId, properties]);
+  }, [applyOwnerFilter, units, effectiveOwnerId, properties]);
 
   // الوحدات التي يملكها ملياً (للعقود والمدفوعات فقط — تستثني وحدات الآخرين في عقاراته)
   const financialUnitIds = useMemo(() => {
     if (!applyOwnerFilter) return new Set(units.map(u => u.id));
-    const oid = currentUser.ownerId;
+    const oid = effectiveOwnerId;
     if (!oid) return new Set<string>();
     return new Set(
       units.filter(u => {
@@ -826,7 +855,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return prop?.ownerId === oid;
       }).map(u => u.id)
     );
-  }, [applyOwnerFilter, units, currentUser.ownerId, properties]);
+  }, [applyOwnerFilter, units, effectiveOwnerId, properties]);
 
   const visibleUnitIds = useMemo(() =>
     new Set(visibleUnits.map(u => u.id)),
@@ -859,8 +888,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   [applyOwnerFilter, bookings, financialUnitIds]);
 
   const visibleOwners = useMemo(() =>
-    applyOwnerFilter ? owners.filter(o => o.id === currentUser.ownerId) : owners,
-  [applyOwnerFilter, owners, currentUser.ownerId]);
+    applyOwnerFilter ? owners.filter(o => o.id === effectiveOwnerId) : owners,
+  [applyOwnerFilter, owners, effectiveOwnerId]);
 
   const visibleAuditLogs = useMemo(() =>
     applyOwnerFilter ? [] as AuditLog[] : auditLogs,
@@ -868,14 +897,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const visibleTenants = useMemo(() => {
     if (!applyOwnerFilter) return tenants;
-    const oid = currentUser.ownerId;
+    const oid = effectiveOwnerId;
     return tenants.filter(t =>
       // مستأجر مرتبط بعقد للمالك
       visibleContracts.some(c => c.tenantId === t.id) ||
       // أو أضافه المالك مباشرة (بدون عقد بعد)
       (t as any).ownerId === oid
     );
-  }, [applyOwnerFilter, tenants, visibleContracts, currentUser.ownerId]);
+  }, [applyOwnerFilter, tenants, visibleContracts, effectiveOwnerId]);
 
   const visibleAttachments = useMemo(() => {
     if (!applyOwnerFilter) return attachments;
@@ -887,11 +916,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (a.entityType === 'contract')    return visibleContractIds.has(a.entityId);
       if (a.entityType === 'payment')     return visiblePaymentIds.has(a.entityId);
       if (a.entityType === 'maintenance') return visibleMaintenanceIds.has(a.entityId);
-      if (a.entityType === 'owner')       return a.entityId === currentUser.ownerId;
+      if (a.entityType === 'owner')       return a.entityId === effectiveOwnerId;
       return false;
     });
   }, [applyOwnerFilter, attachments, visiblePropertyIds, visibleUnitIds, visibleContractIds,
-      visiblePayments, visibleMaintenance, currentUser.ownerId]);
+      visiblePayments, visibleMaintenance, effectiveOwnerId]);
 
   // ─── إحصائيات المدن ────────────────────────────────────────────────────────
   const cityStats = useMemo(() => {
@@ -1998,6 +2027,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    * تسجيل إرسال تذكير — يُستدعى بعد فتح واتساب فعلاً لا قبله.
    * لا يغيّر حالة الدفعة إطلاقاً: التذكير ليس سداداً.
    */
+  /**
+   * ادخل وضع المعاينة بعين مالك. للمدير فقط، وقراءة فقط.
+   * يُسجَّل في سجل التدقيق لأن الاطلاع على بيانات مالك بعينه إجراء يستحق أثراً.
+   */
+  const startOwnerPreview = (ownerId: string) => {
+    if (!isAdmin) { console.warn('[PREVIEW] غير مصرَّح'); return; }
+    if (!ownerId) return;
+    const owner = owners.find(o => o.id === ownerId);
+    setPreviewOwnerId(ownerId);
+    addAuditEntry('edit', 'مالك', owner?.name || ownerId,
+      `دخول وضع المعاينة بعين المالك — المستخدم: ${currentUser.name}`);
+  };
+
+  const stopOwnerPreview = () => setPreviewOwnerId(null);
+
   const markPaymentsReminded = (ids: string[]) => {
     if (ids.length === 0) return;
     const now = new Date().toISOString();
@@ -2575,6 +2619,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addUnit, updateUnit, deleteUnit,
       addContract, updateContract, deleteContract, terminateContract,
       addPayment, updatePayment, confirmPayment, cancelPayment, deletePayment, markPaymentsReminded,
+      previewOwnerId, previewing, startOwnerPreview, stopOwnerPreview,
       renewContract, markContractsReminded,
       addMaintenance, updateMaintenance, deleteMaintenance,
       addBooking, updateBooking, cancelBooking, deleteBooking,

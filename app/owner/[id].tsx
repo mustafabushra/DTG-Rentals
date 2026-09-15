@@ -19,7 +19,7 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 export default function OwnerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
-  const { owners, properties, units, contracts, payments, canWrite, canDelete } = useApp();
+  const { owners, properties, units, contracts, payments, canWrite, canDelete, isAdmin, startOwnerPreview } = useApp();
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
   const owner = owners.find(o => o.id === id);
@@ -111,6 +111,17 @@ export default function OwnerDetailScreen() {
           </View>
           <Text style={[styles.name, { color: colors.text }]}>{owner.name}</Text>
           <Text style={[styles.role, { color: colors.textSecondary }]}>مالك عقاري</Text>
+
+          {/* معاينة بعين المالك — للمدير فقط، عرض فقط بلا الدخول بحسابه */}
+          {isAdmin && (
+            <TouchableOpacity
+              style={[styles.previewBtn, { borderColor: colors.secondary, backgroundColor: colors.secondary + '12' }]}
+              onPress={() => { startOwnerPreview(owner.id); router.replace('/(tabs)'); }}
+            >
+              <Ionicons name="eye-outline" size={16} color={colors.secondary} />
+              <Text style={[styles.previewText, { color: colors.secondary }]}>عرض التطبيق بعين هذا المالك</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={[styles.contactRow, { borderTopColor: colors.border }]}>
             <TouchableOpacity
@@ -265,6 +276,12 @@ export default function OwnerDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  previewBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    marginTop: 12, paddingVertical: 9, paddingHorizontal: 16,
+    borderRadius: Theme.radius.full, borderWidth: 1,
+  },
+  previewText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
   container: { flex: 1 },
   profileCard: {
     margin: Theme.spacing.base,
