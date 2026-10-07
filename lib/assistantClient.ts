@@ -162,12 +162,71 @@ async function callModel(model: string, key: string, body: string): Promise<Call
   return answer ? { ok: true, answer } : { ok: false, empty: true };
 }
 
+export type GenResult =
+  | { ok: true; text: string; usedModel: string; switchedFrom?: string }
+  | { ok: false; code: string; message: string };
+
+/**
+ * ينادي Gemini بجسم جاهز، ويُرجع النصّ الخام.
+ *
+ * عند 404 (النموذج أُوقِف — Google تُنهي النماذج دورياً) يكتشف بديلاً متاحاً
+ * بالمفتاح نفسه ويعيد المحاولة مرة واحدة. هذا ما يُبقي الميزات حيّة بلا
+ * تعديل كود كلما تغيّر كتالوج النماذج.
+ *
+ * لا يرمي استثناءات — كل فشل يرجع برسالة عربية جاهزة للعرض.
+ */
+export async function generateText(
+  key: string,
+  wantedModel: string,
+  body: string,
+): Promise<GenResult> {
+  const k = key.trim();
+  if (!k) return { ok: false, code: 'NO_KEY', message: 'لم يُضبط مفتاح المساعد.' };
+  const wanted = wantedModel.trim() || DEFAULT_MODEL;
+
+  const empty = {
+    ok: false as const, code: 'EMPTY',
+    message: 'لم يُرجع النموذج نصاً. أعد المحاولة.',
+  };
+
+  try {
+    const first = await callModel(wanted, k, body);
+    if (first.ok) return { ok: true, text: first.answer, usedModel: wanted };
+    if ('empty' in first) return empty;
+    if (first.status !== 404) {
+      return { ok: false, code: `HTTP_${first.status}`, message: describeError(first.status) };
+    }
+
+    const listed = await listModels(k);
+    if (!listed.ok) return { ok: false, code: 'HTTP_404', message: describeError(404) };
+
+    const alt = pickModel(listed.models);
+    if (!alt || alt === wanted) {
+      return {
+        ok: false, code: 'NO_MODEL',
+        message: 'لا يوجد نموذج متاح لهذا المفتاح. تحقّق من تفعيل Gemini API للمفتاح.',
+      };
+    }
+
+    const second = await callModel(alt, k, body);
+    if (second.ok) {
+      return { ok: true, text: second.answer, usedModel: alt, switchedFrom: wanted };
+    }
+    if ('empty' in second) return empty;
+    return { ok: false, code: `HTTP_${second.status}`, message: describeError(second.status) };
+  } catch {
+    return {
+      ok: false, code: 'NETWORK',
+      message: 'تعذّر الوصول إلى خدمة المساعد. تحقّق من الإنترنت.',
+    };
+  }
+}
+
 /**
  * يسأل المساعد. `context` هو معرفة التطبيق، و`history` الأدوار السابقة.
  * لا يرمي استثناءات — كل فشل يرجع برسالة عربية جاهزة للعرض.
  *
- * عند 404 (نموذج مُوقَف) يكتشف بديلاً متاحاً ويعيد المحاولة مرة واحدة،
- * ويخبر المُنادي بالبديل في `switchedFrom` ليعرضه على المدير فيحفظه.
+ * عند 404 يُكتشف نموذج بديل ويُخبَر المُنادي به في `switchedFrom`.
  */
 export async function askAssistant(args: {
   config: AssistantConfig;
@@ -180,7 +239,6 @@ export async function askAssistant(args: {
   if (!key) {
     return { ok: false, code: 'NO_KEY', message: 'لم يُضبط مفتاح المساعد.' };
   }
-  const wanted = args.config.model?.trim() || DEFAULT_MODEL;
 
   // السياق يُرسَل كأول دور لا داخل التوجيه: يُبقي التوجيه ثابتاً ويسمح بالمحادثة
   const contents = [
@@ -195,42 +253,17 @@ export async function askAssistant(args: {
     generationConfig: { temperature: 0.2, maxOutputTokens: 1536 },
   });
 
-  const emptyAnswer = {
-    ok: false as const, code: 'EMPTY',
-    message: 'لم يُرجع المساعد جواباً. أعد صياغة السؤال.',
-  };
-
-  try {
-    const first = await callModel(wanted, key, body);
-    if (first.ok) return { ok: true, answer: first.answer, usedModel: wanted };
-    if ('empty' in first) return emptyAnswer;
-    if (first.status !== 404) {
-      return { ok: false, code: `HTTP_${first.status}`, message: describeError(first.status) };
+  const res = await generateText(key, args.config.model ?? '', body);
+  if (!res.ok) {
+    // «لم يُرجع النموذج نصاً» عامّة؛ في المحادثة سببها غالباً صياغة السؤال
+    if (res.code === 'EMPTY') {
+      return { ok: false, code: 'EMPTY', message: 'لم يُرجع المساعد جواباً. أعد صياغة السؤال.' };
     }
-
-    // 404 = النموذج أُوقِف. نكتشف بديلاً بالمفتاح نفسه بدل تعطيل الميزة.
-    const listed = await listModels(key);
-    if (!listed.ok) {
-      return { ok: false, code: 'HTTP_404', message: describeError(404) };
-    }
-    const alt = pickModel(listed.models);
-    if (!alt || alt === wanted) {
-      return {
-        ok: false, code: 'NO_MODEL',
-        message: 'لا يوجد نموذج متاح لهذا المفتاح. تحقّق من تفعيل Gemini API للمفتاح.',
-      };
-    }
-
-    const second = await callModel(alt, key, body);
-    if (second.ok) {
-      return { ok: true, answer: second.answer, usedModel: alt, switchedFrom: wanted };
-    }
-    if ('empty' in second) return emptyAnswer;
-    return { ok: false, code: `HTTP_${second.status}`, message: describeError(second.status) };
-  } catch {
-    return {
-      ok: false, code: 'NETWORK',
-      message: 'تعذّر الوصول إلى خدمة المساعد. تحقّق من الإنترنت.',
-    };
+    return res;
   }
+  return {
+    ok: true, answer: res.text,
+    usedModel: res.usedModel,
+    ...(res.switchedFrom ? { switchedFrom: res.switchedFrom } : {}),
+  };
 }

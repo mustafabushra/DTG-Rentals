@@ -34,7 +34,7 @@ export default function ScanContractScreen() {
   const [raw, setRaw]           = useState<RawExtraction | null>(null);
   const [edits, setEdits]       = useState<Record<string, string>>({});
   const [alert, setAlert]       = useState<{ title: string; message: string; variant: 'info' | 'warning' } | null>(null);
-  const [notDeployed, setNotDeployed] = useState(false);
+  const [needsKey, setNeedsKey] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // نتيجة القراءة بعد تطبيق تعديلاتك عليها
@@ -85,7 +85,7 @@ export default function ScanContractScreen() {
     const scan = await scanContractImage(asset.base64, asset.mimeType ?? 'image/jpeg');
     setBusy(false);
     if (scan.ok) { setRaw(scan.extraction); return; }
-    if (scan.code === 'NOT_DEPLOYED') { setNotDeployed(true); return; }
+    if (scan.code === 'NO_KEY') { setNeedsKey(true); return; }
     setAlert({ title: 'تعذّرت القراءة', message: scan.message, variant: 'warning' });
   };
 
@@ -150,19 +150,24 @@ export default function ScanContractScreen() {
     if (done) router.replace('/(tabs)/contracts');
   };
 
-  // الدالة غير منشورة: يُكتشف عند أول محاولة، فتُعرض الخطوات لا خطأ غامض
-  if (notDeployed) {
+  // لا مفتاح: سببٌ وخطوة واحدة، لا خطأ غامض
+  if (needsKey) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <AppHeader title="مسح عقد" />
         <View style={styles.center}>
-          <Ionicons name="cloud-offline-outline" size={46} color={colors.textMuted} />
-          <Text style={[styles.offTitle, { color: colors.text }]}>خدمة القراءة غير منشورة بعد</Text>
+          <Ionicons name="key-outline" size={46} color={colors.textMuted} />
+          <Text style={[styles.offTitle, { color: colors.text }]}>القراءة تحتاج مفتاحاً</Text>
           <Text style={[styles.offBody, { color: colors.textSecondary }]}>
-            قراءة العقود تحتاج دالة في مشروعك تحمل مفتاح الخدمة، لأن المفتاح لا يجوز أن
-            يكون داخل التطبيق. الدالة مكتوبة وجاهزة؛ خطوات نشرها في
-            <Text style={styles.mono}> functions/README-scan.md</Text>.
+            قراءة العقود تستخدم مفتاح المساعد نفسه — مجاني ولمرة واحدة. اضبطه ثم عد وصوّر العقد.
           </Text>
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { borderColor: colors.border }]}
+            onPress={() => router.push('/assistant-settings')}
+          >
+            <Ionicons name="settings-outline" size={17} color={colors.primary} />
+            <Text style={[styles.secondaryText, { color: colors.primary }]}>ضبط المفتاح</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.secondaryBtn, { borderColor: colors.border }]}
             onPress={() => router.replace('/add-contract')}
@@ -200,6 +205,9 @@ export default function ScanContractScreen() {
             <Text style={[styles.cardTitle, { color: colors.text }]}>صوّر العقد أو اخترْ صورته</Text>
             <Text style={[styles.cardHint, { color: colors.textMuted }]}>
               صوّره مستوياً بإضاءة جيدة. تُقرأ البيانات وتُعرض لمراجعتك قبل الحفظ — لا يُحفظ شيء تلقائياً.
+            </Text>
+            <Text style={[styles.cardHint, { color: colors.warning }]}>
+              الصورة تُرسَل إلى Google لتُقرأ. لا تصوّر ما لا تريد إرساله.
             </Text>
             <View style={styles.pickRow}>
               <TouchableOpacity

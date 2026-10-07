@@ -32,6 +32,7 @@ const MORE_ITEMS: NavItem[] = [
   { icon: 'megaphone-outline',     label: 'مركز التحصيل',     route: '/collections',         moduleKey: 'payments' },
   { icon: 'sparkles-outline',      label: 'المساعد الذكي',    route: '/assistant',           moduleKey: 'reports' },
   { icon: 'refresh-outline',       label: 'تجديد العقود',     route: '/renewals',            moduleKey: 'contracts' },
+  { icon: 'scan-outline',          label: 'مسح عقد بالصورة', route: '/scan-contract',       moduleKey: 'contracts' },
   { icon: 'receipt-outline',       label: 'سجل المدفوعات',    route: '/ledger',              moduleKey: 'ledger' },
   { icon: 'construct-outline',     label: 'الصيانة',          route: '/maintenance',         moduleKey: 'maintenance' },
   { icon: 'document-outline',      label: 'المرفقات',         route: '/attachments',         moduleKey: null },
