@@ -7,6 +7,9 @@ import { defineSecret } from 'firebase-functions/params';
 import {
   SYSTEM_PROMPT, validateRequest, parseModelJson, sanitizeExtraction, createRateLimiter,
 } from './lib/extraction';
+import {
+  pickProvider, buildVisionRequest, readVisionText, describeUpstreamError,
+} from './lib/vision';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -283,21 +286,31 @@ export const weeklyIntegrityCheck = onSchedule(
 // دالة قابلة للنداء: الهوية تأتي محقَّقة من Firebase في request.auth، فلا تحقق
 // يدوي من الرموز ولا CORS ولا رابط علني — وهذا سبب اختيار onCall على onRequest.
 //
-// السرّ يسكن Secret Manager لا متغيّرات البيئة ولا المستودع:
-//   firebase functions:secrets:set ANTHROPIC_API_KEY
+// المزوّد البصري قابل للتبديل: Gemini (طبقة مجانية) أو Anthropic (مدفوع).
+// يُختار بالمفتاح المتوفّر، أو صراحةً بـ VISION_PROVIDER. اضبط ما تحتاجه فقط:
+//   firebase functions:secrets:set GEMINI_API_KEY
+//   firebase functions:secrets:set ANTHROPIC_API_KEY     (اختياري)
 
+const GEMINI_API_KEY    = defineSecret('GEMINI_API_KEY');
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
-const MODEL = 'claude-sonnet-5';
+
 const scanLimiter = createRateLimiter({ max: 30, windowMs: 60 * 60_000 });
+
+/** يقرأ سرّاً قد لا يكون مضبوطاً بلا أن يرمي. */
+function readSecret(secret: { value: () => string }): string {
+  try {
+    return (secret.value() ?? '').trim();
+  } catch {
+    return '';
+  }
+}
 
 export const extractContract = onCall(
   {
     region: REGION,
-    secrets: [ANTHROPIC_API_KEY],
+    secrets: [GEMINI_API_KEY, ANTHROPIC_API_KEY],
     memory: '512MiB',
     timeoutSeconds: 120,
-    // الصورة حتى 5 ميجابايت base64 ⇒ نحتاج سعة طلب أكبر من الافتراضي
-    enforceAppCheck: false,
   },
   async (request) => {
     // ① الهوية — Firebase تحقّقت منها قبل وصول الطلب
@@ -315,70 +328,67 @@ export const extractContract = onCall(
       );
     }
 
-    // ③ صحة الطلب — قبل إنفاق أي استدعاء مدفوع
+    // ③ المزوّد — يُختار بما هو مضبوط فعلاً
+    const gemini    = readSecret(GEMINI_API_KEY);
+    const anthropic = readSecret(ANTHROPIC_API_KEY);
+    const provider  = pickProvider({
+      configured:    process.env.VISION_PROVIDER,
+      hasGemini:     gemini.length > 0,
+      hasAnthropic:  anthropic.length > 0,
+    });
+    if (!provider) {
+      logger.error('extractContract: no vision key configured');
+      throw new HttpsError(
+        'failed-precondition',
+        'خدمة القراءة غير مهيّأة: لم يُضبط مفتاح أي مزوّد. راجع functions/README-scan.md.',
+      );
+    }
+    const apiKey = provider === 'gemini' ? gemini : anthropic;
+
+    // ④ صحة الطلب — قبل إنفاق أي استدعاء
     const check = validateRequest(request.data);
     if (!check.ok) {
       throw new HttpsError('invalid-argument', check.message, { code: check.code });
     }
 
-    // ④ القراءة
+    // ⑤ القراءة
+    const req = buildVisionRequest(provider, {
+      apiKey,
+      model: process.env.VISION_MODEL,
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt: 'اقرأ هذا العقد وأرجِع JSON فقط.',
+      image: check.image,
+    });
+
     let res: Response;
     try {
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY.value(),
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          max_tokens: 1024,
-          system: SYSTEM_PROMPT,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: { type: 'base64', media_type: check.image.mimeType, data: check.image.data },
-              },
-              { type: 'text', text: 'اقرأ هذا العقد وأرجِع JSON فقط.' },
-            ],
-          }],
-        }),
-      });
+      res = await fetch(req.url, { method: 'POST', headers: req.headers, body: req.body });
     } catch (e) {
-      logger.error('extractContract: upstream unreachable', e);
+      logger.error('extractContract: upstream unreachable', { provider, error: String(e) });
       throw new HttpsError('unavailable', 'تعذّر الوصول إلى خدمة القراءة. أعد المحاولة.');
     }
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      logger.error('extractContract: upstream error', { status: res.status, detail: detail.slice(0, 400) });
-      throw new HttpsError(
-        res.status === 429 ? 'resource-exhausted' : 'internal',
-        res.status === 429
-          ? 'الخدمة مزدحمة حالياً. أعد المحاولة بعد قليل.'
-          : 'تعذّرت قراءة الصورة. أعد المحاولة أو أدخل البيانات يدوياً.',
-      );
+      const desc = describeUpstreamError(res.status);
+      logger.error('extractContract: upstream error', {
+        provider, status: res.status, detail: detail.slice(0, 400),
+      });
+      throw new HttpsError(desc.retryable ? 'resource-exhausted' : 'internal', desc.message);
     }
 
-    const data = await res.json() as { content?: { type?: string; text?: string }[] };
-    const text = (data.content ?? [])
-      .filter(b => b?.type === 'text')
-      .map(b => b.text ?? '')
-      .join('\n');
-
+    const payload = await res.json().catch(() => null);
+    const text = readVisionText(provider, payload);
     const extraction = sanitizeExtraction(parseModelJson(text));
     if (!extraction) {
-      logger.warn('extractContract: unparseable model output', { uid });
+      logger.warn('extractContract: unparseable output', { provider, uid });
       throw new HttpsError(
         'failed-precondition',
         'لم تُقرأ الصورة بوضوح. صوّر العقد مستوياً بإضاءة أفضل، أو أدخل البيانات يدوياً.',
       );
     }
 
-    logger.info('extractContract: ok', { uid, remaining: gate.remaining });
-    return { extraction };
+    logger.info('extractContract: ok', { provider, uid, remaining: gate.remaining });
+    return { extraction, provider };
   },
 );
