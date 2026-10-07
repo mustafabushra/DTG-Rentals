@@ -483,6 +483,8 @@ export default function SettingsScreen() {
                 onPress={() => router.push('/user-management')} />
               <Item icon="toggle-outline" label="وحدات النظام والصلاحيات" color={colors.accent}
                 onPress={() => router.push('/system-settings')} />
+              <Item icon="sparkles-outline" label="المساعد الذكي" color="#7B3FA0"
+                onPress={() => router.push('/assistant-settings')} />
               <Item icon="bar-chart-outline" label="تقارير النظام" color="#8E44AD"
                 onPress={() => router.push('/audit-log')} />
               <Item icon="cloud-upload-outline" label="نسخ احتياطي" color={colors.success}

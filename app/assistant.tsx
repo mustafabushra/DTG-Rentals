@@ -41,6 +41,7 @@ export default function AssistantScreen() {
   const [draft, setDraft]     = useState('');
   const [busy, setBusy]       = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  const [notice, setNotice]   = useState<string | null>(null);
   // افتراضيّاً: مجاميع بلا أسماء — الأقل تسريباً هو الافتراضي
   const [detail, setDetail]   = useState<'aggregates' | 'named'>('aggregates');
   const [showSent, setShowSent] = useState(false);
@@ -88,8 +89,13 @@ export default function AssistantScreen() {
     });
     setBusy(false);
 
-    if (res.ok) setTurns(prev => [...prev, { role: 'model', text: res.answer }]);
-    else setError(res.message);
+    if (res.ok) {
+      setTurns(prev => [...prev, { role: 'model', text: res.answer }]);
+      // النموذج المحفوظ أُوقِف وعمل بديل: أخبِر المدير ليحفظه فيتوقّف الاكتشاف المتكرر
+      if (res.switchedFrom) {
+        setNotice(`النموذج «${res.switchedFrom}» أُوقِف. استُخدم «${res.usedModel}» — احفظه في ضبط المساعد.`);
+      }
+    } else setError(res.message);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
   };
 
@@ -112,16 +118,16 @@ export default function AssistantScreen() {
           <Text style={[styles.offTitle, { color: colors.text }]}>المساعد غير مهيّأ</Text>
           <Text style={[styles.offBody, { color: colors.textSecondary }]}>
             {isAdmin
-              ? 'يحتاج المساعد مفتاح Gemini مجانياً. اضبطه من إعدادات النظام ← المساعد الذكي.'
+              ? 'يحتاج المساعد مفتاح Gemini — وهو مجاني. دقيقة واحدة وتبدأ السؤال.'
               : 'المساعد متاح للمدير فقط. تواصل مع مدير النظام لتهيئته.'}
           </Text>
           {isAdmin && (
             <TouchableOpacity
               style={[styles.cta, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/system-settings')}
+              onPress={() => router.push('/assistant-settings')}
             >
-              <Ionicons name="settings-outline" size={17} color="#FFF" />
-              <Text style={styles.ctaText}>إعدادات النظام</Text>
+              <Ionicons name="key-outline" size={17} color="#FFF" />
+              <Text style={styles.ctaText}>تهيئة المساعد</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -211,6 +217,15 @@ export default function AssistantScreen() {
             </View>
           )}
 
+          {notice && (
+            <TouchableOpacity
+              style={[styles.errorBox, { backgroundColor: colors.warning + '12', borderColor: colors.warning + '55' }]}
+              onPress={() => router.push('/assistant-settings')}
+            >
+              <Ionicons name="swap-horizontal-outline" size={16} color={colors.warning} />
+              <Text style={[styles.errorText, { color: colors.warning }]}>{notice}</Text>
+            </TouchableOpacity>
+          )}
           {error && (
             <View style={[styles.errorBox, { backgroundColor: colors.danger + '12', borderColor: colors.danger + '55' }]}>
               <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />

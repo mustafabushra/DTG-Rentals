@@ -18,6 +18,7 @@ import { FormContainer } from '../components/ui/FormContainer';
 import { AlertModal, ConfirmModal } from '../components/ui/Modal';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getOne, setOne, getActiveOrgId } from '../lib/firestoreService';
+import { listModels, pickModel } from '../lib/assistantClient';
 
 const KEY_DOC = 'assistant';
 
@@ -28,6 +29,10 @@ export default function AssistantSettingsScreen() {
   const [apiKey, setApiKey]   = useState('');
   const [model, setModel]     = useState('');
   const [hasKey, setHasKey]   = useState(false);
+  // المفتاح المحفوظ لا يُعرض، لكنه لازم للفحص دون إعادة لصقه
+  const [savedKey, setSavedKey] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [models, setModels]     = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -41,10 +46,12 @@ export default function AssistantSettingsScreen() {
         const doc = await getOne(getActiveOrgId(), 'settings', KEY_DOC);
         if (!alive) return;
         // المفتاح لا يُعاد عرضه — يُعرض أنه مضبوط فقط
-        setHasKey(typeof doc?.apiKey === 'string' && doc.apiKey.trim().length > 0);
+        const saved = typeof doc?.apiKey === 'string' ? doc.apiKey.trim() : '';
+        setSavedKey(saved);
+        setHasKey(saved.length > 0);
         setModel(typeof doc?.model === 'string' ? doc.model : '');
       } catch {
-        if (alive) setHasKey(false);
+        if (alive) { setHasKey(false); setSavedKey(''); }
       } finally {
         if (alive) setLoading(false);
       }
@@ -82,6 +89,41 @@ export default function AssistantSettingsScreen() {
     }
   };
 
+  /** يسأل المفتاح نفسه عن النماذج المتاحة له — فحصٌ للمفتاح واكتشافٌ للأسماء. */
+  const check = async () => {
+    const key = apiKey.trim() || savedKey;
+    if (!key) {
+      setAlert({ title: 'المفتاح مطلوب', message: 'الصق المفتاح أولاً ثم افحص.', variant: 'warning' });
+      return;
+    }
+    setChecking(true);
+    const res = await listModels(key);
+    setChecking(false);
+
+    if (!res.ok) {
+      setModels([]);
+      setAlert({ title: 'فشل الفحص', message: res.message, variant: 'warning' });
+      return;
+    }
+    setModels(res.models);
+    if (res.models.length === 0) {
+      setAlert({
+        title: 'المفتاح صالح لكن بلا نماذج',
+        message: 'لم يُرجِع المفتاح أي نموذج يصلح للمحادثة. تحقّق من تفعيل Gemini API له.',
+        variant: 'warning',
+      });
+      return;
+    }
+    const best = pickModel(res.models);
+    if (best && !model.trim()) setModel(best);
+    setAlert({
+      title: 'المفتاح صالح',
+      message: `${res.models.length} نموذجاً متاحاً.` +
+        (best ? ` المقترح: ${best} — احفظ لتثبيته.` : ''),
+      variant: 'info',
+    });
+  };
+
   const clear = async () => {
     setConfirmClear(false);
     setSaving(true);
@@ -89,6 +131,8 @@ export default function AssistantSettingsScreen() {
       await setOne(getActiveOrgId(), 'settings', KEY_DOC, { apiKey: '', enabled: false });
       setHasKey(false);
       setApiKey('');
+      setSavedKey('');
+      setModels([]);
       setAlert({ title: 'أُزيل المفتاح', message: 'تعطّل المساعد.', variant: 'info' });
     } catch {
       setAlert({ title: 'تعذّر الإزالة', message: 'أعد المحاولة.', variant: 'warning' });
@@ -147,9 +191,40 @@ export default function AssistantSettingsScreen() {
           label="اسم النموذج (اختياري)"
           value={model}
           onChangeText={setModel}
-          placeholder="gemini-2.0-flash"
+          placeholder="gemini-3.8-flash"
           icon="cube-outline"
         />
+
+        <TouchableOpacity
+          style={[styles.checkBtn, { borderColor: colors.secondary + '66' }]}
+          onPress={check}
+          disabled={checking || saving}
+        >
+          <Ionicons name={checking ? 'hourglass-outline' : 'search-outline'} size={16} color={colors.secondary} />
+          <Text style={[styles.checkText, { color: colors.secondary }]}>
+            {checking ? 'جارٍ الفحص...' : 'فحص المفتاح واكتشاف النماذج'}
+          </Text>
+        </TouchableOpacity>
+
+        {models.length > 0 && (
+          <View style={styles.chips}>
+            {models.map(id => {
+              const on = model.trim() === id;
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.chip, {
+                    backgroundColor: on ? colors.secondary : colors.card,
+                    borderColor: on ? colors.secondary : colors.border,
+                  }]}
+                  onPress={() => setModel(id)}
+                >
+                  <Text style={[styles.chipText, { color: on ? '#FFF' : colors.text }]}>{id}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: colors.success }]}
@@ -222,6 +297,14 @@ const styles = StyleSheet.create({
   hint: { fontSize: Theme.fontSize.sm, textAlign: 'right', lineHeight: 20 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 2 },
   linkText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
+  checkBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    paddingVertical: 10, borderRadius: Theme.radius.md, borderWidth: 1, marginBottom: 4,
+  },
+  checkText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+  chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: Theme.radius.sm, borderWidth: 1 },
+  chipText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingVertical: 14, borderRadius: Theme.radius.md,
