@@ -73,7 +73,8 @@ interface AppContextType extends AppState {
   addUnit: (unit: Unit) => void;
   updateUnit: (id: string, data: Partial<Unit>) => void;
   deleteUnit: (id: string) => void;
-  addContract: (contract: Contract) => void;
+  /** يرجع نتيجة صريحة: النجاح بعد تأكيد المعاملة لا قبلها. */
+  addContract: (contract: Contract) => Promise<{ ok: boolean; error?: string }>;
   /** يرجع نتيجة صريحة: الرفض يقع قبل أي كتابة، والنجاح بعد تأكيد الحفظ. */
   updateContract: (id: string, data: Partial<Contract>) => Promise<{ ok: boolean; error?: string }>;
   deleteContract: (id: string) => void;
@@ -1595,8 +1596,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ─── Contract ─────────────────────────────────────────────────────────────
-  const addContract = (contract: Contract) => {
-    if (!userId) return;
+  const addContract = async (contract: Contract): Promise<{ ok: boolean; error?: string }> => {
+    if (!userId) return { ok: false, error: 'يجب تسجيل الدخول أولاً.' };
 
     // مالك الوحدة (للعزل والاستعلامات المحصورة) — من الوحدة أو من عقارها الأب
     const cUnit = units.find(u => u.id === contract.unitId);
@@ -1636,30 +1637,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
     });
 
-    // ③ تحديث الـ state فوراً (optimistic)
-    // هذا المسار يكتب عبر transaction لا عبر fs()، فنسجّل الكتابات المحلية يدوياً
-    // حتى لا يمحو تحميلٌ جارٍ العقدَ الجديد وأقساطه بلقطة أقدم منه.
+    // ③ الكتابة أولاً — الحالة المحلية بعد تأكيد الحفظ (أدناه)
+
+    // ④ كتابة Firestore كلها في transaction واحدة ذرية
+    try {
+      await runContractTransaction({
+        orgId:       getActiveOrgId(),
+        contract:    finalContract,
+        unitId:      contract.unitId,
+        unitPatch,
+        tenantId:    contract.tenantId,
+        tenantPatch,
+        payments:    installments.map(p => ({ id: p.id, data: p })),
+      });
+    } catch (e: any) {
+      const msg = typeof e?.message === 'string' && e.message.includes('أُجِّرت')
+        ? 'الوحدة مرتبطة بعقد آخر. اختر وحدة شاغرة أو أنهِ العقد القائم أولاً.'
+        : e?.code === 'permission-denied'
+          ? 'ليس لديك صلاحية إضافة عقد.'
+          : 'تعذّر حفظ العقد. لم يتغيّر شيء — تحقّق من الاتصال وحاول مجدداً.';
+      console.error('[ADD_CONTRACT] transaction failed', e);
+      return { ok: false, error: msg };
+    }
+
+    // ⑤ نجح الحفظ ⇒ الآن تُحدَّث الحالة المحلية والكاش
     noteLocalWrite('contracts', finalContract.id);
     noteLocalWrite('units', contract.unitId);
     noteLocalWrite('tenants', contract.tenantId);
     installments.forEach(p => noteLocalWrite('payments', p.id));
-    setContracts(prev => [...prev, finalContract]);
+    setContracts(prev => [...prev.filter(c => c.id !== finalContract.id), finalContract]);
     setUnits(prev => prev.map(u => u.id === contract.unitId ? { ...u, ...unitPatch } : u));
     setTenants(prev => prev.map(t => t.id === contract.tenantId ? { ...t, contractIds: newContractIds } : t));
-    setPayments(prev => [...prev, ...installments]);
+    setPayments(prev => {
+      const ids = new Set(installments.map(p => p.id));
+      return [...prev.filter(p => !ids.has(p.id)), ...installments];
+    });
 
-    // ④ كتابة Firestore كلها في transaction واحدة ذرية
-    runContractTransaction({
-      orgId:       getActiveOrgId(),
-      contract:    finalContract,
-      unitId:      contract.unitId,
-      unitPatch,
-      tenantId:    contract.tenantId,
-      tenantPatch,
-      payments:    installments.map(p => ({ id: p.id, data: p })),
-    }).catch(e => showSaveError(e, 'addContract transaction'));
+    addAuditEntry('add', 'عقد', contract.contractNumber,
+      `تم إضافة عقد جديد ${contract.contractNumber} بـ${installments.length} قسطاً`);
+    return { ok: true };
 
-    addAuditEntry('add', 'عقد', contract.contractNumber, `تم إضافة عقد جديد ${contract.contractNumber}`);
   };
 
   /**
@@ -2193,8 +2210,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     const today = new Date().toISOString().split('T')[0];
-    const receipt = existing.receiptNumber?.trim()
-      || `${RECEIPT_PREFIX}-${today.replace(/-/g, '')}-${Math.floor(Math.random() * 9000) + 1000}`;
+    // RCP-PENDING-n رقم نائب يُولَّد مع جدول الأقساط، لا إيصال صادر.
+    // إبقاؤه كما هو كان يُثبّته رقماً نهائياً على دفعة مسدَّدة.
+    const issued = existing.receiptNumber?.trim();
+    const receipt = issued && !issued.startsWith('RCP-PENDING')
+      ? issued
+      : `${RECEIPT_PREFIX}-${today.replace(/-/g, '')}-${Math.floor(Math.random() * 9000) + 1000}`;
     const update = { status: 'paid' as const, paidDate: today, receiptNumber: receipt };
     noteLocalWrite('payments', id);
     setPayments(prev => prev.map(p => p.id === id ? { ...p, ...update } : p));

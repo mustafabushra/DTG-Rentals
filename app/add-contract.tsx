@@ -10,6 +10,7 @@ import { FormSelect } from '../components/forms/FormSelect';
 import { FormDatePicker } from '../components/forms/FormDatePicker';
 import { Contract } from '../data/mockData';
 import { FormContainer } from '../components/ui/FormContainer';
+import { AlertModal } from '../components/ui/Modal';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { COUNTRY_CURRENCY_OPTIONS, getCurrency } from '../utils/currency';
 
@@ -23,6 +24,8 @@ export default function AddContractScreen() {
     annualValue: '', installmentsCount: '', notes: '', currency: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // عند اختيار الوحدة → نرث عملة العقار تلقائياً
   const selectedUnit = units.find(u => u.id === form.unitId);
@@ -48,7 +51,7 @@ export default function AddContractScreen() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
     const contract: Contract = {
       id:               `c${Date.now()}`,
@@ -64,8 +67,13 @@ export default function AddContractScreen() {
       notes:            form.notes.trim() || undefined,
       createdAt:        new Date().toISOString().split('T')[0],
     };
-    addContract(contract);
-    router.back();
+    // لا يُغلق النموذج إلا بعد تأكيد الحفظ: المعاملة قد ترفض وحدةً صارت مؤجَّرة
+    if (saving) return;
+    setSaving(true);
+    const res = await addContract(contract);
+    setSaving(false);
+    if (res.ok) { router.back(); return; }
+    setSaveError(res.error ?? 'تعذّر حفظ العقد.');
   };
 
   // فلترة الوحدات بالعقود الفعلية — أدق من unit.status الذي قد يكون stale
@@ -133,6 +141,13 @@ export default function AddContractScreen() {
           <FormInput label="ملاحظات (اختياري)" value={form.notes} onChangeText={set('notes')} placeholder="أي ملاحظات إضافية..." multiline numberOfLines={3} icon="document-text-outline" />
         </ScrollView>
       </FormContainer>
+      <AlertModal
+        visible={!!saveError}
+        onClose={() => setSaveError(null)}
+        title="تعذّر حفظ العقد"
+        message={saveError ?? ''}
+        variant="warning"
+      />
     </View>
   );
 }

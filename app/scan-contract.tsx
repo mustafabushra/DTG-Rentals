@@ -27,7 +27,7 @@ import {
 
 export default function ScanContractScreen() {
   const { colors } = useAppTheme();
-  const { tenants, units, properties, addContract, canWrite } = useApp();
+  const { tenants, units, properties, contracts, addContract, canWrite } = useApp();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [busy, setBusy]         = useState(false);
@@ -35,6 +35,7 @@ export default function ScanContractScreen() {
   const [edits, setEdits]       = useState<Record<string, string>>({});
   const [alert, setAlert]       = useState<{ title: string; message: string; variant: 'info' | 'warning' } | null>(null);
   const [notDeployed, setNotDeployed] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // نتيجة القراءة بعد تطبيق تعديلاتك عليها
   const result: ExtractionResult | null = useMemo(() => {
@@ -92,14 +93,29 @@ export default function ScanContractScreen() {
   const valueOf = (key: keyof RawExtraction) =>
     edits[key] !== undefined ? edits[key] : String(raw?.[key] ?? '');
 
-  const handleSave = () => {
-    if (!result || !isReadyToSave(result) || !canWrite) return;
+  const handleSave = async () => {
+    if (!result || !isReadyToSave(result) || !canWrite || saving) return;
     const d = result.draft;
     if (!d.tenantId || !d.unitId || !d.startDate || !d.endDate || !d.annualValue) return;
 
+    // كشف التكرار: مسح أرشيف كامل قد يُعيد العقد نفسه مرتين
+    const number = d.contractNumber?.trim();
+    if (number) {
+      const dup = contracts.find(c => c.contractNumber?.trim() === number);
+      if (dup) {
+        setAlert({
+          title: 'العقد مسجَّل مسبقاً',
+          message: `العقد ${number} موجود في النظام بالفعل. افتحه لتعديله بدل إضافة نسخة ثانية — `
+                 + `النسخة المكررة تُفسد التقارير والتحصيل.`,
+          variant: 'warning',
+        });
+        return;
+      }
+    }
+
     const contract: Contract = {
       id: `ct_scan_${Date.now()}`,
-      contractNumber: d.contractNumber || `CNT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+      contractNumber: number || `CNT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
       unitId: d.unitId,
       tenantId: d.tenantId,
       startDate: d.startDate,
@@ -111,12 +127,21 @@ export default function ScanContractScreen() {
       createdAt: new Date().toISOString(),
       notes: 'أُدخل بقراءة صورة العقد ومراجعة بشرية',
     };
-    addContract(contract);
-    setAlert({
-      title: 'تم الحفظ',
-      message: `أُضيف العقد ${contract.contractNumber} وجدول أقساطه.`,
-      variant: 'info',
-    });
+
+    setSaving(true);
+    const res = await addContract(contract);
+    setSaving(false);
+
+    // لا يُعرض نجاح قبل تأكيد الحفظ: لو كانت الوحدة مؤجَّلة ترفضها المعاملة
+    setAlert(res.ok
+      ? {
+          title: 'تم الحفظ',
+          message: `أُضيف العقد ${contract.contractNumber} بمدة من ${contract.startDate} إلى `
+                 + `${contract.endDate}، وجدول ${contract.installmentsCount} قسطاً مجموعها `
+                 + `${contract.annualValue.toLocaleString('en-US')}.`,
+          variant: 'info',
+        }
+      : { title: 'تعذّر الحفظ', message: res.error ?? 'لم يتغيّر شيء.', variant: 'warning' });
   };
 
   const closeAlert = () => {
@@ -265,12 +290,12 @@ export default function ScanContractScreen() {
                 borderColor: isReadyToSave(result) ? colors.success : colors.border,
               }]}
               onPress={handleSave}
-              disabled={!isReadyToSave(result) || !canWrite}
+              disabled={!isReadyToSave(result) || !canWrite || saving}
             >
               <Ionicons name="checkmark-circle-outline" size={19}
                         color={isReadyToSave(result) ? '#FFF' : colors.textMuted} />
               <Text style={[styles.saveText, { color: isReadyToSave(result) ? '#FFF' : colors.textMuted }]}>
-                {isReadyToSave(result) ? 'حفظ العقد' : 'أكمل الحقول المطلوبة'}
+                {saving ? 'جارٍ الحفظ...' : isReadyToSave(result) ? 'حفظ العقد' : 'أكمل الحقول المطلوبة'}
               </Text>
             </TouchableOpacity>
           </>

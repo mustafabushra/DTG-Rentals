@@ -44,6 +44,14 @@ async function addAuditLog(
 }
 
 // ─── [1] إنهاء العقود تلقائياً كل يوم ───────────────────────────────────────
+//
+// الكتابة **مشروطة**: الاستعلام لقطة، وقد يُجدَّد عقد أو يُنقل مستأجر بين لحظة
+// القراءة ولحظة الكتابة. والكتابة غير المشروطة (batch) تكتب القرار القديم فوق
+// الحالة الأحدث — وهو صنف السباق الذي سبّب بق "الدفعات المؤكَّدة تعود متأخرة".
+// لذا كل عقد يُعالَج في معاملة تُعيد القراءة وتتحقق قبل الكتابة.
+//
+// وتحرير الوحدة مشروط بأنها ما زالت مرتبطة بهذا العقد تحديداً: لو أُعيد تأجيرها
+// لعقد آخر، تحريرها يسلبها من مستأجرها الجديد.
 
 export const dailyContractExpiry = onSchedule(
   { schedule: 'every day 00:05', timeZone: TZ, region: REGION },
@@ -61,56 +69,73 @@ export const dailyContractExpiry = onSchedule(
       return;
     }
 
-    // Group docs by org
-    const docsByOrg = new Map<string, typeof snap.docs>();
-    snap.docs.forEach(doc => {
+    const expiredByOrg = new Map<string, number>();
+    let skipped = 0;
+
+    for (const doc of snap.docs) {
       const orgId = doc.ref.parent.parent!.id;
-      if (!docsByOrg.has(orgId)) {
-        docsByOrg.set(orgId, []);
-      }
-      docsByOrg.get(orgId)!.push(doc);
-    });
+      try {
+        const applied = await db.runTransaction(async tx => {
+          const fresh = await tx.get(doc.ref);
+          if (!fresh.exists) return false;
+          const c = fresh.data()!;
 
-    // Process each org
-    for (const [orgId, orgDocs] of docsByOrg.entries()) {
-      const chunkSize = 400;
-      for (let i = 0; i < orgDocs.length; i += chunkSize) {
-        const chunk = orgDocs.slice(i, i + chunkSize);
-        const batch = db.batch();
-        const unitUpdates: { unitId: string; tenantId: string }[] = [];
+          // تحقّق من أن القرار ما زال صحيحاً على الحالة الحالية
+          if (c['status'] !== 'active') return false;
+          if (!c['endDate'] || String(c['endDate']) >= todayStr) return false;
 
-        chunk.forEach(doc => {
-          const c = doc.data();
-          batch.update(doc.ref, { status: 'expired' });
-          if (c['unitId']) {
-            unitUpdates.push({ unitId: c['unitId'], tenantId: c['tenantId'] });
+          const unitId = c['unitId'] as string | undefined;
+          let unitRef: ReturnType<typeof db.doc> | null = null;
+          let releaseUnit = false;
+          if (unitId) {
+            unitRef = db.collection('orgs').doc(orgId).collection('units').doc(unitId);
+            const unit = await tx.get(unitRef);
+            // لا تُحرَّر إلا إن كانت ما زالت مرتبطة بهذا العقد
+            releaseUnit = unit.exists && unit.data()!['currentContractId'] === doc.id;
           }
+
+          tx.update(doc.ref, { status: 'expired' });
+          if (releaseUnit && unitRef) {
+            tx.update(unitRef, {
+              status: 'vacant',
+              currentTenantId:   admin.firestore.FieldValue.delete(),
+              currentContractId: admin.firestore.FieldValue.delete(),
+            });
+          }
+          return true;
         });
 
-        for (const { unitId } of unitUpdates) {
-          const unitRef = db.collection('orgs').doc(orgId).collection('units').doc(unitId);
-          batch.update(unitRef, {
-            status: 'vacant',
-            currentTenantId:  admin.firestore.FieldValue.delete(),
-            currentContractId: admin.firestore.FieldValue.delete(),
-          });
-        }
-
-        await batch.commit();
+        if (applied) expiredByOrg.set(orgId, (expiredByOrg.get(orgId) ?? 0) + 1);
+        else skipped++;
+      } catch (e) {
+        skipped++;
+        logger.error('[dailyContractExpiry] failed', { orgId, contractId: doc.id, error: String(e) });
       }
+    }
 
+    for (const [orgId, count] of expiredByOrg) {
       await addAuditLog(
         orgId,
         'edit', 'عقد', 'تشغيل تلقائي',
-        `تم إنهاء ${orgDocs.length} عقد تلقائياً وتحرير ${orgDocs.length} وحدة`,
+        `تم إنهاء ${count} عقد تلقائياً وتحرير وحداتها المرتبطة`,
       );
     }
 
-    logger.info(`[dailyContractExpiry] expired ${snap.size} contracts across all orgs`);
+    logger.info('[dailyContractExpiry] done', {
+      scanned: snap.size,
+      expired: [...expiredByOrg.values()].reduce((a, b) => a + b, 0),
+      skipped,
+    });
   },
 );
 
 // ─── [2] تحويل الدفعات لـ overdue كل يوم ────────────────────────────────────
+//
+// **هذه الدالة بالضبط هي ما سبّب البق في العميل.** الاستعلام يرجع دفعات حالتها
+// 'pending' لحظة القراءة، ثم تكتب الدفعة 'overdue' بلا شرط. فإن أكّد المستخدم
+// استلام دفعة بين القراءة والكتابة، تُكتب 'overdue' فوق 'paid' ويختفي السداد.
+//
+// الآن كل دفعة تُعالَج في معاملة تتحقق أن حالتها ما زالت 'pending'.
 
 export const dailyPaymentOverdue = onSchedule(
   { schedule: 'every day 06:00', timeZone: TZ, region: REGION },
@@ -128,34 +153,44 @@ export const dailyPaymentOverdue = onSchedule(
       return;
     }
 
-    // Group docs by org
-    const docsByOrg = new Map<string, typeof snap.docs>();
-    snap.docs.forEach(doc => {
+    const markedByOrg = new Map<string, number>();
+    let skipped = 0;
+
+    for (const doc of snap.docs) {
       const orgId = doc.ref.parent.parent!.id;
-      if (!docsByOrg.has(orgId)) {
-        docsByOrg.set(orgId, []);
-      }
-      docsByOrg.get(orgId)!.push(doc);
-    });
+      try {
+        const applied = await db.runTransaction(async tx => {
+          const fresh = await tx.get(doc.ref);
+          if (!fresh.exists) return false;
+          const p = fresh.data()!;
+          // الشرط الحاسم: لا تمرّ فوق دفعة صارت مسدَّدة
+          if (p['status'] !== 'pending') return false;
+          if (!p['dueDate'] || String(p['dueDate']) >= todayStr) return false;
+          tx.update(doc.ref, { status: 'overdue' });
+          return true;
+        });
 
-    // Process each org
-    for (const [orgId, orgDocs] of docsByOrg.entries()) {
-      const chunkSize = 400;
-      for (let i = 0; i < orgDocs.length; i += chunkSize) {
-        const chunk = orgDocs.slice(i, i + chunkSize);
-        const batch = db.batch();
-        chunk.forEach(doc => batch.update(doc.ref, { status: 'overdue' }));
-        await batch.commit();
+        if (applied) markedByOrg.set(orgId, (markedByOrg.get(orgId) ?? 0) + 1);
+        else skipped++;
+      } catch (e) {
+        skipped++;
+        logger.error('[dailyPaymentOverdue] failed', { orgId, paymentId: doc.id, error: String(e) });
       }
+    }
 
+    for (const [orgId, count] of markedByOrg) {
       await addAuditLog(
         orgId,
         'edit', 'دفعة', 'تشغيل تلقائي',
-        `تم تحويل ${orgDocs.length} دفعة إلى متأخرة تلقائياً`,
+        `تم تحويل ${count} دفعة إلى متأخرة تلقائياً`,
       );
     }
 
-    logger.info(`[dailyPaymentOverdue] marked ${snap.size} payments as overdue across all orgs`);
+    logger.info('[dailyPaymentOverdue] done', {
+      scanned: snap.size,
+      marked: [...markedByOrg.values()].reduce((a, b) => a + b, 0),
+      skipped,
+    });
   },
 );
 
