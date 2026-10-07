@@ -16,7 +16,7 @@ import { FormInput } from '../components/forms/FormInput';
 import { FormSelect } from '../components/forms/FormSelect';
 import { FormDatePicker } from '../components/forms/FormDatePicker';
 import { FormContainer } from '../components/ui/FormContainer';
-import { AlertModal } from '../components/ui/Modal';
+import { AlertModal, ConfirmModal } from '../components/ui/Modal';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { Contract } from '../data/mockData';
 import { scanContractImage } from '../lib/contractScanClient';
@@ -27,7 +27,7 @@ import {
 
 export default function ScanContractScreen() {
   const { colors } = useAppTheme();
-  const { tenants, units, properties, contracts, addContract, canWrite } = useApp();
+  const { tenants, units, properties, contracts, addContract, updateContract, canWrite } = useApp();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [busy, setBusy]         = useState(false);
@@ -36,6 +36,13 @@ export default function ScanContractScreen() {
   const [alert, setAlert]       = useState<{ title: string; message: string; variant: 'info' | 'warning' } | null>(null);
   const [needsKey, setNeedsKey] = useState(false);
   const [saving, setSaving] = useState(false);
+  // تحديث معلَّق على موافقتك: يحمل الفرق المعروض والرقعة التي ستُكتب
+  const [pendingUpdate, setPendingUpdate] = useState<{
+    id: string;
+    number: string;
+    changes: { label: string; from: string; to: string }[];
+    patch: Partial<Contract>;
+  } | null>(null);
 
   // نتيجة القراءة بعد تطبيق تعديلاتك عليها
   const result: ExtractionResult | null = useMemo(() => {
@@ -98,17 +105,47 @@ export default function ScanContractScreen() {
     const d = result.draft;
     if (!d.tenantId || !d.unitId || !d.startDate || !d.endDate || !d.annualValue) return;
 
-    // كشف التكرار: مسح أرشيف كامل قد يُعيد العقد نفسه مرتين
+    // العقد مسجَّل مسبقاً ⇒ تحديثٌ بموافقة، لا نسخة ثانية ولا باب مسدود.
+    // النسخة المكررة تُفسد التقارير والتحصيل، والإدخال اليدوي يُهدر القراءة.
     const number = d.contractNumber?.trim();
     if (number) {
       const dup = contracts.find(c => c.contractNumber?.trim() === number);
       if (dup) {
-        setAlert({
-          title: 'العقد مسجَّل مسبقاً',
-          message: `العقد ${number} موجود في النظام بالفعل. افتحه لتعديله بدل إضافة نسخة ثانية — `
-                 + `النسخة المكررة تُفسد التقارير والتحصيل.`,
-          variant: 'warning',
-        });
+        const money = (n: number) => n.toLocaleString('en-US');
+        const diffs: { label: string; from: string; to: string }[] = [];
+        const patch: Partial<Contract> = {};
+
+        if (d.startDate && d.startDate !== dup.startDate) {
+          diffs.push({ label: 'تاريخ البداية', from: dup.startDate, to: d.startDate });
+          patch.startDate = d.startDate;
+        }
+        if (d.endDate && d.endDate !== dup.endDate) {
+          diffs.push({ label: 'تاريخ النهاية', from: dup.endDate, to: d.endDate });
+          patch.endDate = d.endDate;
+        }
+        if (d.annualValue && Number(d.annualValue) !== Number(dup.annualValue)) {
+          diffs.push({ label: 'القيمة السنوية', from: money(dup.annualValue), to: money(d.annualValue) });
+          patch.annualValue = d.annualValue;
+        }
+        if (d.installmentsCount && Number(d.installmentsCount) !== Number(dup.installmentsCount)) {
+          diffs.push({
+            label: 'عدد الأقساط',
+            from: String(dup.installmentsCount), to: String(d.installmentsCount),
+          });
+          patch.installmentsCount = d.installmentsCount;
+        }
+        // الوحدة والمستأجر لا يُغيَّران من هنا: نقل المستأجر له شاشته التي
+        // تحسب الرصيد المُرحَّل. تغييرهما صامتاً يُفسد الحسابات.
+
+        if (diffs.length === 0) {
+          setAlert({
+            title: 'لا جديد',
+            message: `العقد ${number} مسجَّل ومطابق للصورة. لم يتغيّر شيء.`,
+            variant: 'info',
+          });
+          return;
+        }
+        setPendingUpdate({ id: dup.id, number, changes: diffs, patch });
         return;
       }
     }
@@ -142,6 +179,26 @@ export default function ScanContractScreen() {
           variant: 'info',
         }
       : { title: 'تعذّر الحفظ', message: res.error ?? 'لم يتغيّر شيء.', variant: 'warning' });
+  };
+
+  /** يُنفَّذ بعد موافقتك فقط. updateContract ذرّي ويرفض قبل الكتابة إن أضرّ بالسجل. */
+  const confirmUpdate = async () => {
+    const pu = pendingUpdate;
+    setPendingUpdate(null);
+    if (!pu || !canWrite || saving) return;
+
+    setSaving(true);
+    const res = await updateContract(pu.id, pu.patch);
+    setSaving(false);
+
+    setAlert(res.ok
+      ? {
+          title: 'تم التحديث',
+          message: `حُدِّث العقد ${pu.number}. المسدَّد والمتأخر محفوظان كما هما؛ `
+                 + `أُعيدت جدولة الأقساط المعلّقة فقط.`,
+          variant: 'info',
+        }
+      : { title: 'تعذّر التحديث', message: res.error ?? 'لم يتغيّر شيء.', variant: 'warning' });
   };
 
   const closeAlert = () => {
@@ -310,6 +367,21 @@ export default function ScanContractScreen() {
         )}
       </ScrollView></FormContainer>
 
+      <ConfirmModal
+        visible={!!pendingUpdate}
+        onClose={() => setPendingUpdate(null)}
+        onConfirm={confirmUpdate}
+        title={`تحديث العقد ${pendingUpdate?.number ?? ''}`}
+        message={
+          'هذا العقد مسجَّل. سيُحدَّث بما قرأته الصورة:\n\n'
+          + (pendingUpdate?.changes ?? [])
+              .map(c => `• ${c.label}: ${c.from} ← ${c.to}`).join('\n')
+          + '\n\nلن يُحذف شيء: المسدَّد والمتأخر يبقيان، وتُعاد جدولة الأقساط '
+          + 'المعلّقة فقط. ولو كانت القيمة الجديدة أقل من الالتزامات المسجَّلة '
+          + 'فسيُرفض التحديث قبل أي كتابة.'
+        }
+        confirmLabel="حدّث العقد"
+      />
       <AlertModal visible={!!alert} onClose={closeAlert}
                   title={alert?.title ?? ''} message={alert?.message ?? ''}
                   variant={alert?.variant ?? 'info'} />

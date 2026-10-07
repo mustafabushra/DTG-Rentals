@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ContractScheduleService, type ContractTerms } from './ContractScheduleService';
-import type { Payment } from '../../data/mockData';
+import type { Payment, PaymentStatus } from '../../data/mockData';
 
 const TODAY = '2026-09-14';
 
@@ -37,6 +37,53 @@ describe('التحقق من القيم قبل أي كتابة', () => {
     for (const c of [0, -1, 2.5]) {
       expect(plan(terms(), [], { installmentsCount: c })).toMatchObject({ ok: false, code: 'INVALID_COUNT' });
     }
+  });
+});
+
+describe('الثابت: لا يُحذف إلا المعلّق — على كل الحالات', () => {
+  // PaymentStatus = paid | pending | overdue. السجل هنا Record عن قصد:
+  // لو أُضيفت حالة جديدة للنموزج ستُسقط الترجمة هنا حتى يُفحص الثابت
+  // عليها أيضاً — فالشمول مُلزَم من نظام الأنواع لا من انتباهنا.
+  const NON_PENDING: Record<Exclude<PaymentStatus, 'pending'>, true> = {
+    paid: true, overdue: true,
+  };
+  const STATUSES = Object.keys(NON_PENDING) as Exclude<PaymentStatus, 'pending'>[];
+
+  for (const status of STATUSES) {
+    it(`«${status}» لا يدخل removeIds مهما كان التعديل`, () => {
+      const kept = pay({ id: 'kept', status, amount: 20000, dueDate: '2026-04-01', installmentNumber: 2 });
+      const pending = pay({ id: 'pend', status: 'pending', amount: 20000, dueDate: '2026-07-01', installmentNumber: 3 });
+
+      const patches: Partial<ContractTerms>[] = [
+        { annualValue: 120000 },
+        { annualValue: 120000, installmentsCount: 6 },
+        { installmentsCount: 12 },
+        { annualValue: 200000, installmentsCount: 2 },
+      ];
+
+      for (const patch of patches) {
+        const r = plan(terms(), [kept, pending], patch);
+        if (!r.ok) continue;                      // الرفض قبل الكتابة مقبول
+        expect(r.removeIds).not.toContain('kept');
+      }
+    });
+  }
+
+  it('حتى لو كانت كل الدفعات محفوظة، removeIds يبقى فارغاً', () => {
+    const all = [
+      pay({ id: 'a', status: 'paid',    amount: 20000, dueDate: '2026-01-01', installmentNumber: 1 }),
+      pay({ id: 'b', status: 'overdue', amount: 20000, dueDate: '2026-04-01', installmentNumber: 2 }),
+    ];
+    const r = plan(terms(), all, { annualValue: 100000, installmentsCount: 5 });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.removeIds).toEqual([]);
+  });
+
+  it('خفض القيمة تحت الالتزامات يُرفض بلا أي إزالة', () => {
+    const paid = pay({ id: 'paid', status: 'paid', amount: 60000, dueDate: '2026-01-01', installmentNumber: 1 });
+    const r = plan(terms(), [paid], { annualValue: 10000 });
+    expect(r).toMatchObject({ ok: false, code: 'VALUE_BELOW_OBLIGATIONS' });
+    expect(r).not.toHaveProperty('removeIds');
   });
 });
 
