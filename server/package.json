@@ -1,8 +1,0 @@
-{
-  "name": "dtg-rentals-contract-scan",
-  "private": true,
-  "version": "1.0.0",
-  "type": "module",
-  "description": "Serverless endpoint: contract image to structured data. Holds the API key outside the client bundle.",
-  "engines": { "node": ">=20" }
-}

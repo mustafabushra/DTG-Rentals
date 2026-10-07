@@ -1,20 +1,22 @@
 /**
- * عميل قراءة العقود — ينادي نقطة النهاية التي تحمل المفتاح.
+ * عميل قراءة العقود — ينادي دالة Cloud Function القابلة للنداء.
  *
- * الرابط يأتي من متغيّر بيئة. بلا ضبطه تبقى الميزة **معطّلة بوضوح** لا مكسورة:
- * `isScanConfigured()` تُخبر الشاشة فتعرض سبباً مفهوماً بدل خطأ شبكة غامض.
+ * اختيار `httpsCallable` على نقطة نهاية علنية مقصود: الهوية تُرسَل وتُتحقَّق
+ * تلقائياً، فلا رموز نُديرها بأيدينا ولا CORS ولا رابط علني يُستنزف. والسرّ
+ * (مفتاح الخدمة) يسكن Secret Manager في مشروعك لا في حزمة الويب.
+ *
+ * الدالة تحتاج خطة Blaze لتُنشر. قبل نشرها تبقى الميزة **معطّلة بوضوح** لا
+ * مكسورة: الشاشة تعرض سبباً مفهوماً وخياراً للإدخال اليدوي.
  */
-import { getFirebaseAuth } from './firebase';
+import { getFunctions, httpsCallable, type FunctionsError } from 'firebase/functions';
+import app, { getFirebaseAuth } from './firebase';
 import type { RawExtraction } from '../domain/services/ContractExtractionService';
 
-const ENDPOINT = process.env.EXPO_PUBLIC_CONTRACT_SCAN_URL ?? '';
+const REGION = 'us-central1';
+const FN_NAME = 'extractContract';
 
-/** حجم الصورة المقبول عند الخادم — نفحصه هنا أيضاً فلا نرسل ما سيُرفض. */
+/** حدّ الحجم المطبَّق على الخادم — نفحصه هنا أيضاً فلا نرسل ما سيُرفض. */
 export const MAX_SCAN_BYTES = 5 * 1024 * 1024;
-
-export function isScanConfigured(): boolean {
-  return ENDPOINT.length > 0;
-}
 
 export type ScanResult =
   | { ok: true; extraction: RawExtraction }
@@ -28,13 +30,6 @@ export async function scanContractImage(
   imageBase64: string,
   mimeType: string,
 ): Promise<ScanResult> {
-  if (!isScanConfigured()) {
-    return {
-      ok: false, code: 'NOT_CONFIGURED',
-      message: 'قراءة العقود غير مهيّأة بعد. راجع server/README.md لنشر نقطة النهاية.',
-    };
-  }
-
   const approxBytes = Math.floor((imageBase64.length * 3) / 4);
   if (approxBytes > MAX_SCAN_BYTES) {
     return {
@@ -43,36 +38,41 @@ export async function scanContractImage(
     };
   }
 
-  const auth = getFirebaseAuth();
-  const user = auth?.currentUser;
-  if (!user) {
+  if (!getFirebaseAuth()?.currentUser) {
     return { ok: false, code: 'NO_SESSION', message: 'جلستك غير نشطة. أعد تسجيل الدخول.' };
   }
 
-  let token: string;
   try {
-    token = await user.getIdToken();
-  } catch {
-    return { ok: false, code: 'NO_TOKEN', message: 'تعذّر التحقق من جلستك. أعد تسجيل الدخول.' };
-  }
+    const fn = httpsCallable<
+      { imageBase64: string; mimeType: string },
+      { extraction: RawExtraction }
+    >(getFunctions(app, REGION), FN_NAME);
 
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify({ imageBase64, mimeType }),
-    });
-
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.ok) {
+    const res = await fn({ imageBase64, mimeType });
+    const extraction = res.data?.extraction;
+    if (!extraction) {
       return {
-        ok: false,
-        code: data?.code ?? `HTTP_${res.status}`,
-        message: data?.message ?? 'تعذّرت قراءة الصورة. أعد المحاولة أو أدخل البيانات يدوياً.',
+        ok: false, code: 'EMPTY',
+        message: 'لم تُقرأ أي بيانات من الصورة. أدخل البيانات يدوياً.',
       };
     }
-    return { ok: true, extraction: data.extraction as RawExtraction };
-  } catch {
+    return { ok: true, extraction };
+  } catch (e) {
+    const err = e as FunctionsError;
+    // الدالة غير منشورة بعد — نميّزها عن أعطال الشبكة لأن علاجها مختلف
+    if (err?.code === 'functions/not-found') {
+      return {
+        ok: false, code: 'NOT_DEPLOYED',
+        message: 'خدمة القراءة غير منشورة بعد. راجع functions/README-scan.md لنشرها.',
+      };
+    }
+    if (err?.code === 'functions/unauthenticated') {
+      return { ok: false, code: 'NO_SESSION', message: 'جلستك غير صالحة. أعد تسجيل الدخول.' };
+    }
+    // رسائل الدالة عربية أصلاً، فتُعرض كما هي
+    if (typeof err?.message === 'string' && err.message.trim().length > 0 && err.code) {
+      return { ok: false, code: err.code, message: err.message };
+    }
     return {
       ok: false, code: 'NETWORK',
       message: 'تعذّر الوصول إلى خدمة القراءة. تحقّق من الإنترنت وأعد المحاولة.',

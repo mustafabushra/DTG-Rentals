@@ -19,7 +19,7 @@ import { FormContainer } from '../components/ui/FormContainer';
 import { AlertModal } from '../components/ui/Modal';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { Contract } from '../data/mockData';
-import { isScanConfigured, scanContractImage } from '../lib/contractScanClient';
+import { scanContractImage } from '../lib/contractScanClient';
 import {
   buildDraft, isReadyToSave,
   type RawExtraction, type ExtractionResult,
@@ -34,8 +34,7 @@ export default function ScanContractScreen() {
   const [raw, setRaw]           = useState<RawExtraction | null>(null);
   const [edits, setEdits]       = useState<Record<string, string>>({});
   const [alert, setAlert]       = useState<{ title: string; message: string; variant: 'info' | 'warning' } | null>(null);
-
-  const configured = isScanConfigured();
+  const [notDeployed, setNotDeployed] = useState(false);
 
   // نتيجة القراءة بعد تطبيق تعديلاتك عليها
   const result: ExtractionResult | null = useMemo(() => {
@@ -84,8 +83,9 @@ export default function ScanContractScreen() {
     setBusy(true);
     const scan = await scanContractImage(asset.base64, asset.mimeType ?? 'image/jpeg');
     setBusy(false);
-    if (scan.ok) setRaw(scan.extraction);
-    else setAlert({ title: 'تعذّرت القراءة', message: scan.message, variant: 'warning' });
+    if (scan.ok) { setRaw(scan.extraction); return; }
+    if (scan.code === 'NOT_DEPLOYED') { setNotDeployed(true); return; }
+    setAlert({ title: 'تعذّرت القراءة', message: scan.message, variant: 'warning' });
   };
 
   const edit = (key: string) => (val: string) => setEdits(e => ({ ...e, [key]: val }));
@@ -125,18 +125,18 @@ export default function ScanContractScreen() {
     if (done) router.replace('/(tabs)/contracts');
   };
 
-  // ── الميزة غير مهيّأة: سبب واضح لا خطأ غامض ──
-  if (!configured) {
+  // الدالة غير منشورة: يُكتشف عند أول محاولة، فتُعرض الخطوات لا خطأ غامض
+  if (notDeployed) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <AppHeader title="مسح عقد" />
         <View style={styles.center}>
-          <Ionicons name="construct-outline" size={46} color={colors.textMuted} />
-          <Text style={[styles.offTitle, { color: colors.text }]}>القراءة غير مهيّأة بعد</Text>
+          <Ionicons name="cloud-offline-outline" size={46} color={colors.textMuted} />
+          <Text style={[styles.offTitle, { color: colors.text }]}>خدمة القراءة غير منشورة بعد</Text>
           <Text style={[styles.offBody, { color: colors.textSecondary }]}>
-            قراءة العقود تحتاج نقطة نهاية تحمل مفتاح الخدمة، لأن المفتاح لا يجوز أن يكون
-            داخل التطبيق. خطوات النشر في <Text style={styles.mono}>server/README.md</Text>،
-            وبعدها اضبط <Text style={styles.mono}>EXPO_PUBLIC_CONTRACT_SCAN_URL</Text>.
+            قراءة العقود تحتاج دالة في مشروعك تحمل مفتاح الخدمة، لأن المفتاح لا يجوز أن
+            يكون داخل التطبيق. الدالة مكتوبة وجاهزة؛ خطوات نشرها في
+            <Text style={styles.mono}> functions/README-scan.md</Text>.
           </Text>
           <TouchableOpacity
             style={[styles.secondaryBtn, { borderColor: colors.border }]}
