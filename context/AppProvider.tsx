@@ -465,7 +465,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const updatedContracts = rawContracts.map(c => {
             if (c.status === 'active' && c.endDate < today) {
               unitUpdatesMap[c.unitId] = { status: 'vacant', currentTenantId: undefined, currentContractId: undefined };
-              updateOne(getActiveOrgId(), 'contracts', c.id, { status: 'expired' }).catch(() => {});
+              updateOne(getActiveOrgId(), 'contracts', c.id, { status: 'expired' })
+                .catch(e => console.error('[SYNC_FAILED] contract→expired', c.id, e));
               return { ...c, status: 'expired' as ContractStatus };
             }
             return c;
@@ -490,13 +491,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (u.status !== 'rented' || u.currentContractId !== activeContract.id) {
                 const fix = { status: 'rented' as UnitStatus, currentContractId: activeContract.id, currentTenantId: activeContract.tenantId };
                 console.log(`[UNIT_SYNC] ${u.id} → rented (active contract ${activeContract.id})`);
-                updateOne(getActiveOrgId(), 'units', u.id, fix).catch(() => {});
+                updateOne(getActiveOrgId(), 'units', u.id, fix)
+                  .catch(e => console.error('[SYNC_FAILED] unit→rented', u.id, e));
                 return { ...u, ...fix };
               }
             } else if (u.status === 'rented') {
               // الوحدة مؤجرة لكن لا يوجد عقد نشط → شاغرة
               console.log(`[UNIT_SYNC] ${u.id} → vacant (no active contract)`);
-              updateOne(getActiveOrgId(), 'units', u.id, { status: 'vacant', currentTenantId: null, currentContractId: null }).catch(() => {});
+              updateOne(getActiveOrgId(), 'units', u.id, { status: 'vacant', currentTenantId: null, currentContractId: null })
+                .catch(e => console.error('[SYNC_FAILED] unit→vacant', u.id, e));
               return { ...u, status: 'vacant' as const, currentTenantId: undefined, currentContractId: undefined };
             }
             return u;
@@ -599,7 +602,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 ownerDataIsolation: doc.ownerDataIsolation ?? true,
               }));
             }
-          }).catch(() => {});
+          }).catch(e => console.error('[SYNC_FAILED] settings/system load', e));
 
       // ── تحميل المدن ────────────────────────────────────────────────────────
       let citiesData = await getAll(getActiveOrgId(), 'cities');
@@ -1341,7 +1344,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // إذا لم تكن currency محددة أصلاً → اكتبها في Firestore (SAR أو ما استُنتج)
       if (!p.currency || p.currency !== topCurrency) {
-        updateOne(getActiveOrgId(), 'properties', p.id, { currency: topCurrency }).catch(() => {});
+        updateOne(getActiveOrgId(), 'properties', p.id, { currency: topCurrency })
+          .catch(e => console.error('[SYNC_FAILED] property currency', p.id, e));
         return { ...p, currency: topCurrency };
       }
       return p;
@@ -1363,7 +1367,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ?? loadedProperties.find(p => p.id === u.propertyId)?.currency
         ?? 'SAR';
       if (inherited && inherited !== u.currency) {
-        updateOne(getActiveOrgId(), 'units', u.id, { currency: inherited }).catch(() => {});
+        updateOne(getActiveOrgId(), 'units', u.id, { currency: inherited })
+          .catch(e => console.error('[SYNC_FAILED] unit currency', u.id, e));
         return { ...u, currency: inherited };
       }
       return u;
@@ -1391,7 +1396,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const needsStructureUpdate = !p.unitStructure;
 
       if (needsStructureUpdate) {
-        updateOne(getActiveOrgId(), 'properties', p.id, { unitStructure: structure }).catch(() => {});
+        updateOne(getActiveOrgId(), 'properties', p.id, { unitStructure: structure })
+          .catch(e => console.error('[SYNC_FAILED] property unitStructure', p.id, e));
       }
 
       // ② إنشاء وحدة رئيسية للعقارات الفردية بدون وحدات
@@ -1416,7 +1422,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // تحقق إضافي: لا تنشئ إذا كان ID موجوداً بالفعل في Firestore
           const alreadyExists = loadedUnits.some(u => u.id === autoUnit.id);
           if (!alreadyExists) {
-            setOne(getActiveOrgId(), 'units', autoUnit.id, autoUnit).catch(() => {});
+            setOne(getActiveOrgId(), 'units', autoUnit.id, autoUnit)
+          .catch(e => console.error('[SYNC_FAILED] auto main unit', autoUnit.id, e));
             newUnits.push(autoUnit);
           }
         }
@@ -2668,7 +2675,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       details: `استعادة نسخة احتياطية — التوقيت: ${ts} — المستخدم: ${currentUser.name}`,
     };
     setAuditLogs(prev => [log, ...prev]);
-    setOne(getActiveOrgId(), 'auditLogs', log.id, log).catch(() => {});
+    setOne(getActiveOrgId(), 'auditLogs', log.id, log)
+      .catch(e => console.error('[AUDIT_LOST] نقص في سجل التدقيق — لم يُحفظ', log.id, e));
   }, [userId, currentUser.name, currentUser.email]);
 
   // ─── System Settings ──────────────────────────────────────────────────────
@@ -2683,7 +2691,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const login = (_email: string, _password: string): boolean => true;
   const logout = () => {
     console.log('[Auth] Logout session cleared only (data preserved in Firestore and cache)');
-    import('../lib/auth').then(m => m.logoutUser()).catch(() => {});
+    import('../lib/auth').then(m => m.logoutUser())
+      .catch(e => console.error('[LOGOUT_FAILED] الجلسة قد تبقى مفتوحة', e));
     setIsAuthenticated(false);
   };
   const updateProfile = (data: Partial<AppState['currentUser']>) => {
