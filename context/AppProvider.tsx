@@ -8,10 +8,11 @@ import { BookingService } from '../domain/services/BookingService';
 import { RenewalService } from '../domain/services/RenewalService';
 import { ContractScheduleService } from '../domain/services/ContractScheduleService';
 import { derivePreview, canWriteDuringPreview } from '../domain/services/ownerPreview';
+import { TransferService, type TransferContract } from '../domain/services/TransferService';
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
-import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction, withFieldDeletes, updateIfFieldEquals, runContractRescheduleTransaction, runRenewalTransaction, TxError } from '../lib/firestoreService';
+import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction, withFieldDeletes, updateIfFieldEquals, runContractRescheduleTransaction, runRenewalTransaction, runTransferTransaction, TxError } from '../lib/firestoreService';
 import { reconcileSnapshot, writeKey, pruneWrites, isLocallyNewer } from '../domain/services/SnapshotReconciler';
 import {
   SystemSettings, DEFAULT_SYSTEM_SETTINGS, resolvePermissions,
@@ -82,6 +83,18 @@ interface AppContextType extends AppState {
   confirmPayment: (id: string) => void;
   /** يجدّد العقد لفترة جديدة مع حفظ كل سجل الفترة السابقة. */
   renewContract: (id: string) => Promise<{ ok: boolean; error?: string; term?: { startDate: string; endDate: string } }>;
+  /** ينقل مستأجر عقدٍ إلى وحدة أخرى، مرحِّلاً رصيده. يرفض قبل أي كتابة عند الغموض. */
+  transferTenant: (input: {
+    contractId: string;
+    transferDate: string;
+    newUnitId: string;
+    newAnnualValue: number;
+    newInstallmentsCount: number;
+    newStartDate: string;
+    newEndDate: string;
+    creditOverride?: number | null;
+    creditNote?: string;
+  }) => Promise<{ ok: boolean; error?: string; newContractId?: string; netDue?: number }>;
   /** يسجّل إرسال تذكير تجديد لهذه العقود. */
   markContractsReminded: (ids: string[]) => void;
   /** يسجّل أن تذكيراً أُرسل للمستأجر بهذه الدفعات (لتتبّع من ذُكِّر ومتى). */
@@ -1767,6 +1780,171 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { ok: true, term };
   };
 
+  const transferInFlightRef = useRef<Set<string>>(new Set());
+
+  /**
+   * نقل مستأجر من وحدته إلى أخرى مع ترحيل رصيده — **معاملة ذرّية**.
+   *
+   * بلا هذه الدالة كان الإجراء يدوياً ومكسوراً: إنهاء العقد يحوّل أقساطه غير
+   * المستحقة إلى "متأخر" فيظهر المستأجر مطالَباً بمال لا يدين به، ورصيده
+   * (ما دفعه عن مدة لن يشغلها) يختفي من الدفاتر لأن النظام لا يعرفه.
+   *
+   * هنا: القيمة التعاقدية للعقد الجديد تبقى كما هي، والرصيد يُسجَّل عليه
+   * كـopeningCredit فيُخصم من جدول الأقساط وحده — فتظل التقارير صادقة.
+   */
+  const transferTenant = async (input: {
+    contractId: string;
+    transferDate: string;
+    newUnitId: string;
+    newAnnualValue: number;
+    newInstallmentsCount: number;
+    newStartDate: string;
+    newEndDate: string;
+    creditOverride?: number | null;
+    creditNote?: string;
+  }): Promise<{ ok: boolean; error?: string; newContractId?: string; netDue?: number }> => {
+    const { contractId } = input;
+    if (transferInFlightRef.current.has(contractId)) {
+      return { ok: false, error: 'طلب النقل قيد التنفيذ بالفعل.' };
+    }
+    const old = contracts.find(c => c.id === contractId);
+    if (!old) return { ok: false, error: 'العقد غير موجود.' };
+
+    const asTransfer: TransferContract = {
+      id: old.id, contractNumber: old.contractNumber, tenantId: old.tenantId,
+      unitId: old.unitId, startDate: old.startDate, endDate: old.endDate,
+      annualValue: old.annualValue, installmentsCount: old.installmentsCount,
+      currency: old.currency, ownerId: old.ownerId,
+    };
+
+    // الخطوة الأولى: التخطيط — يرفض قبل أي كتابة
+    const plan = TransferService.planTransfer({ contract: asTransfer, payments, ...input });
+    if (!plan.ok) return { ok: false, error: plan.reason };
+
+    const newUnit  = units.find(u => u.id === input.newUnitId);
+    const newOwner = newUnit?.ownerId ?? properties.find(p => p.id === newUnit?.propertyId)?.ownerId;
+    // معرّف ثابت مشتقّ من العقد والتاريخ: الضغط المزدوج لا يُنشئ عقدين
+    const newId    = `ct_tr_${contractId}_${input.newStartDate}`;
+    const currency = old.currency ?? newUnit?.currency
+      ?? properties.find(p => p.id === newUnit?.propertyId)?.currency;
+
+    // الجدول يُبنى على المستحق الصافي، والقيمة التعاقدية تبقى كما هي على العقد
+    const schedule = RenewalService.generateSchedule({
+      startDate:         input.newStartDate,
+      endDate:           input.newEndDate,
+      annualValue:       plan.netDue,
+      installmentsCount: input.newInstallmentsCount,
+      startingNumber:    1,
+    });
+
+    const newContract: Contract = {
+      id: newId,
+      contractNumber: `CNT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+      unitId: input.newUnitId,
+      tenantId: old.tenantId,
+      ...(newOwner ? { ownerId: newOwner } : {}),
+      startDate: input.newStartDate,
+      endDate: input.newEndDate,
+      annualValue: plan.newAnnualValue,
+      installmentsCount: input.newInstallmentsCount,
+      status: 'active',
+      ...(currency ? { currency } : {}),
+      createdAt: new Date().toISOString(),
+      openingCredit: plan.credit,
+      transferredFromContractId: contractId,
+      transferredAt: new Date().toISOString(),
+      ...(input.creditNote?.trim() ? { transferCreditNote: input.creditNote.trim() } : {}),
+    };
+
+    const newPayments: Payment[] = schedule.map(inst => ({
+      id: `pay_${newId}_n${inst.installmentNumber}`,
+      receiptNumber: `RCP-PENDING-${inst.installmentNumber}`,
+      contractId: newId,
+      ...(newOwner ? { ownerId: newOwner } : {}),
+      amount: inst.amount,
+      dueDate: inst.dueDate,
+      status: 'pending' as const,
+      installmentNumber: inst.installmentNumber,
+      ...(currency ? { currency } : {}),
+    }));
+
+    const stamp = new Date().toISOString();
+    const oldPatch: Partial<Contract> = {
+      status: 'terminated',
+      cancelledAt: stamp,
+      cancelledBy: currentUser.name,
+      cancellationReason: `نقل المستأجر إلى وحدة أخرى — رصيد مُرحَّل ${plan.credit}`,
+      transferredToContractId: newId,
+      transferredAt: stamp,
+    };
+    const newUnitPatch = {
+      status: 'rented' as UnitStatus,
+      currentTenantId: old.tenantId,
+      currentContractId: newId,
+    };
+    const tenant = tenants.find(t => t.id === old.tenantId);
+    const tenantContractIds = Array.from(new Set([...(tenant?.contractIds ?? []), newId]));
+
+    transferInFlightRef.current.add(contractId);
+    try {
+      await runTransferTransaction({
+        orgId: getActiveOrgId(),
+        oldContractId: contractId,
+        oldUnitId: old.unitId,
+        expectOldStatus: old.status,
+        oldContractPatch: oldPatch,
+        cancelPaymentIds: plan.cancelIds,
+        newContractId: newId,
+        newContract,
+        newUnitId: input.newUnitId,
+        newUnitPatch,
+        newPayments: newPayments.map(p => ({ id: p.id, data: p })),
+        tenantId: old.tenantId,
+        tenantContractIds,
+      });
+    } catch (e: any) {
+      const code = e instanceof TxError ? e.code : e?.code;
+      const msg =
+        code === 'UNIT_CONFLICT'        ? 'الوحدة الجديدة مرتبطة بعقد آخر. أنهِ ذلك العقد أو اختر وحدة أخرى.'
+      : code === 'NEW_CONTRACT_EXISTS'  ? 'سُجِّل هذا النقل بالفعل. أعد تحميل الصفحة للاطلاع عليه.'
+      : code === 'OLD_CONTRACT_CHANGED' ? 'تغيّرت حالة العقد الحالي من جهاز آخر. أعد فتح الصفحة ثم حاول.'
+      : code === 'OLD_CONTRACT_MISSING' ? 'العقد الحالي لم يعد موجوداً.'
+      : code === 'permission-denied'    ? 'ليس لديك صلاحية تنفيذ النقل.'
+      : 'تعذّر حفظ النقل. لم يتغيّر شيء — تحقّق من الاتصال وحاول مجدداً.';
+      console.error('[TRANSFER] transaction failed', e);
+      return { ok: false, error: msg };
+    } finally {
+      transferInFlightRef.current.delete(contractId);
+    }
+
+    // نجحت المعاملة، فالآن فقط تُحدَّث الحالة المحلية
+    [contractId, newId].forEach(id => noteLocalWrite('contracts', id));
+    [old.unitId, input.newUnitId].forEach(id => noteLocalWrite('units', id));
+    noteLocalWrite('tenants', old.tenantId);
+    [...plan.cancelIds, ...newPayments.map(p => p.id)].forEach(id => noteLocalWrite('payments', id));
+
+    const cancelled  = new Set(plan.cancelIds);
+    const createdIds = new Set(newPayments.map(p => p.id));
+    setContracts(prev => [
+      ...prev.map(c => c.id === contractId ? { ...c, ...oldPatch } : c).filter(c => c.id !== newId),
+      newContract,
+    ]);
+    setPayments(prev => [
+      ...prev.filter(p => !cancelled.has(p.id) && !createdIds.has(p.id)),
+      ...newPayments,
+    ]);
+    setUnits(prev => prev.map(u =>
+      u.id === old.unitId      ? { ...u, status: 'vacant' as UnitStatus, currentTenantId: undefined, currentContractId: undefined }
+    : u.id === input.newUnitId  ? { ...u, ...newUnitPatch }
+    : u));
+    setTenants(prev => prev.map(t => t.id === old.tenantId ? { ...t, contractIds: tenantContractIds } : t));
+
+    addAuditEntry('edit', 'عقد', old.contractNumber || contractId,
+      `نقل المستأجر إلى وحدة أخرى — رصيد مُرحَّل ${plan.credit}، مستحق صافٍ ${plan.netDue}`
+      + `${input.creditNote?.trim() ? ` — ${input.creditNote.trim()}` : ''}`);
+    return { ok: true, newContractId: newId, netDue: plan.netDue };
+  };
+
   /** تسجيل إرسال تذكير تجديد — بعد فتح المراسلة فعلاً. */
   const markContractsReminded = (ids: string[]) => {
     if (ids.length === 0) return;
@@ -2620,7 +2798,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addContract, updateContract, deleteContract, terminateContract,
       addPayment, updatePayment, confirmPayment, cancelPayment, deletePayment, markPaymentsReminded,
       previewOwnerId, previewing, startOwnerPreview, stopOwnerPreview,
-      renewContract, markContractsReminded,
+      renewContract, markContractsReminded, transferTenant,
       addMaintenance, updateMaintenance, deleteMaintenance,
       addBooking, updateBooking, cancelBooking, deleteBooking,
       cancelContract, addCalendarEvent, deleteCalendarEvent,

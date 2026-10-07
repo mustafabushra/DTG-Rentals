@@ -23,6 +23,8 @@ export interface ContractTerms {
   installmentsCount: number;
   ownerId?:          string;
   currency?:         string;
+  /** رصيد مُرحَّل من عقد سابق — التزامات الفترة = القيمة السنوية − هذا الرصيد. */
+  openingCredit?:    number;
 }
 
 export interface PlannedInstallment {
@@ -42,6 +44,8 @@ export interface ReschedulePlan {
   /** التزامات فترات سابقة — محفوظة ولا تُخصم من قيمة الفترة الحالية. */
   preservedPrior:   number;
   remainingValue:   number;
+  /** الرصيد المُرحَّل المخصوم من التزامات هذه الفترة. */
+  openingCredit:    number;
 }
 
 export interface RescheduleRejection {
@@ -166,7 +170,17 @@ export const ContractScheduleService = {
     }
 
     // ── ④ المال: القيمة الجديدة لا يجوز أن تقل عن التزامات هذه الفترة ─────
-    const remainingValue = Math.round(value - preservedInTerm);
+    // الرصيد المُرحَّل من عقد سابق يُخصم من الالتزامات: المستأجر سدّده مرة ولا يدين به ثانياً.
+    // بلا هذا الخصم، أي تعديل لاحق على العقد يُعيد توليد جدول بكامل القيمة فيُطالَب بالرصيد مجدداً.
+    const opening = Math.max(0, Number(next.openingCredit) || 0);
+    if (opening > value) {
+      return {
+        ok: false, code: 'VALUE_BELOW_OBLIGATIONS',
+        reason: `الرصيد المُرحَّل (${money(opening)}) أكبر من القيمة السنوية (${money(value)}). `
+              + `راجع قيمة العقد أو الرصيد المسجَّل عليه.`,
+      };
+    }
+    const remainingValue = Math.round(value - opening - preservedInTerm);
     if (remainingValue < 0) {
       return {
         ok: false,
@@ -193,7 +207,7 @@ export const ContractScheduleService = {
         ok: true,
         removeIds: reschedulable.map(p => p.id),
         create: [],
-        preservedInTerm, preservedPrior, remainingValue,
+        preservedInTerm, preservedPrior, remainingValue, openingCredit: opening,
       };
     }
 
@@ -227,7 +241,7 @@ export const ContractScheduleService = {
       ok: true,
       removeIds: reschedulable.map(p => p.id),
       create,
-      preservedInTerm, preservedPrior, remainingValue,
+      preservedInTerm, preservedPrior, remainingValue, openingCredit: opening,
     };
   },
 };

@@ -154,6 +154,14 @@ export interface Contract {
   cancelledBy?: string;
   cancellationReason?: string;
   renewalRemindedAt?: string;   // آخر تذكير تجديد أُرسل للمستأجر (ISO كامل)
+  // ── نقل المستأجر بين وحدتين ──────────────────────────────────────────────
+  /** رصيد مُرحَّل من عقد سابق. القيمة التعاقدية تبقى كما هي، والرصيد يُخصم من جدول الأقساط. */
+  openingCredit?: number;
+  transferredFromContractId?: string;  // العقد الذي نُقل منه المستأجر
+  transferredToContractId?:   string;  // يُكتب على العقد القديم ليربط السجلّين
+  transferredAt?:             string;
+  /** سبب اعتماد رصيد يخالف الحساب التلقائي — يوثّق الاتفاق مع المستأجر. */
+  transferCreditNote?:        string;
   renewedAt?: string;           // تاريخ آخر تجديد — سجل تاريخي للمدد السابقة
   previousEndDate?: string;     // نهاية الفترة السابقة قبل التجديد
 }

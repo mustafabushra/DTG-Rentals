@@ -45,7 +45,7 @@ vi.mock('firebase/firestore', () => {
 });
 vi.mock('./firebase', () => ({ db: {} }));
 
-import { runContractRescheduleTransaction, runRenewalTransaction, TxError } from './firestoreService';
+import { runContractRescheduleTransaction, runRenewalTransaction, runTransferTransaction, TxError } from './firestoreService';
 
 const ORG = 'org1';
 const C = `orgs/${ORG}/contracts/c1`;
@@ -167,5 +167,84 @@ describe('معاملة إعادة الجدولة', () => {
     const e = new TxError('UNIT_CONFLICT');
     expect(e.code).toBe('UNIT_CONFLICT');
     expect(e).toBeInstanceOf(Error);
+  });
+});
+
+describe('معاملة نقل المستأجر', () => {
+  const NEW_C = `orgs/${ORG}/contracts/c-new`;
+  const NEW_U = `orgs/${ORG}/units/u-new`;
+  const T     = `orgs/${ORG}/tenants/t1`;
+
+  const transferArgs = (over: any = {}) => ({
+    orgId: ORG,
+    oldContractId: 'c1',
+    oldUnitId: 'u1',
+    expectOldStatus: 'active',
+    oldContractPatch: { status: 'terminated', transferredToContractId: 'c-new' },
+    cancelPaymentIds: ['future1'],
+    newContractId: 'c-new',
+    newContract: { annualValue: 100000, openingCredit: 54160, status: 'active' },
+    newUnitId: 'u-new',
+    newUnitPatch: { status: 'rented', currentContractId: 'c-new' },
+    newPayments: [{ id: 'pay_new_1', data: { amount: 45840, dueDate: '2026-03-01' } }],
+    tenantId: 't1',
+    tenantContractIds: ['c1', 'c-new'],
+    ...over,
+  });
+
+  beforeEach(() => {
+    state.docs[C] = { endDate: '2026-12-31', status: 'active' };
+    state.docs[`orgs/${ORG}/payments/future1`] = { amount: 20000, status: 'pending' };
+    state.docs[NEW_U] = {};
+    state.docs[T] = { contractIds: ['c1'] };
+    delete state.docs[NEW_C];
+    state.writes = [];
+    state.readsBeforeFirstWrite = 0;
+  });
+
+  it('ينفّذ كل الخطوات في تشغيل واحد', async () => {
+    await runTransferTransaction(transferArgs());
+    expect(state.docs[C].status).toBe('terminated');
+    expect(state.docs[C].transferredToContractId).toBe('c-new');
+    expect(state.docs[NEW_C]).toBeDefined();
+    expect(state.docs[NEW_C].openingCredit).toBe(54160);
+    expect(state.docs[`orgs/${ORG}/units/u1`].status).toBe('vacant');
+    expect(state.docs[NEW_U].currentContractId).toBe('c-new');
+    expect(state.docs[`orgs/${ORG}/payments/pay_new_1`].amount).toBe(45840);
+    expect(state.docs[T].contractIds).toEqual(['c1', 'c-new']);
+  });
+
+  it('أقساط العقد القديم غير المستحقة تُلغى لا تتحول إلى متأخر', async () => {
+    await runTransferTransaction(transferArgs());
+    expect(state.docs[`orgs/${ORG}/payments/future1`]).toBeUndefined();
+  });
+
+  it('ترفض وحدة مرتبطة بعقد آخر بلا أي كتابة', async () => {
+    state.docs[NEW_U] = { currentContractId: 'c-other' };
+    await expect(runTransferTransaction(transferArgs())).rejects.toMatchObject({ code: 'UNIT_CONFLICT' });
+    expect(state.writes).toHaveLength(0);
+    expect(state.docs[`orgs/${ORG}/payments/future1`]).toBeDefined();
+  });
+
+  it('ترفض تكرار النقل إن وُجد العقد الجديد (الضغط المزدوج)', async () => {
+    state.docs[NEW_C] = { status: 'active' };
+    await expect(runTransferTransaction(transferArgs())).rejects.toMatchObject({ code: 'NEW_CONTRACT_EXISTS' });
+    expect(state.writes).toHaveLength(0);
+  });
+
+  it('ترفض إن تغيّرت حالة العقد القديم من جهاز آخر', async () => {
+    state.docs[C] = { status: 'terminated' };
+    await expect(runTransferTransaction(transferArgs())).rejects.toMatchObject({ code: 'OLD_CONTRACT_CHANGED' });
+    expect(state.writes).toHaveLength(0);
+  });
+
+  it('ترفض عقداً قديماً غير موجود', async () => {
+    delete state.docs[C];
+    await expect(runTransferTransaction(transferArgs())).rejects.toMatchObject({ code: 'OLD_CONTRACT_MISSING' });
+  });
+
+  it('كل القراءات تسبق أول كتابة', async () => {
+    await runTransferTransaction(transferArgs());
+    expect(state.readsBeforeFirstWrite).toBe(3);   // العقد القديم + الجديد + الوحدة الجديدة
   });
 });

@@ -214,6 +214,66 @@ export async function runRenewalTransaction(p: {
   });
 }
 
+/**
+ * نقل مستأجر بين وحدتين ذرّياً: إنهاء العقد القديم + تحرير وحدته + إلغاء أقساطه
+ * المعلّقة + إنشاء العقد الجديد بجدوله + شغل الوحدة الجديدة — في معاملة واحدة.
+ *
+ * الحرّاس (قراءة من الخادم قبل أي كتابة):
+ *  - OLD_CONTRACT_MISSING / OLD_CONTRACT_CHANGED: العقد القديم تغيّر بعد بناء الطلب.
+ *  - UNIT_CONFLICT: الوحدة الجديدة صارت مرتبطة بعقد آخر.
+ *  - NEW_CONTRACT_EXISTS: معرّف العقد الجديد مستخدم (يمنع تكرار النقل بالضغط المزدوج).
+ */
+export async function runTransferTransaction(p: {
+  orgId: string;
+  oldContractId: string;
+  oldUnitId: string;
+  expectOldStatus: string;
+  oldContractPatch: DocumentData;
+  cancelPaymentIds: string[];
+  newContractId: string;
+  newContract: DocumentData;
+  newUnitId: string;
+  newUnitPatch: DocumentData;
+  newPayments: { id: string; data: DocumentData }[];
+  tenantId: string;
+  tenantContractIds: string[];
+}): Promise<void> {
+  const now = serverTimestamp();
+  await runTransaction(db, async tx => {
+    const oldRef     = orgDoc(p.orgId, 'contracts', p.oldContractId);
+    const newRef     = orgDoc(p.orgId, 'contracts', p.newContractId);
+    const oldUnitRef = orgDoc(p.orgId, 'units', p.oldUnitId);
+    const newUnitRef = orgDoc(p.orgId, 'units', p.newUnitId);
+    const tenantRef  = orgDoc(p.orgId, 'tenants', p.tenantId);
+
+    // كل القراءات أولاً (شرط معاملات Firestore)
+    const oldSnap     = await tx.get(oldRef);
+    const newSnap     = await tx.get(newRef);
+    const newUnitSnap = await tx.get(newUnitRef);
+
+    if (!oldSnap.exists()) throw new TxError('OLD_CONTRACT_MISSING');
+    if (oldSnap.data()?.status !== p.expectOldStatus) throw new TxError('OLD_CONTRACT_CHANGED');
+    if (newSnap.exists()) throw new TxError('NEW_CONTRACT_EXISTS');
+    if (newUnitSnap.exists()) {
+      const current = newUnitSnap.data()?.currentContractId;
+      if (current && current !== p.newContractId) throw new TxError('UNIT_CONFLICT');
+    }
+
+    tx.set(oldRef, stripUndefined({ ...p.oldContractPatch, updatedAt: now }), { merge: true });
+    for (const id of p.cancelPaymentIds) tx.delete(orgDoc(p.orgId, 'payments', id));
+    tx.set(oldUnitRef, stripUndefined({
+      status: 'vacant', currentTenantId: null, currentContractId: null, updatedAt: now,
+    }), { merge: true });
+
+    tx.set(newRef, stripUndefined({ ...p.newContract, createdAt: now, updatedAt: now }));
+    tx.set(newUnitRef, stripUndefined({ ...p.newUnitPatch, updatedAt: now }), { merge: true });
+    for (const { id, data } of p.newPayments) {
+      tx.set(orgDoc(p.orgId, 'payments', id), stripUndefined({ ...data, createdAt: now, updatedAt: now }));
+    }
+    tx.set(tenantRef, stripUndefined({ contractIds: p.tenantContractIds, updatedAt: now }), { merge: true });
+  });
+}
+
 // ─── Atomic contract creation ─────────────────────────────────────────────────
 // Writes contract + unit update + tenant contractIds + all payments in one
 // transaction so a network drop mid-way can never leave partial data.

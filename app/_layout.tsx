@@ -70,6 +70,7 @@ function StackContent() {
       <Stack.Screen name="edit-owner/[id]" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="edit-tenant/[id]" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="edit-contract/[id]" options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="transfer-tenant/[id]" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="edit-unit/[id]" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
       <Stack.Screen name="record-payment" options={{ headerShown: false, presentation: 'modal' }} />

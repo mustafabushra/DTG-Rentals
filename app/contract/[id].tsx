@@ -292,6 +292,16 @@ export default function ContractDetailScreen() {
                     </Text>
                   </TouchableOpacity>
                 )}
+                {/* نقل المستأجر لوحدة أخرى — يرحّل رصيده ولا يمحو سجل دفعاته */}
+                {canWrite && (
+                  <TouchableOpacity
+                    style={[styles.currencyBtn, { borderColor: btnColor, backgroundColor: `${btnColor}18` }]}
+                    onPress={() => router.push(`/transfer-tenant/${id}`)}
+                  >
+                    <Ionicons name="git-compare-outline" size={15} color={btnColor} />
+                    <Text style={[styles.currencyBtnText, { color: btnColor }]}>نقل</Text>
+                  </TouchableOpacity>
+                )}
                 {/* Terminate button — admin only, active contracts only */}
                 {isAdmin && contract.status === 'active' && (
                   <TouchableOpacity
@@ -367,6 +377,9 @@ export default function ContractDetailScreen() {
             { label: 'المدة', text: `${stats.months} شهر`, color: colors.text },
             { label: 'الأقساط المدفوعة', text: `${stats.paid}/${contract.installmentsCount}`, color: colors.success },
             { label: 'غير المسدَّد', amount: stats.unsettled, color: stats.unsettled > 0 ? colors.warning : colors.success },
+            ...(contract.openingCredit
+              ? [{ label: 'رصيد مُرحَّل', amount: contract.openingCredit, color: colors.success }]
+              : []),
           ].map((kpi, i) => (
             <React.Fragment key={kpi.label}>
               {i > 0 && <View style={[styles.div, { backgroundColor: colors.border }]} />}

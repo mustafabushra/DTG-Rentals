@@ -204,3 +204,50 @@ describe('ثبات المعرّفات (منع التكرار عند إعادة �
     expect(a.create[0].id).not.toBe(b.create[0].id);
   });
 });
+
+describe('الرصيد المُرحَّل من عقد سابق', () => {
+  // عقد نُقل إليه مستأجر: قيمته 100,000 ورصيده المُرحَّل 54,160، فالتزامه 45,840
+  const transferred = terms({ annualValue: 100000, installmentsCount: 4, openingCredit: 54160 });
+
+  it('يُخصم من الالتزامات فلا يُطالَب المستأجر به مرتين', () => {
+    const r = plan(transferred, [], { installmentsCount: 2 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.openingCredit).toBe(54160);
+    expect(r.remainingValue).toBe(45840);
+    expect(r.create.reduce((s, i) => s + i.amount, 0)).toBe(45840);
+  });
+
+  it('انحدار: بلا هذا الخصم كان التعديل يُعيد المطالبة بكامل القيمة', () => {
+    const r = plan(transferred, [], { installmentsCount: 2 });
+    if (!r.ok) throw new Error('توقعنا خطة');
+    expect(r.remainingValue).not.toBe(100000);
+  });
+
+  it('يُخصم مع المسدَّد والمتأخر معاً بلا ازدواج', () => {
+    const history = [
+      pay({ id: 'a', status: 'paid',    amount: 20000, dueDate: '2026-03-01', installmentNumber: 1 }),
+      pay({ id: 'b', status: 'pending', amount: 25840, dueDate: '2026-09-01', installmentNumber: 2 }),
+    ];
+    const r = plan(transferred, history, { installmentsCount: 3 });
+    if (!r.ok) throw new Error('توقعنا خطة');
+    expect(r.preservedInTerm).toBe(20000);
+    expect(r.remainingValue).toBe(25840);      // 100000 − 54160 − 20000
+    expect(r.removeIds).toEqual(['b']);
+  });
+
+  it('رصيد أكبر من القيمة السنوية يُرفض بسبب واضح', () => {
+    const bad = terms({ annualValue: 40000, openingCredit: 54160 });
+    const r = plan(bad, [], { installmentsCount: 2 });
+    expect(r).toMatchObject({ ok: false, code: 'VALUE_BELOW_OBLIGATIONS' });
+    if (r.ok) return;
+    expect(r.reason).toContain('54,160');
+  });
+
+  it('عقد بلا رصيد مُرحَّل يتصرّف كما كان تماماً', () => {
+    const r = plan(terms(), [], { annualValue: 80000 });
+    if (!r.ok) throw new Error('توقعنا خطة');
+    expect(r.openingCredit).toBe(0);
+    expect(r.remainingValue).toBe(80000);
+  });
+});
