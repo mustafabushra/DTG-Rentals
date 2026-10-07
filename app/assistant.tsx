@@ -41,6 +41,9 @@ export default function AssistantScreen() {
   const [draft, setDraft]     = useState('');
   const [busy, setBusy]       = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  // افتراضيّاً: مجاميع بلا أسماء — الأقل تسريباً هو الافتراضي
+  const [detail, setDetail]   = useState<'aggregates' | 'named'>('aggregates');
+  const [showSent, setShowSent] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   // الإعداد يُقرأ مرة واحدة؛ القاعدة تمنع غير المدير فيرجع null
@@ -62,9 +65,9 @@ export default function AssistantScreen() {
   const context = useMemo(
     () => buildContext(
       { properties, units, contracts, tenants, payments, bookings },
-      { currency: systemSettings?.currency ?? 'SAR' },
+      { currency: systemSettings?.currency ?? 'SAR', detail },
     ),
-    [properties, units, contracts, tenants, payments, bookings, systemSettings?.currency],
+    [properties, units, contracts, tenants, payments, bookings, systemSettings?.currency, detail],
   );
 
   const ask = async (question: string) => {
@@ -131,6 +134,33 @@ export default function AssistantScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <AppHeader title="المساعد" />
 
+        <View style={[styles.privacyBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            style={styles.privacyToggle}
+            onPress={() => setDetail(d => (d === 'aggregates' ? 'named' : 'aggregates'))}
+          >
+            <Ionicons
+              name={detail === 'aggregates' ? 'eye-off-outline' : 'eye-outline'}
+              size={16}
+              color={detail === 'aggregates' ? colors.success : colors.warning}
+            />
+            <Text style={[styles.privacyText, { color: detail === 'aggregates' ? colors.success : colors.warning }]}>
+              {detail === 'aggregates' ? 'بلا أسماء (مُوصى به)' : 'بالأسماء'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowSent(v => !v)} hitSlop={8}>
+            <Text style={[styles.privacyLink, { color: colors.secondary }]}>
+              {showSent ? 'إخفاء' : 'ما يُرسَل؟'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {showSent && (
+          <ScrollView style={[styles.sentBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+            <Text style={[styles.sentText, { color: colors.textSecondary }]} selectable>{context}</Text>
+          </ScrollView>
+        )}
+
         <ScrollView
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
@@ -142,8 +172,8 @@ export default function AssistantScreen() {
               <Ionicons name="sparkles-outline" size={22} color={colors.primary} />
               <Text style={[styles.introTitle, { color: colors.text }]}>اسألني عن بياناتك</Text>
               <Text style={[styles.introBody, { color: colors.textSecondary }]}>
-                أرى عقاراتك ووحداتك وعقودك ودفعاتك وحجوزاتك. أجيب وأحلّل، ولا أنفّذ أي إجراء —
-                التنفيذ يبقى بيدك في شاشات التطبيق.
+                أرى أرقام عقاراتك ووحداتك وعقودك ودفعاتك. أجيب وأحلّل، ولا أنفّذ أي إجراء.
+                وافتراضيّاً **لا تُرسَل الأسماء** — اضغط «ما يُرسَل؟» لتراه بنفسك قبل أي سؤال.
               </Text>
               <View style={styles.chips}>
                 {SUGGESTIONS.map(s => (
@@ -237,6 +267,15 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.md, borderRadius: Theme.radius.md, borderWidth: 1,
   },
   errorText: { flex: 1, fontSize: Theme.fontSize.sm, textAlign: 'right', lineHeight: 20 },
+  privacyBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Theme.spacing.base, paddingVertical: 8, borderBottomWidth: 1,
+  },
+  privacyToggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  privacyText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
+  privacyLink: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
+  sentBox: { maxHeight: 190, margin: Theme.spacing.base, padding: 10, borderRadius: Theme.radius.md, borderWidth: 1 },
+  sentText: { fontSize: 11, lineHeight: 17, textAlign: 'right', fontFamily: 'monospace' },
   composer: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     padding: Theme.spacing.md, borderTopWidth: 1,

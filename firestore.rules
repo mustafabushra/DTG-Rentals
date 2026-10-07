@@ -85,6 +85,14 @@ service cloud.firestore {
     // settings مدرجة في isSharedReadCol فيقرؤها كل عضو نشط — بما فيهم المالك
     // التابع. والقواعد تجميعية: لا يمكن لقاعدة خاصة أن تسلب ما منحته العامة،
     // فالاستثناء يجب أن يكون داخل القاعدة العامة نفسها.
+    // مجموعات لها قواعد خاصة أدناه يجب أن **تحكمها وحدها**.
+    // القواعد تجميعية: لو شملتها القاعدة العامة، منحت المدير التنفيذي تعديل
+    // سجل التدقيق — فتُبطل قاعدته الخاصة التي تقصر التعديل على المدير الأعلى.
+    // وسجل تدقيق قابل للتعديل = لا سجل تدقيق.
+    function isProtectedCol(col) {
+      return col in ['auditLogs', 'managedUsers'];
+    }
+
     function isSecretDoc(col, docId) {
       return col == 'settings' && docId == 'assistant';
     }
@@ -160,7 +168,8 @@ service cloud.firestore {
     // لذا نستخدم قوائم بيضاء صريحة حتى لا يتسرّب وصول auditLogs/managedUsers عبر هذه القاعدة العامة.
     match /orgs/{orgId}/{collection}/{docId} {
 
-      allow read: if isSuperAdmin() || (canRead() && isSameOrg(orgId) && (
+      allow read: if isSuperAdmin() || (canRead() && isSameOrg(orgId)
+        && !isProtectedCol(collection) && (
         isAdmin() ||
         (isManager() && !isSecretDoc(collection, docId)) ||
         (collection == 'owners' && docId == ownerLinkedId()) ||
@@ -169,6 +178,7 @@ service cloud.firestore {
       ));
 
       allow create: if isSuperAdmin() || (isSameOrg(orgId)
+        && !isProtectedCol(collection)
         && validateDoc(collection, request.resource.data)
         && (
           isAdmin() ||
@@ -181,6 +191,7 @@ service cloud.firestore {
         ));
 
       allow update: if isSuperAdmin() || (isSameOrg(orgId)
+        && !isProtectedCol(collection)
         && validateDoc(collection, request.resource.data)
         && (
           isAdmin() ||

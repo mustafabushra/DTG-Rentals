@@ -43,6 +43,12 @@ export interface ContextOptions {
   /** أقصى عدد صفوف لكل قائمة تفصيلية — يمنع تضخّم السياق. */
   maxRows?: number;
   currency?: string;
+  /**
+   * `aggregates`: أرقام ومجاميع فقط — **لا اسم ولا رقم عقد يُرسَل خارج النظام.**
+   * `named`: يضيف الأسماء وأرقام العقود فتصير الإجابات محددة.
+   * الافتراضي `aggregates`: الأقل تسريباً هو الافتراضي، والتوسيع قرار واعٍ.
+   */
+  detail?: 'aggregates' | 'named';
 }
 
 const DEFAULT_MAX_ROWS = 40;
@@ -74,13 +80,25 @@ export function buildContext(data: AssistantData, opts: ContextOptions = {}): st
   const cur     = opts.currency ?? '';
 
   const { properties, units, contracts, tenants, payments, bookings } = data;
+  const named = (opts.detail ?? 'aggregates') === 'named';
 
-  const propertyName = (id?: string) => properties.find(p => p.id === id)?.name ?? '—';
+  // في وضع المجاميع تُستبدل كل هوية بمُعرِّف مُستعار ثابت داخل الجواب الواحد،
+  // فيبقى المساعد قادراً على التمييز والمقارنة بلا أن يخرج اسمٌ إلى الإنترنت.
+  const alias = new Map<string, string>();
+  const anon = (prefix: string, id?: string): string => {
+    if (!id) return `${prefix}?`;
+    if (!alias.has(id)) alias.set(id, `${prefix}${alias.size + 1}`);
+    return alias.get(id)!;
+  };
+
+  const propertyName = (id?: string) =>
+    named ? (properties.find(p => p.id === id)?.name ?? '—') : anon('عقار ', id);
   const unitLabel = (id?: string) => {
     const u = units.find(x => x.id === id);
     return u ? `${propertyName(u.propertyId)} / وحدة ${u.number}` : '—';
   };
-  const tenantName = (id?: string) => tenants.find(t => t.id === id)?.name ?? '—';
+  const tenantName = (id?: string) =>
+    named ? (tenants.find(t => t.id === id)?.name ?? '—') : anon('مستأجر ', id);
 
   // ── أرقام محسوبة بالخدمات المختبَرة ──────────────────────────────────────
   const activeContracts = contracts.filter(c => c.status === 'active');
@@ -111,6 +129,10 @@ export function buildContext(data: AssistantData, opts: ContextOptions = {}): st
   const lines: string[] = [];
 
   lines.push(`التاريخ اليوم: ${today}`);
+  if (!named) {
+    lines.push('ملاحظة: الأسماء مُستبدلة بمُعرِّفات مستعارة حمايةً للخصوصية.');
+    lines.push('أجب بالمُعرِّفات كما هي، ولا تحاول تخمين الأسماء الحقيقية.');
+  }
   lines.push('');
   lines.push('## أرقام محسوبة (استخدمها كما هي — لا تُعِد حسابها)');
   lines.push(`- العقارات: ${properties.length} | الوحدات: ${units.length}`);
@@ -133,7 +155,8 @@ export function buildContext(data: AssistantData, opts: ContextOptions = {}): st
   lines.push(...capped(properties, maxRows, p => {
     const pu = units.filter(u => u.propertyId === p.id);
     const pr = pu.filter(u => !!u.currentContractId).length;
-    return `- ${p.name} | ${p.location ?? '—'} | وحدات: ${pu.length} (مؤجَّرة ${pr}، شاغرة ${pu.length - pr})`;
+    const label = named ? `${p.name} | ${p.location ?? '—'}` : anon('عقار ', p.id);
+    return `- ${label} | وحدات: ${pu.length} (مؤجَّرة ${pr}، شاغرة ${pu.length - pr})`;
   }));
 
   // ── الوحدات الشاغرة ──
@@ -151,7 +174,7 @@ export function buildContext(data: AssistantData, opts: ContextOptions = {}): st
   lines.push('## العقود النشطة');
   lines.push(...capped(activeContracts, maxRows, c => {
     const un = ContractScheduleService.unsettledTotal(payments, { contractId: c.id });
-    return `- ${c.contractNumber} | ${tenantName(c.tenantId)} | ${unitLabel(c.unitId)}`
+    return `- ${named ? c.contractNumber : anon('عقد ', c.id)} | ${tenantName(c.tenantId)} | ${unitLabel(c.unitId)}`
       + ` | ${c.startDate} ← ${c.endDate} | سنوي ${money(c.annualValue)} ${cur}`
       + ` | أقساط ${c.installmentsCount} | غير مسدَّد ${money(un)} ${cur}`
       + (c.openingCredit ? ` | رصيد مُرحَّل ${money(c.openingCredit)}` : '');
@@ -162,7 +185,7 @@ export function buildContext(data: AssistantData, opts: ContextOptions = {}): st
     lines.push('');
     lines.push('## المستحقات (الأكثر تأخراً أولاً)');
     lines.push(...capped(collectionRows, maxRows, r =>
-      `- ${r.tenantName} | ${r.propertyName} / وحدة ${r.unitNumber}`
+      `- ${named ? r.tenantName : anon('مستأجر ', r.tenantId)} | ${named ? r.propertyName : anon('عقار ', r.contractId)} / وحدة ${r.unitNumber}`
       + ` | ${r.items.length} قسطاً | ${money(r.totalDue)} ${r.currency}`
       + ` | ${r.maxDaysOverdue > 0 ? `متأخر ${r.maxDaysOverdue} يوماً` : 'لم يستحق بعد'}`
       + (r.lastRemindedAt ? ` | ذُكِّر ${r.lastRemindedAt.split('T')[0]}` : ' | لم يُذكَّر')));
@@ -173,7 +196,7 @@ export function buildContext(data: AssistantData, opts: ContextOptions = {}): st
     lines.push('');
     lines.push('## عقود تنتهي قريباً أو منتهية');
     lines.push(...capped(renewalRows, maxRows, r =>
-      `- ${r.contractNumber} | ${r.tenantName} | ${r.propertyName} / وحدة ${r.unitNumber}`
+      `- ${named ? r.contractNumber : anon('عقد ', r.contractId)} | ${named ? r.tenantName : anon('مستأجر ', r.tenantId)} | ${named ? r.propertyName : anon('عقار ', r.contractId)} / وحدة ${r.unitNumber}`
       + ` | ينتهي ${r.endDate} | ${r.daysLeft < 0 ? `انتهى منذ ${-r.daysLeft} يوماً` : `باقٍ ${r.daysLeft} يوماً`}`
       + ` | سنوي ${money(r.annualValue)} ${r.currency}`));
   }
@@ -184,7 +207,7 @@ export function buildContext(data: AssistantData, opts: ContextOptions = {}): st
     lines.push('');
     lines.push('## حجوزات بيوت المصيف المؤكَّدة');
     lines.push(...capped(confirmed, maxRows, b =>
-      `- ${unitLabel(b.unitId)} | ${b.guestName} | ${b.checkIn} ← ${b.checkOut}`
+      `- ${unitLabel(b.unitId)} | ${named ? b.guestName : anon('ضيف ', b.id)} | ${b.checkIn} ← ${b.checkOut}`
       + ` | ${b.nights} ليلة | ${money(b.totalAmount)} ${b.currency ?? cur}`
       + ` | محصَّل ${money(b.paidAmount)}`));
   }

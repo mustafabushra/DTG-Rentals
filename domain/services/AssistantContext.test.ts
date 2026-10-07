@@ -88,7 +88,7 @@ describe('الأرقام المحسوبة تُسلَّم جاهزة', () => {
 });
 
 describe('الخصوصية: لا تُرسَل بيانات لا تخدم السؤال', () => {
-  const ctx = buildContext(data(), { today: TODAY });
+  const ctx = buildContext(data(), { today: TODAY, detail: 'named' });
 
   it('رقم الهوية الوطنية لا يُرسَل', () => {
     expect(ctx).not.toContain('1012345678');
@@ -102,7 +102,7 @@ describe('الخصوصية: لا تُرسَل بيانات لا تخدم الس�
     expect(ctx).not.toContain('a@b.c');
   });
 
-  it('الاسم يُرسَل لأنه ضروري للإجابة', () => {
+  it('الاسم يُرسَل في وضع التفصيل فقط', () => {
     expect(ctx).toContain('أحمد العمري');
   });
 });
@@ -111,7 +111,8 @@ describe('قصّ القوائم', () => {
   it('يقصّ عند الحد ويُعلِم النموذج بما حُجب', () => {
     const many = Array.from({ length: 10 }, (_, i) =>
       property({ id: `p${i}`, name: `عقار ${i}` }));
-    const ctx = buildContext(data({ properties: many, units: [] }), { today: TODAY, maxRows: 3 });
+    const ctx = buildContext(data({ properties: many, units: [] }),
+      { today: TODAY, maxRows: 3, detail: 'named' });
     expect(ctx).toContain('عقار 0');
     expect(ctx).toContain('عقار 2');
     expect(ctx).not.toContain('عقار 5');
@@ -136,7 +137,7 @@ describe('السياق يصف الواقع لا يختلقه', () => {
   });
 
   it('الوحدة الشاغرة تُذكر بإيجارها المطلوب', () => {
-    const ctx = buildContext(data({ units: [unit({ annualRent: 72000 })] }), { today: TODAY });
+    const ctx = buildContext(data({ units: [unit({ annualRent: 72000 })] }), { today: TODAY, detail: 'named' });
     expect(ctx).toContain('الوحدات الشاغرة');
     expect(ctx).toContain('72,000');
   });
@@ -144,7 +145,7 @@ describe('السياق يصف الواقع لا يختلقه', () => {
   it('الرصيد المُرحَّل يظهر على العقد', () => {
     const ctx = buildContext(data({
       contracts: [contract({ openingCredit: 54160 })],
-    }), { today: TODAY });
+    }), { today: TODAY, detail: 'named' });
     expect(ctx).toContain('رصيد مُرحَّل 54,160');
   });
 
@@ -169,5 +170,45 @@ describe('توجيه المساعد', () => {
   });
   it('ينبّه على القوائم المقصوصة', () => {
     expect(ASSISTANT_SYSTEM).toContain('غير معروض');
+  });
+});
+
+describe('وضع الخصوصية (الافتراضي): لا اسم يخرج إلى الإنترنت', () => {
+  const ctx = buildContext(data({
+    payments: [pay({ id: 'late', amount: 20000, status: 'overdue', dueDate: '2026-05-01' })],
+  }), { today: TODAY });
+
+  it('اسم المستأجر لا يُرسَل', () => {
+    expect(ctx).not.toContain('أحمد العمري');
+  });
+
+  it('اسم العقار لا يُرسَل', () => {
+    expect(ctx).not.toContain('عمارة الزاهية');
+    expect(ctx).not.toContain('الرياض');
+  });
+
+  it('رقم العقد لا يُرسَل', () => {
+    expect(ctx).not.toContain('CNT-1');
+  });
+
+  it('المعرّفات المستعارة تحلّ محلّها فيبقى التمييز ممكناً', () => {
+    expect(ctx).toMatch(/مستأجر \d/);
+    expect(ctx).toMatch(/عقار \d/);
+  });
+
+  it('النموذج يُعلَم بالاستبدال فلا يخمّن الأسماء', () => {
+    expect(ctx).toContain('مُعرِّفات مستعارة');
+    expect(ctx).toContain('لا تحاول تخمين الأسماء');
+  });
+
+  it('الأرقام والمجاميع تبقى كاملة — الخصوصية لا تُفقد التحليل', () => {
+    expect(ctx).toContain('متأخرات: 1 حالة بمبلغ 20,000');
+    expect(ctx).toContain('الإشغال:');
+  });
+
+  it('وضع التفصيل يُظهر الأسماء بقرار صريح', () => {
+    const detailed = buildContext(data(), { today: TODAY, detail: 'named' });
+    expect(detailed).toContain('أحمد العمري');
+    expect(detailed).not.toContain('مُعرِّفات مستعارة');
   });
 });
