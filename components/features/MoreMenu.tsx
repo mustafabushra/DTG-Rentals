@@ -18,6 +18,7 @@ const MENU_ITEMS = [
   { icon: 'people-outline',        label: 'المستأجرون',      route: '/tenants' },
   { icon: 'cash-outline',          label: 'الدفعات',         route: '/payments' },
   { icon: 'megaphone-outline',     label: 'مركز التحصيل',    route: '/collections' },
+  { icon: 'scan-outline',          label: 'مسح عقد بالصورة', route: '/scan-contract' },
   { icon: 'refresh-outline',       label: 'تجديد العقود',    route: '/renewals' },
   { icon: 'bar-chart-outline',     label: 'التقارير المالية', route: '/financial-reports' },
   { icon: 'construct-outline',     label: 'الصيانة',         route: '/maintenance' },
