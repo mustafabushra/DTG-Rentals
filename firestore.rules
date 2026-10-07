@@ -81,6 +81,14 @@ service cloud.firestore {
       return isAdmin() || isManager();
     }
 
+    // مستند يحمل سرّاً (مفتاح خدمة): قراءته وكتابته للمدير وحده.
+    // settings مدرجة في isSharedReadCol فيقرؤها كل عضو نشط — بما فيهم المالك
+    // التابع. والقواعد تجميعية: لا يمكن لقاعدة خاصة أن تسلب ما منحته العامة،
+    // فالاستثناء يجب أن يكون داخل القاعدة العامة نفسها.
+    function isSecretDoc(col, docId) {
+      return col == 'settings' && docId == 'assistant';
+    }
+
     // المجموعات الحساسة التي تخضع لعزل المالك (قراءة/كتابة محصورة بـ ownerId)
     function isOwnerScopedCol(col) {
       return col in ['properties', 'units', 'contracts', 'payments', 'maintenance', 'bookings'];
@@ -153,16 +161,18 @@ service cloud.firestore {
     match /orgs/{orgId}/{collection}/{docId} {
 
       allow read: if isSuperAdmin() || (canRead() && isSameOrg(orgId) && (
-        isManagerOrAdmin() ||
+        isAdmin() ||
+        (isManager() && !isSecretDoc(collection, docId)) ||
         (collection == 'owners' && docId == ownerLinkedId()) ||
         (isOwnerScopedCol(collection) && resource.data.ownerId == ownerLinkedId()) ||
-        isSharedReadCol(collection)
+        (isSharedReadCol(collection) && !isSecretDoc(collection, docId))
       ));
 
       allow create: if isSuperAdmin() || (isSameOrg(orgId)
         && validateDoc(collection, request.resource.data)
         && (
-          isManagerOrAdmin() ||
+          isAdmin() ||
+          (isManager() && !isSecretDoc(collection, docId)) ||
           (isOwnerRole() && isOwnerScopedCol(collection)
              && request.resource.data.ownerId == ownerLinkedId()) ||
           (isOwnerRole() && collection == 'attachments'
@@ -173,7 +183,8 @@ service cloud.firestore {
       allow update: if isSuperAdmin() || (isSameOrg(orgId)
         && validateDoc(collection, request.resource.data)
         && (
-          isManagerOrAdmin() ||
+          isAdmin() ||
+          (isManager() && !isSecretDoc(collection, docId)) ||
           (isOwnerRole() && isOwnerScopedCol(collection)
              && resource.data.ownerId == ownerLinkedId()
              && request.resource.data.ownerId == ownerLinkedId()) ||

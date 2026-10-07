@@ -14,6 +14,7 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 import { useColorScheme } from 'react-native';
 
 const MENU_ITEMS = [
+  { icon: 'sparkles-outline',      label: 'المساعد الذكي',   route: '/assistant' },
   { icon: 'grid-outline',          label: 'الوحدات',         route: '/units' },
   { icon: 'people-outline',        label: 'المستأجرون',      route: '/tenants' },
   { icon: 'cash-outline',          label: 'الدفعات',         route: '/payments' },
