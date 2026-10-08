@@ -182,6 +182,33 @@ export function validateBackup(raw: string): ValidationResult {
     result.warnings.push('الملف صالح لكن لا يحتوي على أي بيانات');
   }
 
+  // ── فحص السلامة: المقروء مقابل المُعلَن في summary ─────────────────────────
+  // attemptRepair يوازن الأقواس بالإضافة، فملف مقطوع يصير JSON صالحاً ناقص
+  // السجلات. والاستعادة تُقلّم ما غاب عن الملف — فالنقص الصامت يُفقد بيانات.
+  // summary يحمل الأعداد وقت التصدير، فمقارنتها تكشف القطع. وهو خطأ لا تحذير.
+  const summary = (parsed as { summary?: unknown }).summary;
+  if (summary && typeof summary === 'object' && !Array.isArray(summary)
+      && Object.keys(summary as object).length > 0) {
+    const declared = summary as Record<string, unknown>;
+    const gaps: string[] = [];
+    for (const col of REQUIRED_COLLECTIONS) {
+      const want = declared[col];
+      if (typeof want !== 'number' || !Number.isFinite(want)) continue;
+      const got = result.counts[col] ?? 0;
+      if (got !== want) gaps.push(`${col}: المُعلَن ${want} والمقروء ${got}`);
+    }
+    if (gaps.length > 0) {
+      result.errors.push(
+        `الملف ناقص أو معطوب — الأعداد لا تطابق ما سجّله التصدير (${gaps.join('، ')}). `
+        + `الاستعادة من ملف ناقص تحذف السجلات الغائبة عنه.`,
+      );
+    }
+  } else if (totalRecords > 0) {
+    result.warnings.push(
+      'الملف بلا summary فلا يمكن التحقق من اكتماله — راجع الأعداد المعروضة بنفسك.',
+    );
+  }
+
   result.parsed = parsed as BackupPayload;
   result.status = result.errors.length > 0 ? 'error'
     : result.warnings.length > 0           ? 'warning'

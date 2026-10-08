@@ -10,6 +10,7 @@ import { ContractScheduleService } from '../domain/services/ContractScheduleServ
 import { derivePreview, canWriteDuringPreview } from '../domain/services/ownerPreview';
 import { TransferService, type TransferContract } from '../domain/services/TransferService';
 import { City, Property, Attachment, UnitStructure } from '../domain/models';
+import { planRestore, wipesEverything } from '../domain/services/RestorePlanner';
 import { defaultUnitStructure } from '../data/mockData';
 import { onAuthChange, getUserProfile } from '../lib/auth';
 import { getAll, getOne, getWhere, where, setOne, updateOne, deleteOne, deleteAll, getActiveOrgId, setActiveOrgId, runContractTransaction, withFieldDeletes, updateIfFieldEquals, runContractRescheduleTransaction, runRenewalTransaction, runTransferTransaction, TxError } from '../lib/firestoreService';
@@ -2609,32 +2610,83 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const importBackup = useCallback(async (payload: import('../lib/backupValidator').BackupPayload): Promise<void> => {
     if (!userId) throw new Error('يجب تسجيل الدخول أولاً');
     const cols = ['owners','properties','tenants','units','contracts','payments','maintenance'] as const;
+    const org = getActiveOrgId();
 
-    // Wipe then rewrite each collection in Firestore — collect any write errors
-    const deleteErrors: string[] = [];
-    await Promise.all(cols.map(col =>
-      deleteAll(getActiveOrgId(), col).catch(e => { deleteErrors.push(`حذف ${col}: ${e?.message ?? e}`); })
-    ));
+    // ── ① ما في القاعدة الآن: لازم لمعرفة ما يُقلَّم لاحقاً ─────────────────
+    const existingIds: Record<string, string[]> = {};
+    for (const col of cols) {
+      const rows = await getAll(org, col);
+      existingIds[col] = rows.map(r => String((r as { id?: unknown }).id ?? '')).filter(Boolean);
+    }
 
+    // ── ② الخطة: قرار «ما يُحذف» في دالة نقية مُختبَرة ─────────────────────
+    const plan = planRestore({
+      cols,
+      incoming: Object.fromEntries(
+        cols.map(col => [col, (payload.data[col as keyof typeof payload.data] ?? []) as { id?: unknown }[]]),
+      ),
+      existingIds,
+    });
+
+    // سجل بلا معرّف لا يُهمَل صامتاً: الملف معطوب فيُرفض قبل أي كتابة
+    if (plan.counts.invalid > 0) {
+      const detail = plan.invalid.map(i => `${i.col}: ${i.count}`).join('، ');
+      throw new Error(
+        `الملف يحمل ${plan.counts.invalid} سجلاً بلا معرّف (${detail}). ` +
+        `لم يتغيّر شيء — أصلح الملف أو استخدم نسخة أخرى.`,
+      );
+    }
+
+    // ملف فارغ المحتوى مع قاعدة عامرة = محوٌ كامل بثوب استعادة
+    if (wipesEverything(plan)) {
+      throw new Error(
+        `هذه النسخة لا تحمل أي سجل، وتنفيذها يمحو ${plan.counts.prune} سجلاً موجوداً. ` +
+        `لم يتغيّر شيء — تحقّق من الملف.`,
+      );
+    }
+
+    // ── ③ الكتابة أولاً: غير مُدمِّرة ومُعادة بأمان ────────────────────────
     const writeErrors: string[] = [];
     await Promise.all(cols.flatMap(col =>
-      (payload.data[col as keyof typeof payload.data] ?? [])
-        .filter((item: any) => item?.id)
-        .map((item: any) => {
-          const sanitized = sanitizeImportRecord(col, item);
-          return setOne(getActiveOrgId(), col, sanitized.id, sanitized).catch(e => {
-            writeErrors.push(`كتابة ${col}/${sanitized.id}: ${e?.message ?? e}`);
-          });
-        })
+      (plan.write[col] ?? []).map((item: any) => {
+        const sanitized = sanitizeImportRecord(col, item);
+        return setOne(org, col, sanitized.id, sanitized).catch(e => {
+          writeErrors.push(`كتابة ${col}/${sanitized.id}: ${e?.message ?? e}`);
+        });
+      })
     ));
 
+    // فشلت كتابة ⇒ لا تقليم إطلاقاً. البيانات القديمة سليمة والجديدة جزئية،
+    // وإعادة المحاولة تُصلح الحالة. هذا هو الفرق عن المحو المسبق.
     if (writeErrors.length > 0) {
-      console.error('importBackup write errors:', writeErrors);
-      throw new Error(`فشل استيراد بعض السجلات:\n${writeErrors.slice(0, 5).join('\n')}`);
+      console.error('[RESTORE] write errors — nothing pruned:', writeErrors);
+      throw new Error(
+        `فشل استيراد بعض السجلات ولم يُحذف شيء — بياناتك السابقة سليمة:\n` +
+        `${writeErrors.slice(0, 5).join('\n')}`,
+      );
+    }
+
+    // ── ④ التقليم: بعد نجاح كل كتابة، ولما غاب عن النسخة وحده ─────────────
+    const pruneErrors: string[] = [];
+    await Promise.all(cols.flatMap(col =>
+      (plan.prune[col] ?? []).map(id =>
+        deleteOne(org, col, id).catch(e => { pruneErrors.push(`حذف ${col}/${id}: ${e?.message ?? e}`); })
+      )
+    ));
+
+    // أعطال التقليم تُعرَض لا تُبتلَع: البيانات المستعادة صحيحة لكن بقيت
+    // سجلات قديمة زائدة، وإعادة الاستعادة تُنظّفها.
+    if (pruneErrors.length > 0) {
+      console.error('[RESTORE] prune errors:', pruneErrors);
+      throw new Error(
+        `اكتملت الاستعادة، لكن تعذّر حذف ${pruneErrors.length} سجلاً قديماً. ` +
+        `بياناتك المستعادة صحيحة؛ أعد الاستعادة لتنظيف الزائد.`,
+      );
     }
 
     // Update local state and cache (use sanitized data for consistent types)
     const san = (col: string, arr: any[]) => arr.filter(i => i?.id).map(i => sanitizeImportRecord(col, i));
+    // تُقرأ من plan.write: هي السجلات التي كُتبت فعلاً، لا ما في الملف
     const newData = {
       owners:      san('owners',      payload.data.owners      ?? []),
       properties:  san('properties',  payload.data.properties  ?? []),
