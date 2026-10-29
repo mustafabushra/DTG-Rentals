@@ -151,13 +151,13 @@ export default function TransferTenantScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="close" size={24} color="#FFF" />
+          <Ionicons name="close" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>نقل المستأجر</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveBtn} disabled={saving}>
-          <Text style={styles.saveText}>{saving ? '...' : 'تنفيذ'}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>نقل المستأجر</Text>
+        <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]} disabled={saving}>
+          <Text style={[styles.saveText, { color: colors.text }]}>{saving ? '...' : 'تنفيذ'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -262,8 +262,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
   backBtn: { padding: 4 },
-  saveBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: Theme.radius.full },
-  saveText: { color: '#FFF', fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
+  saveBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: Theme.radius.sm },
+  saveText: { color: '#FFF', fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },
   content: { padding: Theme.spacing.base, gap: Theme.spacing.lg, paddingBottom: 48 },
   card: { padding: Theme.spacing.md, borderRadius: Theme.radius.lg, borderWidth: 1, gap: 2 },
   cardTitle: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },

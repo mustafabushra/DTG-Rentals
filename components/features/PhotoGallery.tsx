@@ -277,12 +277,12 @@ export function PhotoGallery({
             style={[
               styles.thumb,
               { borderColor: idx === activeIdx ? colors.primary : colors.border },
-              photo.isMain && { borderColor: '#F39C12', borderWidth: 2.5 },
+              photo.isMain && { borderColor: '#DC6803', borderWidth: 2.5 },
             ]}
           >
             <Image source={{ uri: photo.uri }} style={styles.thumbImage} resizeMode="cover" />
             {photo.isMain && (
-              <View style={[styles.thumbStar, { backgroundColor: '#F39C12' }]}>
+              <View style={[styles.thumbStar, { backgroundColor: '#DC6803' }]}>
                 <Ionicons name="star" size={9} color="#FFF" />
               </View>
             )}
@@ -331,7 +331,7 @@ export function PhotoGallery({
                     onPress={() => { onSetMain?.(photo.id); setShowActions(null); }}
                   >
                     <Text style={[styles.actionText, { color: colors.text }]}>تعيين كصورة رئيسية</Text>
-                    <Ionicons name="star-outline" size={20} color="#F39C12" />
+                    <Ionicons name="star-outline" size={20} color="#DC6803" />
                   </TouchableOpacity>
                 )}
 

@@ -35,7 +35,7 @@ const ROLE_OPTIONS = [
   {
     value: 'admin',
     label: 'مدير النظام',
-    color: '#8E44AD',
+    color: '#6938EF',
     bg: '#F4ECF7',
     icon: 'shield-checkmark-outline',
     perms: { view: true, add: true, edit: true, delete: true, users: true },
@@ -43,33 +43,33 @@ const ROLE_OPTIONS = [
   {
     value: 'manager',
     label: 'مدير',
-    color: '#2E86C1',
-    bg: '#EBF5FB',
+    color: '#1570EF',
+    bg: '#EFF8FF',
     icon: 'briefcase-outline',
     perms: { view: true, add: true, edit: true, delete: false, users: false },
   },
   {
     value: 'viewer',
     label: 'مشاهد',
-    color: '#27AE60',
-    bg: '#E8F8F0',
+    color: '#079455',
+    bg: '#ECFDF3',
     icon: 'eye-outline',
     perms: { view: true, add: false, edit: false, delete: false, users: false },
   },
   {
     value: 'owner',
     label: 'مالك',
-    color: '#E67E22',
-    bg: '#FEF9E7',
+    color: '#B54708',
+    bg: '#FFFAEB',
     icon: 'home-outline',
     perms: { view: true, add: false, edit: false, delete: false, users: false },
   },
 ] as const;
 
 const STATUS_CFG = {
-  active:    { label: 'نشط',    color: '#27AE60', bg: '#E8F8F0', icon: 'checkmark-circle-outline' },
-  pending:   { label: 'معلق',   color: '#E67E22', bg: '#FEF9E7', icon: 'time-outline' },
-  suspended: { label: 'موقوف',  color: '#E74C3C', bg: '#FDEDEC', icon: 'ban-outline' },
+  active:    { label: 'نشط',    color: '#079455', bg: '#ECFDF3', icon: 'checkmark-circle-outline' },
+  pending:   { label: 'معلق',   color: '#B54708', bg: '#FFFAEB', icon: 'time-outline' },
+  suspended: { label: 'موقوف',  color: '#D92D20', bg: '#FEF3F2', icon: 'ban-outline' },
 } as const;
 
 const FILTER_TABS = [
@@ -90,7 +90,7 @@ const PERM_ROWS = [
 
 function roleCfg(role: string) {
   return ROLE_OPTIONS.find(r => r.value === role)
-    ?? { value: role, label: role, color: '#718096', bg: '#F0F4F8', icon: 'person-outline', perms: { view: true, add: false, edit: false, delete: false, users: false } };
+    ?? { value: role, label: role, color: '#6C737F', bg: '#F3F4F6', icon: 'person-outline', perms: { view: true, add: false, edit: false, delete: false, users: false } };
 }
 
 function safeInitials(name: string) {
@@ -481,19 +481,19 @@ export default function UserManagementScreen() {
                 return (
                   <TouchableOpacity
                     key={o.id}
-                    style={[styles.roleCard, { borderColor: selected ? '#E67E22' : colors.border, backgroundColor: selected ? '#FEF9E7' : colors.card }]}
+                    style={[styles.roleCard, { borderColor: selected ? '#B54708' : colors.border, backgroundColor: selected ? '#FFFAEB' : colors.card }]}
                     onPress={() => setFOwnerId(o.id)}
                     activeOpacity={0.8}
                   >
                     <View style={[styles.roleCardIcon, { backgroundColor: '#E67E2220' }]}>
-                      <Ionicons name="person-outline" size={18} color="#E67E22" />
+                      <Ionicons name="person-outline" size={18} color="#B54708" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.roleCardTitle, { color: selected ? '#E67E22' : colors.text }]}>{o.name}</Text>
+                      <Text style={[styles.roleCardTitle, { color: selected ? '#B54708' : colors.text }]}>{o.name}</Text>
                       {o.phone ? <Text style={[styles.roleCardSub, { color: colors.textMuted }]}>{o.phone}</Text> : null}
                     </View>
-                    <View style={[styles.radioOuter, { borderColor: selected ? '#E67E22' : colors.border }]}>
-                      {selected && <View style={[styles.radioInner, { backgroundColor: '#E67E22' }]} />}
+                    <View style={[styles.radioOuter, { borderColor: selected ? '#B54708' : colors.border }]}>
+                      {selected && <View style={[styles.radioInner, { backgroundColor: '#B54708' }]} />}
                     </View>
                   </TouchableOpacity>
                 );
@@ -616,7 +616,7 @@ export default function UserManagementScreen() {
                   </Text>
                   {u.kind === 'invite' ? (
                     <TouchableOpacity onPress={() => copyCode(u.code ?? u.id)} activeOpacity={0.7}>
-                      <Text style={[styles.emailText, { color: '#E67E22' }]}>
+                      <Text style={[styles.emailText, { color: '#B54708' }]}>
                         كود الدعوة: {formatInviteCode(u.code ?? u.id)}
                       </Text>
                     </TouchableOpacity>
@@ -647,9 +647,9 @@ export default function UserManagementScreen() {
                 <View style={[styles.actions, { borderTopColor: colors.border }]}>
                   {u.kind === 'invite' ? (
                     <>
-                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FEF9E7' }]} onPress={() => copyCode(u.code ?? u.id)}>
-                        <Ionicons name="copy-outline" size={15} color="#E67E22" />
-                        <Text style={[styles.actionText, { color: '#E67E22' }]}>نسخ الكود</Text>
+                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FFFAEB' }]} onPress={() => copyCode(u.code ?? u.id)}>
+                        <Ionicons name="copy-outline" size={15} color="#B54708" />
+                        <Text style={[styles.actionText, { color: '#B54708' }]}>نسخ الكود</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.dangerSubtle }]} onPress={() => setDelTarget(u)}>
                         <Ionicons name="close-circle-outline" size={15} color={colors.danger} />
@@ -663,15 +663,15 @@ export default function UserManagementScreen() {
                         <Text style={[styles.actionText, { color: colors.primary }]}>تعديل</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: u.status === 'suspended' ? colors.successSubtle ?? '#E8F8F0' : '#FEF9E7' }]}
+                        style={[styles.actionBtn, { backgroundColor: u.status === 'suspended' ? colors.successSubtle ?? '#ECFDF3' : '#FFFAEB' }]}
                         onPress={() => toggleStatus(u)}
                       >
                         <Ionicons
                           name={u.status === 'suspended' ? 'checkmark-circle-outline' : 'ban-outline'}
                           size={15}
-                          color={u.status === 'suspended' ? colors.success : '#E67E22'}
+                          color={u.status === 'suspended' ? colors.success : '#B54708'}
                         />
-                        <Text style={[styles.actionText, { color: u.status === 'suspended' ? colors.success : '#E67E22' }]}>
+                        <Text style={[styles.actionText, { color: u.status === 'suspended' ? colors.success : '#B54708' }]}>
                           {u.status === 'suspended' ? 'تفعيل' : 'إيقاف'}
                         </Text>
                       </TouchableOpacity>
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
   radioInner: { width: 11, height: 11, borderRadius: 6 },
   permLink: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingVertical: 10, borderRadius: Theme.radius.md, borderWidth: 1, marginBottom: 16 },
   permLinkText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, borderRadius: Theme.radius.xl },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, borderRadius: Theme.radius.sm },
   saveBtnText: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
 
   // Permissions screen

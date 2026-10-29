@@ -14,15 +14,15 @@ import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 // ─── Colour tokens ────────────────────────────────────────────────────────────
 const C = {
-  navy:       '#021C36',
-  navyLight:  '#0D2D4A',
-  gold:       '#C3AF76',
-  goldDim:    'rgba(195,175,118,0.15)',
+  navy:       '#14573A',
+  navyLight:  '#166A45',
+  gold:       '#FFFFFF',
+  goldDim:    'rgba(255,255,255,0.15)',
   white:      '#FFFFFF',
-  offWhite:   '#F5F3EE',
-  textDark:   '#1A1A2E',
+  offWhite:   '#F9FAFB',
+  textDark:   '#161616',
   textMuted:  'rgba(255,255,255,0.60)',
-  overlay:    'rgba(2,28,54,0.75)',
+  overlay:    'rgba(13,18,28,0.6)',
 };
 
 // ─── Entry point (web-only guard) ─────────────────────────────────────────────
@@ -176,7 +176,7 @@ const IOS_STEPS = [
     icon:  'checkmark-circle-outline',
     label: 'اضغط "إضافة"',
     hint:  'التطبيق سيظهر على شاشتك الرئيسية فوراً',
-    color: '#27AE60',
+    color: '#079455',
   },
 ];
 
@@ -373,7 +373,7 @@ const s = StyleSheet.create({
   appIconWrap: {
     width: 60, height: 60, borderRadius: 14,
     backgroundColor: C.navyLight,
-    borderWidth: 1, borderColor: 'rgba(195,175,118,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center', justifyContent: 'center',
   },
   appIconEmoji:  { fontSize: 30 },

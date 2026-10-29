@@ -82,16 +82,16 @@ const styles = StyleSheet.create({
   wrapper: { gap: 6 },
   label: {
     fontSize: Theme.fontSize.md,
-    fontWeight: Theme.fontWeight.semibold,
+    fontWeight: Theme.fontWeight.medium,
     textAlign: 'right',
   },
   selector: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: Theme.radius.md,
-    borderWidth: 1.5,
+    borderRadius: Theme.radius.sm,
+    borderWidth: 1,
     paddingHorizontal: Theme.spacing.md,
-    height: 48,
+    height: 44,
     justifyContent: 'space-between',
   },
   selectedText: {

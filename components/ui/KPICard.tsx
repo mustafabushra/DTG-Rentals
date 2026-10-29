@@ -32,14 +32,13 @@ export function KPICard({ label, value, icon, color, trend, trendValue, fullWidt
     <View
       style={[
         styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border, padding: pad },
+        { backgroundColor: colors.card, borderColor: colors.borderStrong, padding: pad + 4 },
         fullWidth && styles.fullWidth,
-        shadow.sm,
       ]}
       accessibilityRole="text"
       accessibilityLabel={`${label}: ${value}${trendValue ? `، ${trendValue}` : ''}`}
     >
-      <View style={[styles.iconWrap, { backgroundColor: `${color}18`, width: iconWrapS, height: iconWrapS, borderRadius: iconWrapS / 4 }]}>
+      <View style={[styles.iconWrap, { backgroundColor: `${color}18`, width: iconWrapS, height: iconWrapS, borderRadius: iconWrapS / 2 }]}>
         <Ionicons name={icon as any} size={iconSize} color={color} />
       </View>
       <Text style={[styles.value, { color: colors.text, fontSize: valSize }]} numberOfLines={1} adjustsFontSizeToFit>
@@ -59,7 +58,7 @@ export function KPICard({ label, value, icon, color, trend, trendValue, fullWidt
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     alignItems: 'flex-start',
     gap: spacing[1],
@@ -75,7 +74,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[1],
   },
   value: {
-    fontWeight: fontWeight.bold,
+    fontWeight: fontWeight.semibold,
   },
   label: {
     fontSize: fontSize.sm,

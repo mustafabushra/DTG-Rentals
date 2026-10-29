@@ -60,11 +60,11 @@ export function VacantUnits({ units }: Props) {
             style={[styles.row, { backgroundColor: rowBg }, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
           >
             <TouchableOpacity
-              style={[styles.addBtn, { backgroundColor: colors.accentGold }]}
+              style={[styles.addBtn, { backgroundColor: colors.primary }]}
               onPress={() => router.push('/add-contract' as any)}
             >
-              <Ionicons name="add" size={14} color={colors.primary} />
-              <Text style={[styles.addTxt, { color: colors.primary }]}>إضافة عقد</Text>
+              <Ionicons name="add" size={14} color={colors.textInverse} />
+              <Text style={[styles.addTxt, { color: colors.textInverse }]}>إضافة عقد</Text>
             </TouchableOpacity>
 
             <View style={styles.info}>

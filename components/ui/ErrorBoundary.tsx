@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <View style={s.container}>
-        <Ionicons name="alert-circle-outline" size={56} color="#E74C3C" />
+        <Ionicons name="alert-circle-outline" size={56} color="#D92D20" />
         <Text style={s.title}>حدث خطأ غير متوقع</Text>
         <Text style={s.sub}>
           {this.props.fallbackLabel ?? 'نعتذر عن الإزعاج. يرجى المحاولة مجدداً.'}
@@ -48,10 +48,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
 const s = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 16 },
-  title:     { fontSize: 20, fontWeight: '700', textAlign: 'center', color: '#1A202C' },
-  sub:       { fontSize: 14, textAlign: 'center', color: '#718096', lineHeight: 22 },
+  title:     { fontSize: 20, fontWeight: '700', textAlign: 'center', color: '#161616' },
+  sub:       { fontSize: 14, textAlign: 'center', color: '#6C737F', lineHeight: 22 },
   debugBox:  { maxHeight: 120, backgroundColor: '#FFF5F5', borderRadius: 8, padding: 12, width: '100%' },
   debugText: { fontSize: 11, color: '#C53030', fontFamily: 'monospace' },
-  btn:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1B4F72', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+  btn:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1B8354', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
   btnText:   { color: '#FFF', fontSize: 15, fontWeight: '600' },
 });

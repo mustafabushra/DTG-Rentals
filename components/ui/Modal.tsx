@@ -177,9 +177,9 @@ export function AlertModal({
   const { colors } = useAppTheme();
 
   const cfg = {
-    danger:  { bg: '#FDEDEC', color: colors.danger,  icon: 'ban-outline' as const },
-    warning: { bg: '#FEF9E7', color: colors.warning, icon: 'warning-outline' as const },
-    info:    { bg: '#EBF5FB', color: colors.primary,  icon: 'information-circle-outline' as const },
+    danger:  { bg: '#FEF3F2', color: colors.danger,  icon: 'ban-outline' as const },
+    warning: { bg: '#FFFAEB', color: colors.warning, icon: 'warning-outline' as const },
+    info:    { bg: '#EFF8FF', color: colors.primary,  icon: 'information-circle-outline' as const },
   }[variant];
 
   return (

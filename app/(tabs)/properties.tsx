@@ -117,33 +117,33 @@ export default function PropertiesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + (isSmallPhone ? 6 : 8), paddingHorizontal: hPad, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: insets.top + (isSmallPhone ? 6 : 8), paddingHorizontal: hPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {Platform.OS === 'web' && !isDesktop && (
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={toggleSidebar}>
-                <Ionicons name="menu-outline" size={22} color="#FFFFFF" />
+              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={toggleSidebar}>
+                <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
             {canWrite && (
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={() => router.push('/bulk-import-properties')}>
-                <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={() => router.push('/bulk-import-properties')}>
+                <Ionicons name="cloud-upload-outline" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
             {canWrite && (
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={() => router.push('/add-property')}>
-                <Ionicons name="add" size={22} color="#FFFFFF" />
+              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => router.push('/add-property')}>
+                <Ionicons name="add" size={22} color={colors.textInverse} />
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.headerTitle}>العقارات</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>العقارات</Text>
           <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-            <TouchableOpacity style={[styles.groupToggle, { backgroundColor: groupByCity ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.15)' }]}
+            <TouchableOpacity style={[styles.groupToggle, { backgroundColor: groupByCity ? colors.primarySubtle : colors.surface }]}
               onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setGroupByCity(prev => !prev); }}>
-              <Ionicons name={groupByCity ? 'list-outline' : 'folder-open-outline'} size={18} color="#FFF" />
+              <Ionicons name={groupByCity ? 'list-outline' : 'folder-open-outline'} size={18} color={colors.textSecondary} />
             </TouchableOpacity>
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{total}</Text>
+            <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.countText, { color: colors.textMuted }]}>{total}</Text>
             </View>
           </View>
         </View>

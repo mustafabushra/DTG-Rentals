@@ -41,8 +41,8 @@ export function TenantStats({ activeTenants, avgTenancyMonths, topTenant, curren
         {/* Top payer */}
         {topTenant ? (
           <TouchableOpacity style={styles.cell} onPress={() => router.push(`/tenant/${topTenant.id}` as any)}>
-            <View style={[styles.avatar, { backgroundColor: colors.accentGold }]}>
-              <Text style={[styles.avatarTxt, { color: colors.primary }]}>{topTenant.name[0]}</Text>
+            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.avatarTxt, { color: colors.textInverse }]}>{topTenant.name[0]}</Text>
             </View>
             <Text style={[styles.topName, { color: colors.text }]} numberOfLines={1}>{topTenant.name}</Text>
             <Text style={[styles.topAmt, { color: colors.success }]}>{fmt(topTenant.totalPaid)}</Text>

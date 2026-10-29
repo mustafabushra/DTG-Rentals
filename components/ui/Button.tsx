@@ -96,15 +96,17 @@ function getVariantStyles(variant: ButtonVariant, colors: Record<string, string>
       textColor:   colors.textInverse,
       loaderColor: colors.textInverse,
     },
+    // منصات "Secondary": خلفية رمادية فاتحة ونص داكن
     secondary: {
-      container:   { backgroundColor: colors.primarySubtle },
-      textColor:   colors.primary,
-      loaderColor: colors.primary,
+      container:   { backgroundColor: colors.surface },
+      textColor:   colors.text,
+      loaderColor: colors.text,
     },
+    // منصات "Secondary outline": أبيض بحد محايد
     outline: {
-      container:   { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary },
-      textColor:   colors.primary,
-      loaderColor: colors.primary,
+      container:   { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.borderStrong },
+      textColor:   colors.text,
+      loaderColor: colors.text,
     },
     ghost: {
       container:   { backgroundColor: 'transparent' },
@@ -127,20 +129,21 @@ function getVariantStyles(variant: ButtonVariant, colors: Record<string, string>
 
 function getSizeStyles(size: ButtonSize) {
   const map = {
+    // منصات: زوايا 4px وارتفاعات ثابتة 32 / 40 / 48
     sm: {
-      container: { paddingVertical: spacing[2], paddingHorizontal: spacing[3], borderRadius: radius.md } as ViewStyle,
-      text:      { fontSize: fontSize.sm, fontWeight: fontWeight.semibold } as TextStyle,
-      iconSize:  14,
-    },
-    md: {
-      container: { paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.lg } as ViewStyle,
-      text:      { fontSize: fontSize.base, fontWeight: fontWeight.semibold } as TextStyle,
+      container: { minHeight: 32, paddingVertical: 6, paddingHorizontal: spacing[3], borderRadius: radius.sm } as ViewStyle,
+      text:      { fontSize: fontSize.sm, fontWeight: fontWeight.medium } as TextStyle,
       iconSize:  16,
     },
-    lg: {
-      container: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], borderRadius: radius.lg } as ViewStyle,
-      text:      { fontSize: fontSize.lg, fontWeight: fontWeight.bold } as TextStyle,
+    md: {
+      container: { minHeight: 40, paddingVertical: spacing[2], paddingHorizontal: spacing[4], borderRadius: radius.sm } as ViewStyle,
+      text:      { fontSize: fontSize.md, fontWeight: fontWeight.medium } as TextStyle,
       iconSize:  18,
+    },
+    lg: {
+      container: { minHeight: 48, paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.sm } as ViewStyle,
+      text:      { fontSize: 16, fontWeight: fontWeight.medium } as TextStyle,
+      iconSize:  20,
     },
   };
   return map[size];
@@ -149,8 +152,8 @@ function getSizeStyles(size: ButtonSize) {
 const styles = StyleSheet.create({
   base:      { alignItems: 'center', justifyContent: 'center' },
   fullWidth: { width: '100%' },
-  disabled:  { opacity: 0.45 },
-  inner:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  disabled:  { opacity: 0.4 },
+  inner:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconStart: { marginStart: 2 },
   iconEnd:   { marginEnd: 2 },
 });

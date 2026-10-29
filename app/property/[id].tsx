@@ -112,7 +112,7 @@ export default function PropertyDetailScreen() {
             { label: 'إجمالي الوحدات', value: propUnits.length, color: colors.text },
             { label: 'مؤجرة', value: rentedCount, color: colors.success },
             { label: 'شاغرة', value: vacantCount, color: colors.secondary },
-            { label: 'الإيراد الشهري', value: formatCurrency(monthlyRevenue), color: '#8E44AD' },
+            { label: 'الإيراد الشهري', value: formatCurrency(monthlyRevenue), color: '#6938EF' },
           ].map((kpi, i) => (
             <React.Fragment key={kpi.label}>
               {i > 0 && <View style={[styles.kpiDiv, { backgroundColor: colors.border }]} />}
@@ -167,8 +167,8 @@ export default function PropertyDetailScreen() {
                           backgroundColor: 'rgba(142,68,173,0.1)', borderRadius: 8,
                           paddingHorizontal: 10, paddingVertical: 4,
                           marginHorizontal: 16, marginBottom: 4 }}>
-                          <Ionicons name="lock-closed-outline" size={12} color="#8E44AD" />
-                          <Text style={{ color: '#8E44AD', fontSize: 11, fontWeight: '600' }}>مملوكة لمالك آخر</Text>
+                          <Ionicons name="lock-closed-outline" size={12} color="#6938EF" />
+                          <Text style={{ color: '#6938EF', fontSize: 11, fontWeight: '600' }}>مملوكة لمالك آخر</Text>
                         </View>
                       )}
                       <UnitCard unit={u} onDelete={!isExternal && canDelete

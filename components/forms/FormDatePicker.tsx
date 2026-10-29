@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   label:    { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
   selector: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: Theme.radius.md, borderWidth: 1.5,
+    borderRadius: Theme.radius.sm, borderWidth: 1,
     paddingHorizontal: Theme.spacing.md, height: 48, gap: 10,
   },
   dateText: { fontSize: Theme.fontSize.base, flex: 1, textAlign: 'right' },

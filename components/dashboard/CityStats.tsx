@@ -11,8 +11,8 @@ interface Props {
 }
 
 const CITY_COLORS = [
-  '#2E86C1', '#27AE60', '#8E44AD', '#E67E22', '#E74C3C',
-  '#1ABC9C', '#3498DB', '#9B59B6', '#F39C12', '#16A085',
+  '#1570EF', '#079455', '#6938EF', '#B54708', '#D92D20',
+  '#1ABC9C', '#3498DB', '#9B59B6', '#DC6803', '#16A085',
 ];
 
 export function CityStats({ totalRentedProperties }: Props) {

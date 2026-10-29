@@ -25,11 +25,11 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="manifest" href="/manifest.json" />
 
         {/* ── Theme colors ── */}
-        <meta name="theme-color" content="#021C36" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#021C36" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#021C36" />
-        <meta name="msapplication-navbutton-color" content="#021C36" />
-        <meta name="msapplication-TileColor" content="#021C36" />
+        <meta name="theme-color" content="#1B8354" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1B8354" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1B8354" />
+        <meta name="msapplication-navbutton-color" content="#1B8354" />
+        <meta name="msapplication-TileColor" content="#1B8354" />
         <meta name="msapplication-TileImage" content={ICON} />
 
         {/* ── iOS PWA ── */}
@@ -83,6 +83,14 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="twitter:description" content="نظام إدارة العقارات والإيجارات" />
         <meta name="twitter:image"       content={`https://dtg-rentals.web.app${ICON}`} />
 
+        {/* ── خط النظام: IBM Plex Sans Arabic (خط منصات) ── */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap"
+        />
+
         {/* ── Styles ── */}
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: `
@@ -93,6 +101,14 @@ export default function Root({ children }: PropsWithChildren) {
             font-weight: normal;
             font-style: normal;
             font-display: swap;
+          }
+
+          /* خط النظام لكل النصوص والحقول. #root يرفع الأولوية فوق أصناف
+             react-native-web الافتراضية، والأيقونات تحتفظ بخطها لأن
+             fontFamily عندها نمط مباشر (inline) يتقدّم على هذه القاعدة. */
+          html, body { font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif; }
+          #root [dir], #root input, #root textarea, #root select, #root button {
+            font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
           }
 
           /* Safe area: Dynamic Island + notch support */
@@ -166,14 +182,14 @@ export default function Root({ children }: PropsWithChildren) {
         {/* Static landing page — visible to crawlers before JS loads, hidden once React mounts */}
         <div id="dtg-static-landing" dangerouslySetInnerHTML={{ __html: `
           <style>
-            #dtg-static-landing{font-family:Arial,sans-serif;background:#021C36;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center;box-sizing:border-box;}
-            #dtg-static-landing h1{color:#C3AF76;font-size:2.2em;margin:0 0 12px;}
-            #dtg-static-landing p{font-size:1.05em;max-width:600px;line-height:1.8;margin:0 0 28px;opacity:.85;}
-            #dtg-static-landing .features{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;max-width:700px;margin-bottom:32px;}
-            #dtg-static-landing .feat{background:rgba(195,175,118,.08);border:1px solid rgba(195,175,118,.2);border-radius:12px;padding:16px 20px;min-width:180px;max-width:220px;font-size:.9em;line-height:1.6;}
-            #dtg-static-landing .feat strong{color:#C3AF76;display:block;margin-bottom:4px;}
-            #dtg-static-landing a.btn{background:#C3AF76;color:#021C36;padding:14px 36px;border-radius:30px;text-decoration:none;font-weight:700;font-size:1em;display:inline-block;margin-bottom:24px;}
-            #dtg-static-landing .links a{color:rgba(195,175,118,.8);margin:0 10px;font-size:.85em;text-decoration:none;}
+            #dtg-static-landing{font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;background:#F9FAFB;color:#161616;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center;box-sizing:border-box;}
+            #dtg-static-landing h1{color:#1B8354;font-size:2.2em;font-weight:700;margin:0 0 12px;}
+            #dtg-static-landing p{font-size:1.05em;max-width:600px;line-height:1.8;margin:0 0 28px;color:#384250;}
+            #dtg-static-landing .features{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;max-width:720px;margin-bottom:32px;}
+            #dtg-static-landing .feat{background:#FFFFFF;border:1px solid #D2D6DB;border-radius:16px;padding:16px 20px;min-width:180px;max-width:220px;font-size:.9em;line-height:1.6;color:#384250;}
+            #dtg-static-landing .feat strong{color:#161616;display:block;margin-bottom:4px;}
+            #dtg-static-landing a.btn{background:#1B8354;color:#FFFFFF;padding:10px 32px;border-radius:4px;text-decoration:none;font-weight:600;font-size:1em;display:inline-block;margin-bottom:24px;}
+            #dtg-static-landing .links a{color:#1B8354;margin:0 10px;font-size:.85em;text-decoration:none;}
           </style>
           <h1>DTG Rentals</h1>
           <p>منصة إدارة العقارات والإيجارات الذكية — نظام متكامل يساعد ملاك العقارات وشركات الإدارة على تتبع العقود والمدفوعات والمستأجرين في مكان واحد.</p>

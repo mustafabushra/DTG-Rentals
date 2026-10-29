@@ -21,11 +21,11 @@ const ARABIC_DAYS_FULL  = ['الأحد','الاثنين','الثلاثاء','ا�
 type ViewMode = 'weekly' | 'monthly' | 'yearly';
 
 const EVENT_CFG: Record<CalendarEventType, { color: string; icon: string; label: string; bg: string }> = {
-  payment:         { color: '#2E86C1', icon: 'cash-outline',             label: 'دفعة',          bg: '#EBF5FB' },
-  contract_expiry: { color: '#E74C3C', icon: 'document-text-outline',    label: 'انتهاء عقد',    bg: '#FDEDEC' },
-  file_expiry:     { color: '#8E44AD', icon: 'document-attach-outline',  label: 'انتهاء مرفق',   bg: '#F5EEF8' },
-  maintenance:     { color: '#F39C12', icon: 'construct-outline',        label: 'صيانة',         bg: '#FEF9E7' },
-  manual:          { color: '#27AE60', icon: 'calendar-outline',         label: 'حدث يدوي',      bg: '#E8F8F0' },
+  payment:         { color: '#1570EF', icon: 'cash-outline',             label: 'دفعة',          bg: '#EFF8FF' },
+  contract_expiry: { color: '#D92D20', icon: 'document-text-outline',    label: 'انتهاء عقد',    bg: '#FEF3F2' },
+  file_expiry:     { color: '#6938EF', icon: 'document-attach-outline',  label: 'انتهاء مرفق',   bg: '#F5EEF8' },
+  maintenance:     { color: '#DC6803', icon: 'construct-outline',        label: 'صيانة',         bg: '#FFFAEB' },
+  manual:          { color: '#079455', icon: 'calendar-outline',         label: 'حدث يدوي',      bg: '#ECFDF3' },
 };
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
@@ -53,11 +53,11 @@ function getWeekStart(iso: string): string {
 }
 
 function urgencyColor(days: number, fallback: string): string {
-  if (days < 0)  return '#E74C3C';
-  if (days <= 3) return '#E74C3C';
-  if (days <= 7) return '#F39C12';
-  if (days <= 14) return '#8E44AD';
-  if (days <= 30) return '#2E86C1';
+  if (days < 0)  return '#D92D20';
+  if (days <= 3) return '#D92D20';
+  if (days <= 7) return '#DC6803';
+  if (days <= 14) return '#6938EF';
+  if (days <= 30) return '#1570EF';
   return fallback;
 }
 
@@ -257,7 +257,7 @@ export default function CalendarScreen() {
           <Text style={[styles.urgencyText, { color: uc }]}>{ul}</Text>
           {!ev.id.startsWith('dyn_') ? (
             <TouchableOpacity onPress={e => { (e as any).stopPropagation?.(); requestDelete({ id: ev.id, entityType: 'calendarEvent', label: ev.title }); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="trash-outline" size={14} color="#E74C3C" />
+              <Ionicons name="trash-outline" size={14} color="#D92D20" />
             </TouchableOpacity>
           ) : ev.entityType !== 'attachment' ? (
             <Ionicons name="chevron-back" size={14} color={colors.textMuted} />
@@ -357,7 +357,7 @@ export default function CalendarScreen() {
                       styles.dayCell,
                       isToday && { backgroundColor: colors.primary, borderRadius: 99 },
                       isSel && !isToday && { backgroundColor: colors.primarySubtle, borderRadius: 99, borderWidth: 2, borderColor: colors.primary },
-                      hasUrgent && !isToday && !isSel && { borderRadius: 99, borderWidth: 1, borderColor: '#F39C12' },
+                      hasUrgent && !isToday && !isSel && { borderRadius: 99, borderWidth: 1, borderColor: '#DC6803' },
                     ]}
                     onPress={() => setSelected(iso === selected ? null : iso)}
                     activeOpacity={0.75}
@@ -405,7 +405,7 @@ export default function CalendarScreen() {
           {months.map(({ m, events, urgentCount, overdueCount }) => {
             const isCurrentMonth = m === today.getMonth() && viewYear === today.getFullYear();
             const hasBadge = urgentCount > 0 || overdueCount > 0;
-            const badgeColor = overdueCount > 0 ? '#E74C3C' : '#F39C12';
+            const badgeColor = overdueCount > 0 ? '#D92D20' : '#DC6803';
             const badgeCount = overdueCount > 0 ? overdueCount : urgentCount;
             return (
               <TouchableOpacity
@@ -448,8 +448,8 @@ export default function CalendarScreen() {
             const urgent  = yEvents.filter(e => { const d = daysFromNow(e.date); return d >= 0 && d <= 7; }).length;
             return [
               { label: 'إجمالي', value: yEvents.length, color: colors.text },
-              { label: 'متأخر', value: overdue, color: '#E74C3C' },
-              { label: 'عاجل ٧ أيام', value: urgent, color: '#F39C12' },
+              { label: 'متأخر', value: overdue, color: '#D92D20' },
+              { label: 'عاجل ٧ أيام', value: urgent, color: '#DC6803' },
             ].map(s => (
               <View key={s.label} style={styles.yearlySummaryItem}>
                 <Text style={[styles.yearlySummaryVal, { color: s.color }]}>{s.value}</Text>
@@ -467,10 +467,10 @@ export default function CalendarScreen() {
     <View style={[styles.urgencyLegend, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Text style={[styles.urgencyLegendTitle, { color: colors.textSecondary }]}>مستوى الإلحاح:</Text>
       {[
-        { color: '#E74C3C', label: 'متأخر / ٣ أيام' },
-        { color: '#F39C12', label: '٧ أيام' },
-        { color: '#8E44AD', label: '١٤ يوم' },
-        { color: '#2E86C1', label: '٣٠ يوم' },
+        { color: '#D92D20', label: 'متأخر / ٣ أيام' },
+        { color: '#DC6803', label: '٧ أيام' },
+        { color: '#6938EF', label: '١٤ يوم' },
+        { color: '#1570EF', label: '٣٠ يوم' },
       ].map(u => (
         <View key={u.label} style={styles.urgencyLegendItem}>
           <View style={[styles.urgencyLegendDot, { backgroundColor: u.color }]} />

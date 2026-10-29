@@ -43,26 +43,26 @@ export default function OwnersScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + (ownerSmallPhone ? 6 : 8), paddingHorizontal: ownerHPad, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: insets.top + (ownerSmallPhone ? 6 : 8), paddingHorizontal: ownerHPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerActions}>
             {Platform.OS === 'web' && !isDesktop && (
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={toggleSidebar}>
-                <Ionicons name="menu-outline" size={22} color="#FFFFFF" />
+              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={toggleSidebar}>
+                <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
             {canWrite && (
               <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+                style={[styles.addBtn, { backgroundColor: colors.primary }]}
                 onPress={() => router.push('/add-owner')}
               >
-                <Ionicons name="add" size={22} color="#FFFFFF" />
+                <Ionicons name="add" size={22} color={colors.textInverse} />
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.headerTitle}>الملاك</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{owners.length}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>الملاك</Text>
+          <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.countText, { color: colors.textMuted }]}>{owners.length}</Text>
           </View>
         </View>
       </View>

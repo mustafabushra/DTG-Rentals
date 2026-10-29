@@ -129,10 +129,10 @@ export default function AuthActionScreen() {
   // ── فورم إعادة التعيين ────────────────────────────────────────────────────
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <Ionicons name="lock-closed-outline" size={32} color="#FFF" />
-        <Text style={styles.headerTitle}>تعيين كلمة مرور جديدة</Text>
-        <Text style={styles.headerSub}>{email}</Text>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+        <Ionicons name="lock-closed-outline" size={32} color={colors.textSecondary} />
+        <Text style={[styles.headerTitle, { color: colors.text }]}>تعيين كلمة مرور جديدة</Text>
+        <Text style={[styles.headerSub, { color: colors.textMuted }]}>{email}</Text>
       </View>
 
       <View style={styles.form}>

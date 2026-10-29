@@ -32,6 +32,11 @@ export const fontSize = {
   '4xl': 34,
 } as const;
 
+// خط النظام: IBM Plex Sans Arabic (خط منصات). يُحمَّل في الويب من +html.tsx.
+export const fontFamily = {
+  base: "'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif",
+} as const;
+
 export const fontWeight = {
   regular:   '400',
   medium:    '500',
@@ -60,21 +65,21 @@ export const radius = {
 // ─── Shadows ──────────────────────────────────────────────────────────────────
 export const shadow = {
   sm: {
-    shadowColor: '#03284C',
+    shadowColor: '#101828',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   md: {
-    shadowColor: '#03284C',
+    shadowColor: '#101828',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#03284C',
+    shadowColor: '#101828',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 20,
@@ -99,172 +104,167 @@ export const duration = {
 } as const;
 
 // ─── Brand Palette ────────────────────────────────────────────────────────────
-// مستوحى من شعار DTG: كحلي مخفف + ذهبي هادئ — قاعدة 60-30-10
-const brand = {
-  // Navy Scale — Muted (أقل تشبعاً لراحة العين)
-  navy900: '#0E2035',   // أعمق كحلي — للتوكيد فقط
-  navy700: '#1E3E5F',   // primary — هيدر وعناصر رئيسية (30%)
-  navy500: '#2E5580',   // secondary — روابط وأيقونات نشطة
-  navy300: '#7096B8',   // تلميحات وحدود ناعمة
-  navy100: '#EBF0F6',   // خلفيات طفيفة (subtle tints)
+// مبني على نظام التصميم الموحّد "منصات" (هيئة الحكومة الرقمية):
+// أخضر أساسي + رماديات محايدة + ألوان حالة واضحة. الهوية (الشعار) تبقى لـ DTG.
+const green = {
+  25:  '#F7FDF9',
+  50:  '#F3FCF6',
+  100: '#DFF6E7',
+  200: '#B8EACB',
+  300: '#88D8AD',
+  400: '#54C08A',
+  500: '#25935F',
+  600: '#1B8354',   // primary
+  700: '#166A45',   // hover
+  800: '#14573A',
+  900: '#104631',
+  950: '#092A1E',
+} as const;
 
-  // Gold Scale — Desaturated (10% فقط للعناصر التفاعلية)
-  gold700: '#8A7248',   // hover state
-  gold500: '#A8895C',   // accent (مخفف من الذهبي الصارخ)
-  gold300: '#CCB88A',   // مؤشرات وشارات
-  gold100: '#F0E8D5',   // خلفيات الذهبي الطفيفة
-
-  // Warm Off-White — خلفيات الـ 60%
-  warm50:  '#FAF9F6',   // خلفية رئيسية (دافئة جداً — ليست بيضاء ناصعة)
-  warm100: '#F2F0EB',   // خلفية ثانوية وsurface
-  warm200: '#E8E4DC',   // حدود ناعمة وفواصل
+const neutral = {
+  25:  '#FCFCFD',
+  50:  '#F9FAFB',
+  100: '#F3F4F6',
+  200: '#E5E7EB',
+  300: '#D2D6DB',
+  400: '#9DA4AE',
+  500: '#6C737F',
+  600: '#4D5761',
+  700: '#384250',
+  800: '#1F2A37',
+  900: '#111927',
+  950: '#0D121C',
 } as const;
 
 const palette = {
-  // Success / Green — مخفف قليلاً
-  success100: '#D8F4E6',
-  success500: '#2A9D5C',   // أهدأ من #27AE60
-  success700: '#1F7A46',
+  white:        '#FFFFFF',
+  textDefault:  '#161616',
 
-  // Warning / Amber — مخفف
-  warning100: '#FDEFD5',
-  warning500: '#D4880A',   // أهدأ من #F39C12
-  warning700: '#A86A08',
+  success100: '#ECFDF3',
+  success500: '#079455',
+  success700: '#067647',
 
-  // Danger / Red — مخفف
-  danger100:  '#FDEEED',
-  danger500:  '#C94535',   // أهدأ من #E74C3C
-  danger700:  '#A3392B',
+  warning100: '#FFFAEB',
+  warning500: '#DC6803',
+  warning700: '#B54708',
 
-  // Purple — مخفف
-  purple100: '#EAE0F2',
-  purple500: '#7B3FA0',
+  danger100:  '#FEF3F2',
+  danger500:  '#D92D20',
+  danger700:  '#B42318',
 
-  // Neutral — دافئ بدل الرمادي البارد
-  white:       '#FFFFFF',
-  warmWhite:   '#FDFCFA',   // كارد دافئ
-  warmGray50:  '#F6F4F0',
-  warmGray100: '#EDE9E3',
-  warmGray200: '#DDD8CF',
-  warmGray300: '#C8C2B6',
-  warmGray400: '#9E9587',   // textMuted
-  warmGray500: '#716860',   // textSecondary
-  warmGray600: '#4A4238',   // نص ثانوي داكن
-  warmGray700: '#30281F',
-  black:       '#000000',
+  info100:    '#EFF8FF',
+  info500:    '#1570EF',
+  info700:    '#1849A9',
+
+  purple100:  '#F4F3FF',
+  purple500:  '#6938EF',
 } as const;
 
-// ─── Dark Slate Text — ليس أسود بل رمادي داكن مائل للكحلي ──────────────────
-const slate = {
-  text:      '#2A3D52',   // نص رئيسي: كحلي-رمادي داكن (أريح من الأسود)
-  secondary: '#5A6A7A',   // نص ثانوي: رمادي-كحلي متوسط
-  muted:     '#8A97A5',   // نص ضامت: رمادي فاتح
-} as const;
+/** ألوان النظام الخام — للاستخدام النادر حين لا يكفي الرمز الدلالي */
+export const dga = { green, neutral, ...palette } as const;
 
 // ─── Semantic Color Tokens (Theme-aware) ──────────────────────────────────────
 export type ThemeColors = typeof lightColors;
 
 export const lightColors = {
-  // 30% — Navy (مخفف) — الهيدر، العناصر النشطة، الروابط
-  primary:        brand.navy700,   // #1E3E5F
-  primaryLight:   brand.navy500,   // #2E5580
-  primarySubtle:  brand.navy100,   // #EBF0F6
+  primary:        green[600],
+  primaryLight:   green[500],
+  primarySubtle:  green[50],
+  primaryHover:   green[700],
+  primaryDeep:    green[800],
 
-  // 10% — Gold (مخفف) — الأزرار التفاعلية والتوكيدات فقط
-  accent:         brand.gold500,   // #A8895C
-  accentHover:    brand.gold700,   // #8A7248
-  accentSubtle:   brand.gold100,   // #F0E8D5
-  accentMuted:    brand.gold300,   // #CCB88A
+  // التوكيد = الأخضر نفسه (منصات تعتمد لوناً أساسياً واحداً)
+  accent:         green[600],
+  accentHover:    green[700],
+  accentSubtle:   green[100],
+  accentMuted:    green[300],
 
-  secondary:      brand.navy500,
+  secondary:      neutral[700],
 
-  // Semantic — مخففة
-  success:        palette.success500,
+  success:        palette.success700,
   successSubtle:  palette.success100,
-  warning:        palette.warning500,
+  warning:        palette.warning700,
   warningSubtle:  palette.warning100,
   danger:         palette.danger500,
   dangerSubtle:   palette.danger100,
+  info:           palette.info700,
+  infoSubtle:     palette.info100,
   purple:         palette.purple500,
   purpleSubtle:   palette.purple100,
 
-  // 60% — Warm Off-White Backgrounds
-  background:     brand.warm50,    // #FAF9F6 — خلفية رئيسية دافئة
-  surface:        brand.warm100,   // #F2F0EB — سطح ثانوي
-  card:           palette.warmWhite, // #FDFCFA — بطاقات دافئة
-  overlay:        'rgba(14,32,53,0.45)',
+  background:     neutral[50],
+  surface:        neutral[100],
+  card:           palette.white,
+  overlay:        'rgba(13,18,28,0.5)',
 
-  // Borders — ناعمة ودافئة
-  border:         brand.warm200,     // #E8E4DC — حدود خفيفة جداً
-  borderStrong:   palette.warmGray200, // #DDD8CF
+  border:         neutral[200],
+  borderStrong:   neutral[300],
 
-  // Text — Dark Slate (أريح من الكحلي الداكن والأسود)
-  text:           slate.text,      // #2A3D52
-  textSecondary:  slate.secondary, // #5A6A7A
-  textMuted:      slate.muted,     // #8A97A5
+  text:           palette.textDefault,
+  textSecondary:  neutral[700],
+  textMuted:      neutral[500],
   textInverse:    palette.white,
 
-  // Input
-  inputBg:        palette.warmWhite,
-  inputBorder:    palette.warmGray200,
-  inputFocus:     brand.navy700,
+  inputBg:        palette.white,
+  inputBorder:    neutral[400],
+  inputFocus:     green[600],
 
-  // Tab bar
-  tabBar:         palette.warmWhite,
-  tabActive:      brand.navy700,
-  tabInactive:    palette.warmGray400,
+  tabBar:         palette.white,
+  tabActive:      green[600],
+  tabInactive:    neutral[500],
 
-  // Filter pill
-  filterActive:   brand.navy700,
-  filterInactive: brand.warm200,
+  filterActive:   green[600],
+  filterInactive: neutral[200],
 } as const;
 
 export const darkColors = {
-  // Dark mode — كحلي عميق مريح (ليس أسود)
-  primary:        brand.gold300,   // #CCB88A — ذهبي هادئ في الداكن
-  primaryLight:   brand.gold500,
-  primarySubtle:  '#0A1E33',
+  primary:        green[400],
+  primaryLight:   green[300],
+  primarySubtle:  '#0E2A1D',
+  primaryHover:   green[300],
+  primaryDeep:    green[950],
 
-  accent:         brand.gold500,
-  accentHover:    brand.gold700,
-  accentSubtle:   '#1A2818',
-  accentMuted:    brand.gold700,
+  accent:         green[400],
+  accentHover:    green[300],
+  accentSubtle:   '#0E2A1D',
+  accentMuted:    green[700],
 
-  secondary:      '#4A7FA8',
+  secondary:      neutral[300],
 
-  success:        '#34B86A',
-  successSubtle:  '#0C3320',
-  warning:        '#E09620',
-  warningSubtle:  '#332400',
-  danger:         '#D44235',
-  dangerSubtle:   '#361410',
-  purple:         '#9660C0',
-  purpleSubtle:   '#261040',
+  success:        '#47CD89',
+  successSubtle:  '#053321',
+  warning:        '#FDB022',
+  warningSubtle:  '#4E1D09',
+  danger:         '#F97066',
+  dangerSubtle:   '#55160C',
+  info:           '#53B1FD',
+  infoSubtle:     '#102A56',
+  purple:         '#9B8AFB',
+  purpleSubtle:   '#27115F',
 
-  // خلفيات الداكن — كحلي عميق (ليس أسود قاطع)
-  background:     '#0C1B2E',   // أزرق-أسود دافئ
-  surface:        '#122236',
-  card:           '#182B42',
+  background:     neutral[950],
+  surface:        neutral[900],
+  card:           neutral[800],
   overlay:        'rgba(0,0,0,0.65)',
 
-  border:         '#1E3049',
-  borderStrong:   '#2A4060',
+  border:         neutral[700],
+  borderStrong:   neutral[600],
 
-  text:           '#E8EDF2',   // أبيض-رمادي مائل للبرود (مريح)
-  textSecondary:  '#94A3B8',
-  textMuted:      '#516070',
-  textInverse:    brand.navy900,
+  text:           neutral[50],
+  textSecondary:  neutral[300],
+  textMuted:      neutral[400],
+  textInverse:    neutral[950],
 
-  inputBg:        '#182B42',
-  inputBorder:    '#1E3049',
-  inputFocus:     brand.gold500,
+  inputBg:        neutral[900],
+  inputBorder:    neutral[600],
+  inputFocus:     green[400],
 
-  tabBar:         '#122236',
-  tabActive:      brand.gold300,
-  tabInactive:    '#4A5E72',
+  tabBar:         neutral[900],
+  tabActive:      green[400],
+  tabInactive:    neutral[400],
 
-  filterActive:   brand.gold500,
-  filterInactive: '#1E3049',
+  filterActive:   green[400],
+  filterInactive: neutral[700],
 } as const;
 
 export const DesignTokens = {

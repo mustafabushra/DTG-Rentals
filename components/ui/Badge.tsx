@@ -30,7 +30,13 @@ export function Badge({ status, size = 'md', variant = 'soft', style }: BadgePro
   const textColor = variant === 'filled' ? colors.textInverse : config.text;
 
   return (
-    <View style={[styles.base, size === 'sm' ? styles.sm : styles.md, { backgroundColor: bgColor }, style]}>
+    <View style={[
+      styles.base,
+      size === 'sm' ? styles.sm : styles.md,
+      // منصات Tag: خلفية فاتحة + حد بنفس درجة النص
+      { backgroundColor: bgColor, borderColor: variant === 'filled' ? bgColor : `${config.text}55` },
+      style,
+    ]}>
       <Text style={[size === 'sm' ? styles.textSm : styles.textMd, { color: textColor }]}>
         {config.label}
       </Text>
@@ -52,7 +58,7 @@ function getConfig(status: BadgeStatus, colors: Record<string, string>): BadgeCo
     overdue:       { label: 'متأخر',         bg: colors.dangerSubtle,  text: colors.danger },
 
     // Maintenance
-    new:           { label: 'جديد',          bg: colors.primarySubtle, text: colors.primary },
+    new:           { label: 'جديد',          bg: colors.infoSubtle,    text: colors.info },
     in_progress:   { label: 'قيد التنفيذ',   bg: colors.warningSubtle, text: colors.warning },
     completed:     { label: 'مكتمل',         bg: colors.successSubtle, text: colors.success },
 
@@ -60,7 +66,7 @@ function getConfig(status: BadgeStatus, colors: Record<string, string>): BadgeCo
     vacant:        { label: 'شاغرة',         bg: colors.surface,       text: colors.textSecondary },
     rented:        { label: 'مؤجرة',         bg: colors.successSubtle, text: colors.success },
     maintenance:   { label: 'صيانة',         bg: colors.warningSubtle, text: colors.warning },
-    reserved:      { label: 'محجوزة',        bg: colors.primarySubtle, text: colors.primary },
+    reserved:      { label: 'محجوزة',        bg: colors.infoSubtle,    text: colors.info },
 
     // Tenant
     former:        { label: 'سابق',          bg: colors.surface,       text: colors.textMuted },
@@ -71,7 +77,7 @@ function getConfig(status: BadgeStatus, colors: Record<string, string>): BadgeCo
 
     // Priority
     low:           { label: 'منخفضة',        bg: colors.surface,       text: colors.textSecondary },
-    medium:        { label: 'متوسطة',        bg: colors.primarySubtle, text: colors.primary },
+    medium:        { label: 'متوسطة',        bg: colors.infoSubtle,    text: colors.info },
     high:          { label: 'عالية',         bg: colors.warningSubtle, text: colors.warning },
     urgent:        { label: 'عاجل',          bg: colors.dangerSubtle,  text: colors.danger },
   };
@@ -80,9 +86,9 @@ function getConfig(status: BadgeStatus, colors: Record<string, string>): BadgeCo
 }
 
 const styles = StyleSheet.create({
-  base:   { borderRadius: radius.full, alignSelf: 'flex-start' },
+  base:   { borderRadius: 6, borderWidth: 1, alignSelf: 'flex-start' },
   sm:     { paddingHorizontal: spacing[2], paddingVertical: 2 },
   md:     { paddingHorizontal: spacing[3], paddingVertical: spacing[1] },
-  textSm: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
-  textMd: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+  textSm: { fontSize: fontSize.xs, fontWeight: fontWeight.medium },
+  textMd: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
 });

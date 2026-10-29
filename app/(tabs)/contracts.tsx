@@ -46,26 +46,26 @@ export default function ContractsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + (cSmallPhone ? 6 : 8), paddingHorizontal: cHPad, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: insets.top + (cSmallPhone ? 6 : 8), paddingHorizontal: cHPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {Platform.OS === 'web' && !isDesktop && (
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={toggleSidebar}>
-                <Ionicons name="menu-outline" size={22} color="#FFFFFF" />
+              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={toggleSidebar}>
+                <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
             {canWrite && (
               <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+                style={[styles.addBtn, { backgroundColor: colors.primary }]}
                 onPress={() => router.push('/add-contract')}
               >
-                <Ionicons name="add" size={22} color="#FFFFFF" />
+                <Ionicons name="add" size={22} color={colors.textInverse} />
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.headerTitle}>العقود</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{contracts.length}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>العقود</Text>
+          <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.countText, { color: colors.textMuted }]}>{contracts.length}</Text>
           </View>
         </View>
       </View>

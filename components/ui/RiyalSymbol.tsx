@@ -7,7 +7,7 @@ interface Props {
 }
 
 // Official Saudi Riyal symbol from SAMA (sama.gov.sa)
-export function RiyalSymbol({ size = 16, color = '#1B4F72' }: Props) {
+export function RiyalSymbol({ size = 16, color = '#1B8354' }: Props) {
   const height = size * (1256.39 / 1124.14);
   return (
     <Svg width={size} height={height} viewBox="0 0 1124.14 1256.39">

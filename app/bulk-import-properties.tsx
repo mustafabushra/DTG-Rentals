@@ -179,11 +179,11 @@ export default function BulkImportPropertiesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="close" size={24} color="#FFF" />
+          <Ionicons name="close" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>استيراد عقارات مجمّع</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>استيراد عقارات مجمّع</Text>
         <View style={{ width: 32 }} />
       </View>
 

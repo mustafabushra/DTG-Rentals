@@ -18,28 +18,28 @@ interface Step {
 const STEPS: Step[] = [
   {
     icon: 'home-outline',
-    color: '#C3AF76',
-    bg: '#03284C',
+    color: '#FFFFFF',
+    bg: '#1B8354',
     title: 'مرحباً بك في DTG Rentals 👋',
     desc: 'نظام إدارة العقارات الذكي — يساعدك على إدارة عقاراتك، مستأجريك، وعقودك من مكان واحد.',
   },
   {
     icon: 'grid-outline',
-    color: '#2E86C1',
-    bg: '#EBF5FB',
+    color: '#1570EF',
+    bg: '#EFF8FF',
     title: 'لوحة التحكم',
     desc: 'نظرة سريعة على أهم الأرقام — عدد الوحدات المؤجرة، الإيرادات الشهرية، والمدفوعات المتأخرة.',
   },
   {
     icon: 'business-outline',
-    color: '#7B3FA0',
-    bg: '#EAE0F2',
+    color: '#6938EF',
+    bg: '#F4F3FF',
     title: 'العقارات والوحدات',
     desc: 'أضف عقاراتك وحداتها بسهولة. كل وحدة لها سجل كامل من العقود والصيانة والمرفقات.',
   },
   {
     icon: 'document-text-outline',
-    color: '#27AE60',
+    color: '#079455',
     bg: '#D8F4E6',
     title: 'العقود والمدفوعات',
     desc: 'أنشئ عقود إيجار واحتسب الأقساط تلقائياً. تتبّع الدفعات وتلقَّ تنبيهات عند الاستحقاق.',
@@ -53,8 +53,8 @@ const STEPS: Step[] = [
   },
   {
     icon: 'construct-outline',
-    color: '#E74C3C',
-    bg: '#FDEDEC',
+    color: '#D92D20',
+    bg: '#FEF3F2',
     title: 'الصيانة والتقارير',
     desc: 'تتبّع طلبات الصيانة وأنشئ تقارير مالية مفصّلة لكل عقار أو لجميع عقاراتك.',
   },
@@ -151,14 +151,14 @@ export function OnboardingTour() {
         <View style={styles.actions}>
           {step > 0 ? (
             <TouchableOpacity style={styles.prevBtn} onPress={prev}>
-              <Ionicons name="chevron-forward" size={18} color="#64748B" />
+              <Ionicons name="chevron-forward" size={18} color="#6C737F" />
               <Text style={styles.prevText}>السابق</Text>
             </TouchableOpacity>
           ) : (
             <View style={{ flex: 1 }} />
           )}
 
-          <TouchableOpacity style={[styles.nextBtn, { backgroundColor: s.color === '#C3AF76' ? '#03284C' : s.color }]} onPress={next}>
+          <TouchableOpacity style={[styles.nextBtn, { backgroundColor: s.color === '#FFFFFF' ? '#1B8354' : s.color }]} onPress={next}>
             <Text style={styles.nextText}>{isLast ? 'ابدأ الآن 🚀' : 'التالي'}</Text>
             {!isLast && <Ionicons name="chevron-back" size={18} color="#FFF" />}
           </TouchableOpacity>
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(2,28,54,0.85)',
+    backgroundColor: 'rgba(13,18,28,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 9999,
@@ -213,13 +213,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1A202C',
+    color: '#161616',
     textAlign: 'center',
     lineHeight: 30,
   },
   desc: {
     fontSize: 15,
-    color: '#64748B',
+    color: '#6C737F',
     textAlign: 'center',
     lineHeight: 24,
     paddingHorizontal: 8,
@@ -233,10 +233,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#E5E7EB',
   },
   dotActive: {
-    backgroundColor: '#03284C',
+    backgroundColor: '#1B8354',
     width: 20,
   },
   actions: {
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   prevText: {
-    color: '#64748B',
+    color: '#6C737F',
     fontSize: 15,
     fontWeight: '500',
   },

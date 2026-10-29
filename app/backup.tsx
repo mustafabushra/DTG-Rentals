@@ -28,9 +28,9 @@ type ImportStep = 'input' | 'preview' | 'confirming' | 'success' | 'error';
 // ─── Colour shortcuts ─────────────────────────────────────────────────────────
 const STATUS_COLOR: Record<ValidationStatus, string> = {
   idle:    '#555',
-  valid:   '#27AE60',
-  warning: '#F39C12',
-  error:   '#E74C3C',
+  valid:   '#079455',
+  warning: '#DC6803',
+  error:   '#D92D20',
 };
 const STATUS_ICON: Record<ValidationStatus, string> = {
   idle:    'ellipse-outline',
@@ -93,12 +93,12 @@ export default function BackupScreen() {
   };
 
   const stats = [
-    { label: 'الملاك',      value: owners.length,      icon: 'person-outline',        color: '#8E44AD' },
+    { label: 'الملاك',      value: owners.length,      icon: 'person-outline',        color: '#6938EF' },
     { label: 'العقارات',    value: properties.length,   icon: 'business-outline',      color: colors.primary },
     { label: 'الوحدات',     value: units.length,        icon: 'home-outline',          color: colors.secondary },
-    { label: 'المستأجرون',  value: tenants.length,      icon: 'people-outline',        color: '#F39C12' },
+    { label: 'المستأجرون',  value: tenants.length,      icon: 'people-outline',        color: '#DC6803' },
     { label: 'العقود',      value: contracts.length,    icon: 'document-text-outline', color: colors.success },
-    { label: 'الدفعات',     value: payments.length,     icon: 'cash-outline',          color: '#27AE60' },
+    { label: 'الدفعات',     value: payments.length,     icon: 'cash-outline',          color: '#079455' },
     { label: 'الصيانة',     value: maintenance.length,  icon: 'construct-outline',     color: colors.warning },
     { label: 'المرفقات',    value: attachments.length,  icon: 'attach-outline',        color: colors.textSecondary },
   ];
@@ -332,8 +332,8 @@ function RecoveryConsole({ colors, currentData, onImport }: {
     <View style={{ gap: 14, paddingTop: 4 }}>
 
       {/* ── Recovery Console header ── */}
-      <View style={[s.consoleHeader, { backgroundColor: '#021C36' }]}>
-        <Ionicons name="terminal-outline" size={18} color="#C3AF76" />
+      <View style={[s.consoleHeader, { backgroundColor: '#14573A' }]}>
+        <Ionicons name="terminal-outline" size={18} color="#FFFFFF" />
         <Text style={s.consoleTitle}>وحدة الاستعادة</Text>
         <Animated.View style={[s.statusPill, { backgroundColor: statusColor + '22', borderColor: statusColor, transform: [{ scale: pillScale }] }]}>
           <Ionicons name={(STATUS_ICON[validation?.status ?? 'idle']) as any} size={13} color={statusColor} />
@@ -407,9 +407,9 @@ function FileUploadPanel({ colors, fileName, validation, onPick, onSwitchToPaste
       <TouchableOpacity
         style={[s.dropZone, {
           backgroundColor: colors.surface,
-          borderColor: validation?.status === 'valid'   ? '#27AE60'
-                     : validation?.status === 'error'   ? '#E74C3C'
-                     : validation?.status === 'warning' ? '#F39C12'
+          borderColor: validation?.status === 'valid'   ? '#079455'
+                     : validation?.status === 'error'   ? '#D92D20'
+                     : validation?.status === 'warning' ? '#DC6803'
                      : colors.border,
         }]}
         onPress={onPick}
@@ -439,9 +439,9 @@ function FileUploadPanel({ colors, fileName, validation, onPick, onSwitchToPaste
 
 // ─── Paste Panel ──────────────────────────────────────────────────────────────
 function PastePanel({ colors, value, onChange, validation }: any) {
-  const borderColor = validation?.status === 'valid'   ? '#27AE60'
-                    : validation?.status === 'error'   ? '#E74C3C'
-                    : validation?.status === 'warning' ? '#F39C12'
+  const borderColor = validation?.status === 'valid'   ? '#079455'
+                    : validation?.status === 'error'   ? '#D92D20'
+                    : validation?.status === 'warning' ? '#DC6803'
                     : colors.border;
   return (
     <View style={{ gap: 8 }}>
@@ -484,8 +484,8 @@ function ValidationPanel({ colors, result }: { colors: any; result: ValidationRe
           {STATUS_LABEL[result.status]}
         </Text>
         {result.repaired && (
-          <View style={[s.repairedBadge, { backgroundColor: '#F39C1222', borderColor: '#F39C12' }]}>
-            <Ionicons name="construct-outline" size={11} color="#F39C12" />
+          <View style={[s.repairedBadge, { backgroundColor: '#F39C1222', borderColor: '#DC6803' }]}>
+            <Ionicons name="construct-outline" size={11} color="#DC6803" />
             <Text style={s.repairedText}>تم الإصلاح التلقائي</Text>
           </View>
         )}
@@ -495,8 +495,8 @@ function ValidationPanel({ colors, result }: { colors: any; result: ValidationRe
         <View style={{ gap: 4, marginTop: 8 }}>
           {result.errors.map((e, i) => (
             <View key={i} style={s.msgRow}>
-              <Ionicons name="close-circle-outline" size={14} color="#E74C3C" />
-              <Text style={[s.msgText, { color: '#E74C3C' }]}>{e}</Text>
+              <Ionicons name="close-circle-outline" size={14} color="#D92D20" />
+              <Text style={[s.msgText, { color: '#D92D20' }]}>{e}</Text>
             </View>
           ))}
         </View>
@@ -505,8 +505,8 @@ function ValidationPanel({ colors, result }: { colors: any; result: ValidationRe
         <View style={{ gap: 4, marginTop: 6 }}>
           {result.warnings.map((w, i) => (
             <View key={i} style={s.msgRow}>
-              <Ionicons name="warning-outline" size={14} color="#F39C12" />
-              <Text style={[s.msgText, { color: '#F39C12' }]}>{w}</Text>
+              <Ionicons name="warning-outline" size={14} color="#DC6803" />
+              <Text style={[s.msgText, { color: '#DC6803' }]}>{w}</Text>
             </View>
           ))}
         </View>
@@ -542,14 +542,14 @@ function DiffPanel({ colors, diff }: { colors: any; diff: DiffSummary[] }) {
           <Text style={[s.diffLabel, { color: colors.text, flex: 2 }]}>{d.label}</Text>
           <Text style={[s.diffNum, { color: colors.textMuted }]}>{d.current}</Text>
           <Text style={[s.diffNum, { color: colors.text, fontWeight: '700' }]}>{d.incoming}</Text>
-          <Text style={[s.diffDelta, { color: d.delta > 0 ? '#27AE60' : d.delta < 0 ? '#E74C3C' : colors.textMuted }]}>
+          <Text style={[s.diffDelta, { color: d.delta > 0 ? '#079455' : d.delta < 0 ? '#D92D20' : colors.textMuted }]}>
             {d.delta > 0 ? `+${d.delta}` : d.delta === 0 ? '—' : `${d.delta}`}
           </Text>
         </View>
       ))}
       <View style={[s.diffWarning, { backgroundColor: '#E74C3C12', borderColor: '#E74C3C33' }]}>
-        <Ionicons name="alert-circle-outline" size={15} color="#E74C3C" />
-        <Text style={[s.diffWarningText, { color: '#E74C3C' }]}>
+        <Ionicons name="alert-circle-outline" size={15} color="#D92D20" />
+        <Text style={[s.diffWarningText, { color: '#D92D20' }]}>
           سيتم استبدال جميع البيانات الحالية بالبيانات المستعادة
         </Text>
       </View>
@@ -562,7 +562,7 @@ function ConfirmPanel({ colors, confirmed, importing, onToggle, onRestore }: any
   return (
     <View style={{ gap: 12 }}>
       <TouchableOpacity style={[s.checkRow, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={onToggle}>
-        <View style={[s.checkbox, { borderColor: confirmed ? '#27AE60' : colors.border, backgroundColor: confirmed ? '#27AE60' : 'transparent' }]}>
+        <View style={[s.checkbox, { borderColor: confirmed ? '#079455' : colors.border, backgroundColor: confirmed ? '#079455' : 'transparent' }]}>
           {confirmed && <Ionicons name="checkmark" size={14} color="#FFF" />}
         </View>
         <Text style={[s.checkText, { color: colors.textSecondary }]}>
@@ -598,9 +598,9 @@ function SuccessPanel({ colors, diff, onRollback, onDone, importing }: any) {
   return (
     <View style={[s.resultCard, { backgroundColor: '#27AE6012', borderColor: '#27AE6044' }]}>
       <Animated.View style={[s.resultIcon, { backgroundColor: '#27AE6020', transform: [{ scale: scaleAnim }] }]}>
-        <Ionicons name="checkmark-circle" size={52} color="#27AE60" />
+        <Ionicons name="checkmark-circle" size={52} color="#079455" />
       </Animated.View>
-      <Text style={[s.resultTitle, { color: '#27AE60' }]}>تمت الاستعادة بنجاح</Text>
+      <Text style={[s.resultTitle, { color: '#079455' }]}>تمت الاستعادة بنجاح</Text>
       <Text style={[s.resultSub, { color: colors.textSecondary }]}>
         تم استعادة {total.toLocaleString('ar')} سجل إلى النظام
       </Text>
@@ -608,15 +608,15 @@ function SuccessPanel({ colors, diff, onRollback, onDone, importing }: any) {
       <View style={s.resultActions}>
         {onRollback && (
           <TouchableOpacity
-            style={[s.rollbackBtn, { borderColor: '#F39C12' }, importing && { opacity: 0.5 }]}
+            style={[s.rollbackBtn, { borderColor: '#DC6803' }, importing && { opacity: 0.5 }]}
             onPress={onRollback}
             disabled={importing}
           >
             {importing
-              ? <ActivityIndicator size="small" color="#F39C12" />
-              : <Ionicons name="arrow-undo-outline" size={16} color="#F39C12" />
+              ? <ActivityIndicator size="small" color="#DC6803" />
+              : <Ionicons name="arrow-undo-outline" size={16} color="#DC6803" />
             }
-            <Text style={[s.rollbackText, { color: '#F39C12' }]}>تراجع عن الاستعادة</Text>
+            <Text style={[s.rollbackText, { color: '#DC6803' }]}>تراجع عن الاستعادة</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity style={s.doneBtn} onPress={onDone}>
@@ -633,9 +633,9 @@ function ErrorPanel({ colors, message, onRetry }: any) {
   return (
     <View style={[s.resultCard, { backgroundColor: '#E74C3C12', borderColor: '#E74C3C44' }]}>
       <View style={[s.resultIcon, { backgroundColor: '#E74C3C20' }]}>
-        <Ionicons name="close-circle" size={52} color="#E74C3C" />
+        <Ionicons name="close-circle" size={52} color="#D92D20" />
       </View>
-      <Text style={[s.resultTitle, { color: '#E74C3C' }]}>فشلت الاستعادة</Text>
+      <Text style={[s.resultTitle, { color: '#D92D20' }]}>فشلت الاستعادة</Text>
       <Text style={[s.resultSub, { color: colors.textSecondary }]}>{message}</Text>
       <TouchableOpacity style={s.doneBtn} onPress={onRetry}>
         <Ionicons name="refresh-outline" size={16} color="#FFF" />
@@ -654,7 +654,7 @@ const s = StyleSheet.create({
 
   // Console header
   consoleHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, padding: 14, marginTop: 12 },
-  consoleTitle:  { flex: 1, color: '#C3AF76', fontWeight: '700', fontSize: 15 },
+  consoleTitle:  { flex: 1, color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   statusPill:    { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   statusPillText:{ fontSize: 11, fontWeight: '700' },
 
@@ -684,7 +684,7 @@ const s = StyleSheet.create({
   validHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   validHeaderText: { fontWeight: '700', fontSize: 14, flex: 1 },
   repairedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  repairedText: { fontSize: 10, color: '#F39C12', fontWeight: '700' },
+  repairedText: { fontSize: 10, color: '#DC6803', fontWeight: '700' },
   msgRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   msgText: { fontSize: 12, lineHeight: 18, flex: 1 },
   countsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
@@ -708,7 +708,7 @@ const s = StyleSheet.create({
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderWidth: 1, borderRadius: 12, padding: 14 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   checkText:{ fontSize: 13, lineHeight: 20, flex: 1 },
-  restoreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#E74C3C', borderRadius: 14, paddingVertical: 16 },
+  restoreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#D92D20', borderRadius: 14, paddingVertical: 16 },
   restoreBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 
   // Result cards

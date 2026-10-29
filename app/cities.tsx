@@ -111,17 +111,17 @@ export default function CitiesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>إدارة المدن</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>إدارة المدن</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity onPress={handleUpdateAllProperties} style={styles.headerBtn}>
-            <Ionicons name="refresh-outline" size={24} color="#FFF" />
+            <Ionicons name="refresh-outline" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { resetForm(); setShowForm(true); }}>
-            <Ionicons name="add-circle-outline" size={28} color="#FFF" />
+            <Ionicons name="add-circle-outline" size={28} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.medium },
   saveBtn: {
     flex: 1,
-    borderRadius: Theme.radius.md,
+    borderRadius: Theme.radius.sm,
     paddingVertical: 12,
     alignItems: 'center',
   },

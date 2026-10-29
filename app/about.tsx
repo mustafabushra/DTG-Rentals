@@ -27,7 +27,7 @@ export default function AboutScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.logoWrap}>
-            <Ionicons name="business" size={56} color="#C3AF76" />
+            <Ionicons name="business" size={56} color="#FFFFFF" />
           </View>
           <Text style={styles.heroTitle}>DTG Rentals</Text>
           <Text style={styles.heroSub}>منصة إدارة العقارات والإيجارات الذكية</Text>
@@ -37,7 +37,7 @@ export default function AboutScreen() {
           </Text>
           <TouchableOpacity style={styles.ctaBtn} onPress={() => router.replace('/login')}>
             <Text style={styles.ctaBtnText}>ابدأ الآن</Text>
-            <Ionicons name="arrow-back-outline" size={18} color="#021C36" style={{ marginRight: 6 }} />
+            <Ionicons name="arrow-back-outline" size={18} color="#14573A" style={{ marginRight: 6 }} />
           </TouchableOpacity>
         </View>
 
@@ -48,7 +48,7 @@ export default function AboutScreen() {
             {FEATURES.map((f, i) => (
               <View key={i} style={styles.featureCard}>
                 <View style={styles.featureIconWrap}>
-                  <Ionicons name={f.icon as any} size={28} color="#C3AF76" />
+                  <Ionicons name={f.icon as any} size={28} color="#FFFFFF" />
                 </View>
                 <Text style={styles.featureTitle}>{f.title}</Text>
                 <Text style={styles.featureDesc}>{f.desc}</Text>
@@ -78,28 +78,28 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  root:          { flex: 1, backgroundColor: '#021C36' },
-  topBar:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(195,175,118,0.2)' },
-  brandName:     { color: '#C3AF76', fontSize: 20, fontWeight: '800' },
-  loginBtn:      { backgroundColor: '#C3AF76', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
-  loginBtnText:  { color: '#021C36', fontSize: 14, fontWeight: '700' },
+  root:          { flex: 1, backgroundColor: '#14573A' },
+  topBar:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.2)' },
+  brandName:     { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
+  loginBtn:      { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
+  loginBtnText:  { color: '#14573A', fontSize: 14, fontWeight: '700' },
   content:       { paddingBottom: 48 },
   hero:          { alignItems: 'center', paddingHorizontal: 32, paddingTop: 48, paddingBottom: 40 },
-  logoWrap:      { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(195,175,118,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 2, borderColor: 'rgba(195,175,118,0.3)' },
-  heroTitle:     { color: '#C3AF76', fontSize: 32, fontWeight: '800', marginBottom: 8 },
+  logoWrap:      { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  heroTitle:     { color: '#FFFFFF', fontSize: 32, fontWeight: '800', marginBottom: 8 },
   heroSub:       { color: '#FFFFFF', fontSize: 17, fontWeight: '600', marginBottom: 16, textAlign: 'center' },
   heroDesc:      { color: 'rgba(255,255,255,0.7)', fontSize: 15, lineHeight: 26, textAlign: 'center', marginBottom: 28 },
-  ctaBtn:        { flexDirection: 'row', alignItems: 'center', backgroundColor: '#C3AF76', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 30 },
-  ctaBtnText:    { color: '#021C36', fontSize: 16, fontWeight: '800' },
+  ctaBtn:        { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 30 },
+  ctaBtnText:    { color: '#14573A', fontSize: 16, fontWeight: '800' },
   featuresSection: { paddingHorizontal: 20, paddingTop: 8 },
   sectionTitle:  { color: '#FFFFFF', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 20 },
   featuresGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
-  featureCard:   { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 20, width: '47%', minWidth: 150, borderWidth: 1, borderColor: 'rgba(195,175,118,0.15)', gap: 8 },
-  featureIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(195,175,118,0.1)', justifyContent: 'center', alignItems: 'center' },
+  featureCard:   { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 20, width: '47%', minWidth: 150, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', gap: 8 },
+  featureIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
   featureTitle:  { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   featureDesc:   { color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 18 },
   footer:        { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 40, flexWrap: 'wrap' },
-  footerLink:    { color: 'rgba(195,175,118,0.8)', fontSize: 13 },
+  footerLink:    { color: 'rgba(255,255,255,0.8)', fontSize: 13 },
   footerDot:     { color: 'rgba(255,255,255,0.3)', fontSize: 13 },
   copyright:     { color: 'rgba(255,255,255,0.3)', fontSize: 12, textAlign: 'center', marginTop: 12 },
 });

@@ -23,7 +23,7 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = 8, style 
   }, []);
 
   const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.7] });
-  const bg = scheme === 'dark' ? '#2D3748' : '#E2E8F0';
+  const bg = scheme === 'dark' ? '#2D3748' : '#E5E7EB';
 
   return (
     <Animated.View

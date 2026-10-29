@@ -47,13 +47,13 @@ const TYPE_ICONS: Record<string, string> = {
 
 // Placeholder gradients per type (used when no photo)
 const TYPE_COLORS: Record<string, [string, string]> = {
-  apartment: ['#1E3A5F', '#2E86AB'],
-  villa:     ['#1B4332', '#40916C'],
-  office:    ['#3D0066', '#7B2FBE'],
-  shop:      ['#7A0000', '#C62828'],
-  building:  ['#1A237E', '#3949AB'],
-  tower:     ['#0D47A1', '#1565C0'],
-  land:      ['#33691E', '#558B2F'],
+  apartment: ['#1B8354', '#25935F'],
+  villa:     ['#14573A', '#1B8354'],
+  office:    ['#5925DC', '#6938EF'],
+  shop:      ['#B42318', '#D92D20'],
+  building:  ['#1849A9', '#1570EF'],
+  tower:     ['#194185', '#1849A9'],
+  land:      ['#B54708', '#DC6803'],
 };
 
 export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCount = 0, onDelete }: PropertyCardProps) {
@@ -71,10 +71,11 @@ export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCou
   const occupancy = total > 0 ? Math.round((rentedCount / total) * 100) : 0;
   const typeLabel = TYPE_LABELS[property.type] ?? property.type;
   const typeIcon  = TYPE_ICONS[property.type] ?? 'home-outline';
-  const [bgFrom]  = TYPE_COLORS[property.type] ?? ['#1E3A5F', '#2E86AB'];
+  const [bgFrom]  = TYPE_COLORS[property.type] ?? ['#1B8354', '#25935F'];
 
   // Responsive image height: 44% of card width (card = screen - 32px margin)
-  const imageHeight = Math.round((width - 32) * 0.44);
+  // سقف للارتفاع: في الشبكة على الشاشات العريضة كانت الصورة تأخذ ارتفاع عرض الشاشة كاملة
+  const imageHeight = Math.min(Math.round((width - 32) * 0.44), 180);
 
   const occupancyColor =
     occupancy >= 80 ? colors.success :
@@ -83,7 +84,7 @@ export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCou
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, Theme.shadow.md]}
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.borderStrong }]}
       onPress={() => router.push(`/property/${property.id}` as any)}
       activeOpacity={0.88}
     >

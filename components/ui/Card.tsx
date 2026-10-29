@@ -19,7 +19,7 @@ interface CardProps {
 export function Card({
   children,
   onPress,
-  elevation = 'sm',
+  elevation = 'flat',
   style,
   padding,
   noBorder = false,
@@ -30,10 +30,11 @@ export function Card({
 
   const cardStyle: ViewStyle = {
     backgroundColor: colors.card,
-    borderColor:     colors.border,
+    // منصات: كرت أبيض، حد محايد 1px، زوايا 16px، بلا ظل افتراضي
+    borderColor:     colors.borderStrong,
     borderWidth:     noBorder ? 0 : 1,
     borderRadius:    radius.xl,
-    padding:         padding ?? spacing[4],
+    padding:         padding ?? spacing[5],
     ...elevationStyle,
   };
 

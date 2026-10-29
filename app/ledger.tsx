@@ -50,9 +50,9 @@ interface TenantLedger {
 }
 
 const STATUS_COLORS: Record<PaymentStatus, string> = {
-  paid: '#27AE60',
-  pending: '#F39C12',
-  overdue: '#E74C3C',
+  paid: '#079455',
+  pending: '#DC6803',
+  overdue: '#D92D20',
 };
 
 const STATUS_LABELS: Record<PaymentStatus, string> = {

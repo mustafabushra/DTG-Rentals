@@ -43,10 +43,10 @@ export function OfflineBanner() {
   const retry = () => window.location.reload();
 
   const config = {
-    offline:   { bg: '#E74C3C', icon: 'cloud-offline-outline', label: 'لا يوجد اتصال بالإنترنت', showRetry: true },
-    weak:      { bg: '#E67E22', icon: 'wifi-outline',          label: 'اتصال ضعيف — بعض الميزات قد تتأخر', showRetry: false },
-    recovered: { bg: '#27AE60', icon: 'checkmark-circle-outline', label: 'تم استعادة الاتصال ✓', showRetry: false },
-    hidden:    { bg: '#27AE60', icon: 'checkmark-circle-outline', label: '', showRetry: false },
+    offline:   { bg: '#D92D20', icon: 'cloud-offline-outline', label: 'لا يوجد اتصال بالإنترنت', showRetry: true },
+    weak:      { bg: '#B54708', icon: 'wifi-outline',          label: 'اتصال ضعيف — بعض الميزات قد تتأخر', showRetry: false },
+    recovered: { bg: '#079455', icon: 'checkmark-circle-outline', label: 'تم استعادة الاتصال ✓', showRetry: false },
+    hidden:    { bg: '#079455', icon: 'checkmark-circle-outline', label: '', showRetry: false },
   }[mode];
 
   return (

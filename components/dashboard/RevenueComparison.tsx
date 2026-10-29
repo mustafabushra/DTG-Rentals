@@ -20,7 +20,7 @@ export function RevenueComparison({ currentMonth, lastMonth, currency = 'ريا�
     delta > 0 ? 'up' : delta < 0 ? 'down' : 'same';
 
   const arrow = direction === 'up' ? '↑' : direction === 'down' ? '↓' : '→';
-  const trendColor = direction === 'up' ? '#27AE60' : direction === 'down' ? '#E74C3C' : colors.textMuted;
+  const trendColor = direction === 'up' ? '#079455' : direction === 'down' ? '#D92D20' : colors.textMuted;
 
   const now = new Date();
   const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);

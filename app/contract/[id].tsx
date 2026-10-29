@@ -20,19 +20,19 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 import { CURRENCIES, getCurrency } from '../../utils/currency';
 
 const statusColors: Record<string, string> = {
-  active:     '#27AE60',
-  expired:    '#718096',
-  cancelled:  '#E74C3C',
-  terminated: '#C0392B',
-  pending:    '#F39C12',
+  active:     '#079455',
+  expired:    '#6C737F',
+  cancelled:  '#D92D20',
+  terminated: '#B42318',
+  pending:    '#DC6803',
 };
 
 const statusBg: Record<string, string> = {
-  active:     '#E8F8F0',
-  expired:    '#F0F4F8',
-  cancelled:  '#FDEDEC',
-  terminated: '#FDEDEC',
-  pending:    '#FEF9E7',
+  active:     '#ECFDF3',
+  expired:    '#F3F4F6',
+  cancelled:  '#FEF3F2',
+  terminated: '#FEF3F2',
+  pending:    '#FFFAEB',
 };
 
 export default function ContractDetailScreen() {
@@ -156,8 +156,8 @@ export default function ContractDetailScreen() {
       <RNModal visible={showRenewConfirm} transparent animationType="fade" onRequestClose={() => setShowRenewConfirm(false)}>
         <View style={styles.overlay}>
           <View style={[styles.dialog, { backgroundColor: colors.card }]}>
-            <View style={[styles.dialogIcon, { backgroundColor: '#EBF5FB' }]}>
-              <Ionicons name="refresh-circle-outline" size={32} color="#1B4F72" />
+            <View style={[styles.dialogIcon, { backgroundColor: '#EFF8FF' }]}>
+              <Ionicons name="refresh-circle-outline" size={32} color="#1B8354" />
             </View>
             <Text style={[styles.dialogTitle, { color: colors.text }]}>تجديد العقد</Text>
             <Text style={[styles.dialogSub, { color: colors.textSecondary }]}>
@@ -171,7 +171,7 @@ export default function ContractDetailScreen() {
                 <Text style={[styles.dialogBtnText, { color: colors.text }]}>إلغاء</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.dialogBtn, { backgroundColor: '#1B4F72' }]}
+                style={[styles.dialogBtn, { backgroundColor: '#1B8354' }]}
                 onPress={handleRenew}
               >
                 <Ionicons name="refresh-outline" size={16} color="#FFF" />
@@ -188,8 +188,8 @@ export default function ContractDetailScreen() {
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={Keyboard.dismiss} />
           <View style={[styles.dialog, { backgroundColor: colors.card }]}>
             {/* Icon */}
-            <View style={[styles.dialogIcon, { backgroundColor: '#FDEDEC' }]}>
-              <Ionicons name="warning-outline" size={32} color="#C0392B" />
+            <View style={[styles.dialogIcon, { backgroundColor: '#FEF3F2' }]}>
+              <Ionicons name="warning-outline" size={32} color="#B42318" />
             </View>
             <Text style={[styles.dialogTitle, { color: colors.text }]}>إنهاء العقد</Text>
             <Text style={[styles.dialogSub, { color: colors.textSecondary }]}>
@@ -218,7 +218,7 @@ export default function ContractDetailScreen() {
                 <Text style={[styles.dialogBtnText, { color: colors.text }]}>إلغاء</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.dialogBtn, { backgroundColor: reason.trim() ? '#C0392B' : colors.border }]}
+                style={[styles.dialogBtn, { backgroundColor: reason.trim() ? '#B42318' : colors.border }]}
                 onPress={handleConfirmTerminate}
                 disabled={!reason.trim()}
               >
@@ -234,8 +234,8 @@ export default function ContractDetailScreen() {
       <RNModal visible={showSend} transparent animationType="fade" onRequestClose={() => setShowSend(false)}>
         <View style={styles.overlay}>
           <View style={[styles.dialog, { backgroundColor: colors.card }]}>
-            <View style={[styles.dialogIcon, { backgroundColor: '#E8F8F0' }]}>
-              <Ionicons name="checkmark-circle-outline" size={32} color="#27AE60" />
+            <View style={[styles.dialogIcon, { backgroundColor: '#ECFDF3' }]}>
+              <Ionicons name="checkmark-circle-outline" size={32} color="#079455" />
             </View>
             <Text style={[styles.dialogTitle, { color: colors.text }]}>تم إنهاء العقد</Text>
             <Text style={[styles.dialogSub, { color: colors.textSecondary }]}>
@@ -267,17 +267,17 @@ export default function ContractDetailScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Status Banner */}
-        <View style={[styles.banner, { backgroundColor: statusBg[contract.status] ?? '#F0F4F8' }]}>
+        <View style={[styles.banner, { backgroundColor: statusBg[contract.status] ?? '#F3F4F6' }]}>
           <StatusBadge status={contract.status} />
-          <Text style={[styles.bannerText, { color: statusColors[contract.status] ?? '#718096' }]}>
+          <Text style={[styles.bannerText, { color: statusColors[contract.status] ?? '#6C737F' }]}>
             العقد {statusLabel[contract.status] ?? contract.status}
           </Text>
-          <Text style={[styles.bannerSub, { color: statusColors[contract.status] ?? '#718096' }]}>
+          <Text style={[styles.bannerSub, { color: statusColors[contract.status] ?? '#6C737F' }]}>
             {formatDate(contract.startDate)} — {formatDate(contract.endDate)}
           </Text>
           {/* Action buttons row */}
           {(isAdmin || canWrite) && contract.status === 'active' && (() => {
-            const btnColor = statusColors[contract.status] ?? '#27AE60';
+            const btnColor = statusColors[contract.status] ?? '#079455';
             return (
               <View style={styles.bannerActions}>
                 {/* Currency button */}
@@ -334,8 +334,8 @@ export default function ContractDetailScreen() {
           {/* Termination info badge */}
           {contract.status === 'terminated' && contract.cancelledAt && (
             <View style={styles.terminatedBadge}>
-              <Ionicons name="alert-circle-outline" size={13} color="#C0392B" />
-              <Text style={[styles.terminatedBadgeText, { color: '#C0392B' }]}>
+              <Ionicons name="alert-circle-outline" size={13} color="#B42318" />
+              <Text style={[styles.terminatedBadgeText, { color: '#B42318' }]}>
                 أُنهي بتاريخ {contract.cancelledAt.split('T')[0]}
               </Text>
             </View>
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     minHeight: 44,
     borderRadius: Theme.radius.full,
-    backgroundColor: '#1B4F72',
+    backgroundColor: '#1B8354',
   },
   renewBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
 
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     minHeight: 44,
     borderRadius: Theme.radius.full,
-    backgroundColor: '#C0392B',
+    backgroundColor: '#B42318',
   },
   terminateBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
 

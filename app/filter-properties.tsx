@@ -63,13 +63,13 @@ export default function FilterPropertiesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={handleReset}>
-          <Text style={styles.resetText}>إعادة ضبط</Text>
+          <Text style={[styles.resetText, { color: colors.text }]}>إعادة ضبط</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>تصفية العقارات</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>تصفية العقارات</Text>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="close" size={24} color="#FFF" />
+          <Ionicons name="close" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 

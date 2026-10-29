@@ -22,8 +22,10 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
   const { isDesktop, isSmallPhone, hPad } = useScreenSize();
   const { toggle } = useSidebar();
 
-  const bgColor   = transparent ? 'transparent' : colors.primary;
-  const textColor = '#FFFFFF';
+  // منصات: هيدر أبيض بحد سفلي رفيع ونص داكن
+  const bgColor   = transparent ? 'transparent' : colors.card;
+  const textColor = transparent ? '#FFFFFF' : colors.text;
+  const iconColor = transparent ? '#FFFFFF' : colors.textSecondary;
   const showHamburger = Platform.OS === 'web' && !isDesktop;
 
   // Compact title on small phones
@@ -37,7 +39,7 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
         paddingHorizontal: hPad,
         backgroundColor: bgColor,
       },
-      !transparent && shadow.sm,
+      !transparent && { borderBottomWidth: 1, borderBottomColor: colors.border },
     ]}
       accessibilityRole="header"
     >
@@ -53,9 +55,9 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
               accessibilityLabel="رجوع"
               accessibilityHint="العودة للشاشة السابقة"
             >
-              <Ionicons name="chevron-forward" size={22} color={textColor} />
+              <Ionicons name="chevron-forward" size={22} color={iconColor} />
               {!showHamburger && !isSmallPhone && (
-                <Text style={[styles.backText, { color: textColor }]}>رجوع</Text>
+                <Text style={[styles.backText, { color: iconColor }]}>رجوع</Text>
               )}
             </TouchableOpacity>
           )}
@@ -67,7 +69,7 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
               accessibilityRole="button"
               accessibilityLabel="فتح القائمة الجانبية"
             >
-              <Ionicons name="menu-outline" size={26} color={textColor} />
+              <Ionicons name="menu-outline" size={26} color={iconColor} />
             </TouchableOpacity>
           )}
         </View>
@@ -92,7 +94,7 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
               accessibilityLabel={rightAction.label ?? title}
               accessibilityHint={rightAction.badge ? `${rightAction.badge} إشعار` : undefined}
             >
-              <Ionicons name={rightAction.icon as any} size={22} color={textColor} />
+              <Ionicons name={rightAction.icon as any} size={22} color={iconColor} />
               {!!rightAction.badge && rightAction.badge > 0 && (
                 <View style={styles.badge} accessibilityElementsHidden>
                   <Text style={styles.badgeText}>{rightAction.badge > 99 ? '99+' : rightAction.badge}</Text>
@@ -107,7 +109,7 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
               accessibilityRole="button"
               accessibilityLabel={rightText.label}
             >
-              <Text style={[styles.actionText, { color: textColor }]}>{rightText.label}</Text>
+              <Text style={[styles.actionText, { color: transparent ? '#FFFFFF' : colors.primary }]}>{rightText.label}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -126,12 +128,12 @@ const styles = StyleSheet.create({
   sideStart: { width: 72, alignItems: 'flex-start', justifyContent: 'center' },
   backBtn:   { flexDirection: 'row', alignItems: 'center', gap: spacing[1], minHeight: 44, paddingVertical: spacing[2] },
   backText:  { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
-  title:     { flex: 1, fontWeight: fontWeight.bold, textAlign: 'center' },
-  actionText:{ fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  title:     { flex: 1, fontWeight: fontWeight.semibold, textAlign: 'center' },
+  actionText:{ fontSize: fontSize.md, fontWeight: fontWeight.semibold },
   iconBtn:   { padding: spacing[2], minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   badge: {
     position: 'absolute', top: 4, right: 4,
-    backgroundColor: '#E74C3C', borderRadius: radius.full,
+    backgroundColor: '#D92D20', borderRadius: radius.full,
     minWidth: 16, height: 16,
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
   },

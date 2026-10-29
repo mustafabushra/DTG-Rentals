@@ -46,7 +46,7 @@ export function Input({
     <View style={[styles.container, containerStyle]}>
       {label && (
         <View style={styles.labelRow}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
           {required && <Text style={[styles.required, { color: colors.danger }]}>*</Text>}
         </View>
       )}
@@ -59,8 +59,10 @@ export function Input({
           {
             backgroundColor: colors.inputBg,
             borderColor,
-            borderWidth: isFocused ? 2 : 1,
+            borderWidth: 1,
           },
+          // منصات: حلقة تركيز خضراء حول الحقل
+          isFocused && !error && { boxShadow: `0 0 0 2px ${colors.primarySubtle}, 0 0 0 4px ${colors.inputFocus}33` } as any,
           multiline && styles.multilineWrapper,
           error && styles.errorWrapper,
         ]}
@@ -120,14 +122,14 @@ export function Input({
 const styles = StyleSheet.create({
   container:      { gap: spacing[1] },
   labelRow:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  label:          { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  label:          { fontSize: fontSize.md, fontWeight: fontWeight.medium },
   required:       { fontSize: fontSize.base, lineHeight: 18 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.lg,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing[3],
-    minHeight: 48,
+    minHeight: 44,
     gap: spacing[2],
   },
   multilineWrapper: { alignItems: 'flex-start', paddingVertical: spacing[3] },

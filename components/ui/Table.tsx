@@ -36,7 +36,7 @@ export function Table<T extends Record<string, unknown>>({
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
       <View style={[styles.container, style]}>
         {/* Header */}
-        <View style={[styles.row, styles.headerRow, { backgroundColor: colors.surface, borderBottomColor: colors.border }, headerStyle]}>
+        <View style={[styles.row, styles.headerRow, { backgroundColor: colors.background, borderBottomColor: colors.border }, headerStyle]}>
           {columns.map(col => (
             <Text
               key={col.key}
@@ -64,7 +64,7 @@ export function Table<T extends Record<string, unknown>>({
                 styles.row,
                 styles.dataRow,
                 {
-                  backgroundColor: i % 2 === 0 ? colors.card : colors.surface,
+                  backgroundColor: colors.card,
                   borderBottomColor: colors.border,
                 },
                 rowStyle,
@@ -109,17 +109,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerRow: {
-    borderBottomWidth: 2,
-    paddingVertical: spacing[2],
+    borderBottomWidth: 1,
+    paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
   },
   dataRow: {
-    paddingVertical: spacing[3],
+    paddingVertical: spacing[4],
     paddingHorizontal: spacing[3],
   },
   headerCell: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.bold,
+    fontWeight: fontWeight.semibold,
     flex: 1,
     paddingHorizontal: spacing[2],
     textAlign: 'right',
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
   },
   cellText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.md,
     textAlign: 'right',
   },
   emptyRow: {

@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   issueLine: { fontSize: Theme.fontSize.sm, textAlign: 'right', lineHeight: 20 },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 14, borderRadius: Theme.radius.md, borderWidth: 1, marginTop: 4,
+    paddingVertical: 14, borderRadius: Theme.radius.sm, borderWidth: 1, marginTop: 4,
   },
-  saveText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
+  saveText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },
 });

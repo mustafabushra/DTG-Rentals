@@ -15,9 +15,9 @@ import { useAppTheme } from '../hooks/useAppTheme';
 type Filter = 'all' | AuditAction;
 
 const actionConfig: Record<AuditAction, { label: string; color: string; bg: string; icon: string }> = {
-  add:    { label: 'إضافة', color: '#27AE60', bg: '#E8F8F0', icon: 'add-circle-outline' },
-  edit:   { label: 'تعديل', color: '#F39C12', bg: '#FEF9E7', icon: 'pencil-outline' },
-  delete: { label: 'حذف',   color: '#E74C3C', bg: '#FDEDEC', icon: 'trash-outline' },
+  add:    { label: 'إضافة', color: '#079455', bg: '#ECFDF3', icon: 'add-circle-outline' },
+  edit:   { label: 'تعديل', color: '#DC6803', bg: '#FFFAEB', icon: 'pencil-outline' },
+  delete: { label: 'حذف',   color: '#D92D20', bg: '#FEF3F2', icon: 'trash-outline' },
 };
 
 export default function AuditLogScreen() {

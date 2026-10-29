@@ -58,7 +58,7 @@ export default function RegisterCodeScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.topBg, { backgroundColor: '#021C36' }]}>
+        <View style={[styles.topBg, { backgroundColor: '#14573A' }]}>
           <View style={[styles.circle1, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
           <View style={[styles.circle2, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
         </View>
@@ -77,7 +77,7 @@ export default function RegisterCodeScreen() {
             <Text style={styles.appSubtitle}>تسجيل بكود دعوة</Text>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: colors.card, ...Theme.shadow.lg }]}>
+          <View style={[styles.formCard, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.borderStrong, ...Theme.shadow.md }]}>
             <Text style={[styles.intro, { color: colors.textSecondary }]}>
               أدخل الكود الذي أعطاك إياه المدير، ثم بريدك الإلكتروني وكلمة مرور جديدة.
             </Text>
@@ -134,7 +134,7 @@ export default function RegisterCodeScreen() {
             ) : null}
 
             <TouchableOpacity
-              style={[styles.submitBtn, { backgroundColor: '#C3AF76' }, loading && { opacity: 0.7 }]}
+              style={[styles.submitBtn, { backgroundColor: '#1B8354' }, loading && { opacity: 0.7 }]}
               onPress={handleSubmit}
               disabled={loading}
               activeOpacity={0.85}
@@ -143,7 +143,7 @@ export default function RegisterCodeScreen() {
                 <Text style={styles.submitBtnText}>جاري التسجيل...</Text>
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle-outline" size={20} color="#021C36" />
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
                   <Text style={styles.submitBtnText}>تسجيل ودخول</Text>
                 </>
               )}
@@ -172,11 +172,11 @@ const styles = StyleSheet.create({
   intro: { fontSize: Theme.fontSize.sm, textAlign: 'center', lineHeight: 22 },
   submitBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, borderRadius: Theme.radius.lg, paddingVertical: 16, marginTop: 4,
+    gap: 8, borderRadius: Theme.radius.sm, minHeight: 48, paddingVertical: 12, marginTop: 4,
   },
-  submitBtnText: { color: '#021C36', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
+  submitBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: Theme.fontWeight.medium },
   backBtn: { alignItems: 'center' },
   backText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },
-  errorBox: { backgroundColor: '#FDEDEC', borderRadius: Theme.radius.md, padding: 12 },
-  errorText: { color: '#C0392B', fontSize: Theme.fontSize.sm, textAlign: 'center' },
+  errorBox: { backgroundColor: '#FEF3F2', borderWidth: 1, borderColor: '#FECDCA', borderRadius: Theme.radius.sm, padding: 12 },
+  errorText: { color: '#B42318', fontSize: Theme.fontSize.sm, textAlign: 'center' },
 });

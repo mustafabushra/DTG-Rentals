@@ -64,42 +64,42 @@ function buildReceiptHTML(p: {
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>إيصال ${p.receiptNumber}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Cairo',Arial,sans-serif;background:#f0f2f5;display:flex;justify-content:center;padding:20px;color:#1a1a2e}
-  .page{width:210mm;min-height:148mm;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+  body{font-family:'IBM Plex Sans Arabic',Arial,sans-serif;background:#F3F4F6;display:flex;justify-content:center;padding:20px;color:#161616}
+  .page{width:210mm;min-height:148mm;background:#fff;border:1px solid #D2D6DB;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12)}
   /* header */
-  .header{background:linear-gradient(135deg,#021C36 0%,#0a3d6b 100%);padding:28px 36px;display:flex;align-items:center;justify-content:space-between}
+  .header{background:#1B8354;padding:28px 36px;display:flex;align-items:center;justify-content:space-between}
   .logo-wrap{display:flex;align-items:center;gap:14px}
   .logo{height:54px;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
-  .company-name{color:#C3AF76;font-size:22px;font-weight:800;line-height:1.2}
+  .company-name{color:#FFFFFF;font-size:22px;font-weight:700;line-height:1.2}
   .company-sub{color:rgba(255,255,255,.65);font-size:11px;margin-top:2px}
-  .receipt-badge{background:rgba(195,175,118,.15);border:1.5px solid #C3AF76;border-radius:10px;padding:10px 20px;text-align:center}
-  .receipt-label{color:#C3AF76;font-size:11px;font-weight:600;letter-spacing:1px}
+  .receipt-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.6);border-radius:6px;padding:10px 20px;text-align:center}
+  .receipt-label{color:#FFFFFF;font-size:11px;font-weight:600;letter-spacing:1px}
   .receipt-num{color:#fff;font-size:16px;font-weight:800;margin-top:3px;direction:ltr}
   /* amount banner */
-  .amount-banner{background:#f8fffe;border-bottom:1px solid #e8f5e9;padding:20px 36px;display:flex;align-items:center;justify-content:space-between}
-  .amount-val{font-size:38px;font-weight:800;color:#1a7c3e}
+  .amount-banner{background:#f8fffe;border-bottom:1px solid #ECFDF3;padding:20px 36px;display:flex;align-items:center;justify-content:space-between}
+  .amount-val{font-size:36px;font-weight:700;color:#067647}
   .amount-label{font-size:12px;color:#666;margin-bottom:4px}
-  .status-pill{display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:20px;padding:6px 16px;font-size:13px;font-weight:700;color:#1a7c3e}
-  .status-dot{width:8px;height:8px;background:#27ae60;border-radius:50%}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;background:#ECFDF3;border:1px solid #ABEFC6;border-radius:6px;padding:6px 16px;font-size:13px;font-weight:700;color:#067647}
+  .status-dot{width:8px;height:8px;background:#079455;border-radius:50%}
   /* body */
   .body{padding:24px 36px;display:grid;grid-template-columns:1fr 1fr;gap:0}
   .section{padding:12px 0}
-  .section-title{font-size:11px;font-weight:700;color:#C3AF76;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid #f0f0f0;padding-bottom:6px}
+  .section-title{font-size:12px;font-weight:600;color:#1B8354;letter-spacing:0;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid #F3F4F6;padding-bottom:6px}
   .row{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
   .row-label{font-size:12px;color:#888;min-width:110px;flex-shrink:0}
   .row-val{font-size:13px;font-weight:600;color:#222;flex:1}
-  .divider{width:1px;background:#f0f0f0;margin:0 20px}
+  .divider{width:1px;background:#F3F4F6;margin:0 20px}
   /* installment */
-  .installment-bar{margin:0 36px 20px;background:#f5f5f5;border-radius:8px;overflow:hidden;height:8px}
-  .installment-fill{background:linear-gradient(90deg,#C3AF76,#021C36);height:8px;border-radius:8px}
+  .installment-bar{margin:0 36px 20px;background:#F3F4F6;border-radius:8px;overflow:hidden;height:8px}
+  .installment-fill{background:#1B8354;height:8px;border-radius:8px}
   .installment-label{margin:0 36px 8px;display:flex;justify-content:space-between;font-size:11px;color:#888}
   /* footer */
-  .footer{background:#f8f9fa;border-top:1px solid #eee;padding:14px 36px;display:flex;align-items:center;justify-content:space-between}
+  .footer{background:#F9FAFB;border-top:1px solid #eee;padding:14px 36px;display:flex;align-items:center;justify-content:space-between}
   .footer-note{font-size:10px;color:#aaa}
-  .seal{display:flex;align-items:center;gap:8px;background:#021C36;border-radius:8px;padding:6px 14px}
-  .seal-text{color:#C3AF76;font-size:11px;font-weight:700}
+  .seal{display:flex;align-items:center;gap:8px;background:#1B8354;border-radius:4px;padding:6px 14px}
+  .seal-text{color:#FFFFFF;font-size:11px;font-weight:700}
   /* notes */
   .notes-box{margin:0 36px 16px;background:#fffbf0;border:1px solid #f0e68c;border-radius:8px;padding:12px 16px;font-size:12px;color:#555}
   @media print{
@@ -422,11 +422,11 @@ export default function PaymentDetailScreen() {
         {/* ── Cancel confirmed payment (paid → pending) ── */}
         {payment.status === 'paid' && isAdmin && (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#F39C1215', borderColor: '#F39C12' }]}
+            style={[styles.actionBtn, { backgroundColor: '#F39C1215', borderColor: '#DC6803' }]}
             onPress={() => setShowCancel(true)}
           >
-            <Ionicons name="arrow-undo-outline" size={20} color="#F39C12" />
-            <Text style={[styles.actionBtnText, { color: '#F39C12' }]}>إلغاء تأكيد الدفعة</Text>
+            <Ionicons name="arrow-undo-outline" size={20} color="#DC6803" />
+            <Text style={[styles.actionBtnText, { color: '#DC6803' }]}>إلغاء تأكيد الدفعة</Text>
           </TouchableOpacity>
         )}
 

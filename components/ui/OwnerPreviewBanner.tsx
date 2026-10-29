@@ -22,13 +22,13 @@ export function OwnerPreviewBanner() {
 
   return (
     <View style={[styles.wrap, { paddingTop: Platform.OS === 'web' ? 10 : insets.top + 8 }]}>
-      <Ionicons name="eye-outline" size={17} color="#021C36" />
+      <Ionicons name="eye-outline" size={17} color="#FFFFFF" />
       <Text style={styles.text} numberOfLines={1}>
         تعاين بعين المالك: <Text style={styles.name}>{owner?.name ?? previewOwnerId}</Text> — عرض فقط
       </Text>
       <TouchableOpacity style={styles.exit} onPress={stopOwnerPreview} hitSlop={8}>
         <Text style={styles.exitText}>خروج</Text>
-        <Ionicons name="close" size={15} color="#021C36" />
+        <Ionicons name="close" size={15} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
@@ -37,16 +37,16 @@ export function OwnerPreviewBanner() {
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#C3AF76',
+    backgroundColor: '#1B8354',
     paddingHorizontal: Theme.spacing.base, paddingBottom: 10,
     ...(Platform.OS === 'web' ? { position: 'sticky' as any, top: 0, zIndex: 1000 } : {}),
   },
-  text: { flex: 1, color: '#021C36', fontSize: Theme.fontSize.sm, textAlign: 'right' },
+  text: { flex: 1, color: '#FFFFFF', fontSize: Theme.fontSize.sm, textAlign: 'right' },
   name: { fontWeight: Theme.fontWeight.bold },
   exit: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: 'rgba(2,28,54,0.12)',
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: Theme.radius.full,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: Theme.radius.sm,
   },
-  exitText: { color: '#021C36', fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.bold },
+  exitText: { color: '#FFFFFF', fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.bold },
 });

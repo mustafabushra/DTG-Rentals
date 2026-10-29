@@ -78,6 +78,6 @@ const styles = StyleSheet.create({
   content: { padding: Theme.spacing.base, gap: Theme.spacing.lg, paddingBottom: 48 },
   infoCard: { padding: Theme.spacing.md, borderRadius: Theme.radius.md, borderWidth: 1 },
   infoText: { fontSize: Theme.fontSize.md, lineHeight: 22 },
-  saveBtn: { borderRadius: Theme.radius.lg, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
+  saveBtn: { borderRadius: Theme.radius.sm, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   saveBtnText: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
 });

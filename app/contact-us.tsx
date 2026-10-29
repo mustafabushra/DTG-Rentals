@@ -32,9 +32,9 @@ export default function ContactUsScreen() {
   };
 
   const contactChannels = [
-    { icon: 'mail-outline', label: 'البريد الإلكتروني', value: 'support@dtgrentals.com', color: '#2E86C1', url: 'mailto:support@dtgrentals.com' },
-    { icon: 'call-outline', label: 'الهاتف', value: '920 000 000', color: '#27AE60', url: 'tel:920000000' },
-    { icon: 'time-outline', label: 'أوقات العمل', value: 'الأحد – الخميس، 9ص – 5م', color: '#F39C12', url: null },
+    { icon: 'mail-outline', label: 'البريد الإلكتروني', value: 'support@dtgrentals.com', color: '#1570EF', url: 'mailto:support@dtgrentals.com' },
+    { icon: 'call-outline', label: 'الهاتف', value: '920 000 000', color: '#079455', url: 'tel:920000000' },
+    { icon: 'time-outline', label: 'أوقات العمل', value: 'الأحد – الخميس، 9ص – 5م', color: '#DC6803', url: null },
   ];
 
   if (sent) {

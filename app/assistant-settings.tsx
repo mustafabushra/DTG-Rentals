@@ -307,9 +307,9 @@ const styles = StyleSheet.create({
   chipText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 14, borderRadius: Theme.radius.md,
+    paddingVertical: 14, borderRadius: Theme.radius.sm,
   },
-  saveText: { color: '#FFF', fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.bold },
+  saveText: { color: '#FFF', fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },
   clearBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
     paddingVertical: 12, borderRadius: Theme.radius.md, borderWidth: 1,

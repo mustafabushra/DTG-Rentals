@@ -199,14 +199,14 @@ export default function SettingsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
           {Platform.OS === 'web' && !isDesktop && (
             <TouchableOpacity onPress={toggleSidebar} style={styles.menuBtn}>
-              <Ionicons name="menu-outline" size={26} color={colors.textInverse} />
+              <Ionicons name="menu-outline" size={26} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
-          <Text style={[styles.headerTitle, { color: colors.textInverse }]}>الإعدادات</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>الإعدادات</Text>
           <View style={{ width: Platform.OS === 'web' && !isDesktop ? 34 : 0 }} />
         </View>
       </View>
@@ -233,8 +233,8 @@ export default function SettingsScreen() {
               <Text style={[styles.profileEmail, { color: colors.textMuted }]}>{currentUser.phone}</Text>
             ) : null}
           </View>
-          <View style={[styles.avatar, { backgroundColor: colors.accentGold }]}>
-            <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            <Text style={[styles.avatarText, { color: colors.textInverse }]}>{initials}</Text>
           </View>
         </TouchableOpacity>
 
@@ -295,12 +295,12 @@ export default function SettingsScreen() {
                   style={[
                     styles.themeChip,
                     { borderColor: colors.border, backgroundColor: colors.surface },
-                    theme === opt.key && { borderColor: colors.accentGold, backgroundColor: colors.primary },
+                    theme === opt.key && { borderColor: colors.primary, backgroundColor: colors.primary },
                   ]}
                   onPress={() => handleTheme(opt.key)}
                 >
-                  <Ionicons name={opt.icon as any} size={14} color={theme === opt.key ? colors.accentGold : colors.textMuted} />
-                  <Text style={[styles.themeChipText, { color: theme === opt.key ? colors.accentGold : colors.textMuted }]}>
+                  <Ionicons name={opt.icon as any} size={14} color={theme === opt.key ? colors.textInverse : colors.textMuted} />
+                  <Text style={[styles.themeChipText, { color: theme === opt.key ? colors.textInverse : colors.textMuted }]}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -312,31 +312,31 @@ export default function SettingsScreen() {
           <View style={[styles.themePreview, { borderBottomColor: colors.border }]}>
             <View style={styles.previewRow}>
               {/* Light preview */}
-              <View style={[styles.previewBox, theme === 'light' && styles.previewBoxActive, { backgroundColor: '#F8F5EA', borderColor: theme === 'light' ? '#C3AF76' : '#E5E7EB' }]}>
-                <View style={[styles.previewHeader, { backgroundColor: '#021C36' }]} />
+              <View style={[styles.previewBox, theme === 'light' && styles.previewBoxActive, { backgroundColor: '#F9FAFB', borderColor: theme === 'light' ? colors.primary : colors.border }]}>
+                <View style={[styles.previewHeader, { backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }]} />
                 <View style={styles.previewBody}>
                   <View style={[styles.previewCard, { backgroundColor: '#FFF' }]} />
                   <View style={[styles.previewCard, { backgroundColor: '#FFF' }]} />
                 </View>
-                <Text style={[styles.previewLabel, { color: theme === 'light' ? '#C3AF76' : colors.textMuted }]}>فاتح</Text>
+                <Text style={[styles.previewLabel, { color: theme === 'light' ? colors.primary : colors.textMuted }]}>فاتح</Text>
               </View>
               {/* Auto preview */}
-              <View style={[styles.previewBox, theme === 'system' && styles.previewBoxActive, { backgroundColor: '#F0EDE8', borderColor: theme === 'system' ? '#C3AF76' : '#E5E7EB' }]}>
-                <View style={[styles.previewHeader, { backgroundColor: '#03284C' }]} />
+              <View style={[styles.previewBox, theme === 'system' && styles.previewBoxActive, { backgroundColor: '#F3F4F6', borderColor: theme === 'system' ? colors.primary : colors.border }]}>
+                <View style={[styles.previewHeader, { backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#D2D6DB' }]} />
                 <View style={styles.previewBody}>
-                  <View style={[styles.previewCard, { backgroundColor: '#E6EDF5' }]} />
-                  <View style={[styles.previewCard, { backgroundColor: '#E6EDF5' }]} />
+                  <View style={[styles.previewCard, { backgroundColor: '#E5E7EB' }]} />
+                  <View style={[styles.previewCard, { backgroundColor: '#E5E7EB' }]} />
                 </View>
-                <Text style={[styles.previewLabel, { color: theme === 'system' ? '#C3AF76' : colors.textMuted }]}>تلقائي</Text>
+                <Text style={[styles.previewLabel, { color: theme === 'system' ? colors.primary : colors.textMuted }]}>تلقائي</Text>
               </View>
               {/* Dark preview */}
-              <View style={[styles.previewBox, theme === 'dark' && styles.previewBoxActive, { backgroundColor: '#080F1A', borderColor: theme === 'dark' ? '#C3AF76' : '#E5E7EB' }]}>
-                <View style={[styles.previewHeader, { backgroundColor: '#C3AF76' }]} />
+              <View style={[styles.previewBox, theme === 'dark' && styles.previewBoxActive, { backgroundColor: '#0D121C', borderColor: theme === 'dark' ? colors.primary : colors.border }]}>
+                <View style={[styles.previewHeader, { backgroundColor: '#111927' }]} />
                 <View style={styles.previewBody}>
-                  <View style={[styles.previewCard, { backgroundColor: '#111F33' }]} />
-                  <View style={[styles.previewCard, { backgroundColor: '#111F33' }]} />
+                  <View style={[styles.previewCard, { backgroundColor: '#1F2A37' }]} />
+                  <View style={[styles.previewCard, { backgroundColor: '#1F2A37' }]} />
                 </View>
-                <Text style={[styles.previewLabel, { color: theme === 'dark' ? '#C3AF76' : colors.textMuted }]}>داكن</Text>
+                <Text style={[styles.previewLabel, { color: theme === 'dark' ? colors.primary : colors.textMuted }]}>داكن</Text>
               </View>
             </View>
           </View>
@@ -359,11 +359,11 @@ export default function SettingsScreen() {
                   style={[
                     styles.themeChip,
                     { borderColor: colors.border, backgroundColor: colors.surface },
-                    opt.key === 'ar' && { borderColor: colors.accentGold, backgroundColor: colors.primary },
+                    opt.key === 'ar' && { borderColor: colors.primary, backgroundColor: colors.primary },
                   ]}
                   onPress={() => handleLanguage(opt.key as 'ar' | 'en')}
                 >
-                  <Text style={[styles.themeChipText, { color: opt.key === 'ar' ? colors.accentGold : colors.textMuted }]}>
+                  <Text style={[styles.themeChipText, { color: opt.key === 'ar' ? colors.textInverse : colors.textMuted }]}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -418,7 +418,7 @@ export default function SettingsScreen() {
               {calConnected ? (
                 <>
                   <TouchableOpacity
-                    style={[styles.integrationBtn, { backgroundColor: '#1B4F72' }]}
+                    style={[styles.integrationBtn, { backgroundColor: '#1B8354' }]}
                     onPress={handleSyncCalendar}
                     disabled={calSyncing}
                   >
@@ -483,9 +483,9 @@ export default function SettingsScreen() {
                 onPress={() => router.push('/user-management')} />
               <Item icon="toggle-outline" label="وحدات النظام والصلاحيات" color={colors.accent}
                 onPress={() => router.push('/system-settings')} />
-              <Item icon="sparkles-outline" label="المساعد الذكي" color="#7B3FA0"
+              <Item icon="sparkles-outline" label="المساعد الذكي" color="#6938EF"
                 onPress={() => router.push('/assistant-settings')} />
-              <Item icon="bar-chart-outline" label="تقارير النظام" color="#8E44AD"
+              <Item icon="bar-chart-outline" label="تقارير النظام" color="#6938EF"
                 onPress={() => router.push('/audit-log')} />
               <Item icon="cloud-upload-outline" label="نسخ احتياطي" color={colors.success}
                 onPress={() => router.push('/backup')} />

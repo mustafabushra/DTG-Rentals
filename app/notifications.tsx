@@ -26,10 +26,10 @@ interface SmartNotif {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const URGENCY_CFG: Record<Urgency, { color: string; bg: string; icon: string; label: string }> = {
-  critical: { color: '#E74C3C', bg: '#FDEDEC', icon: 'alert-circle-outline',       label: 'عاجل'    },
-  warning:  { color: '#F39C12', bg: '#FEF9E7', icon: 'warning-outline',             label: 'تنبيه'   },
-  info:     { color: '#2E86C1', bg: '#EBF5FB', icon: 'information-circle-outline',  label: 'تذكير'   },
-  success:  { color: '#27AE60', bg: '#E8F8F0', icon: 'checkmark-circle-outline',    label: 'مكتمل'   },
+  critical: { color: '#D92D20', bg: '#FEF3F2', icon: 'alert-circle-outline',       label: 'عاجل'    },
+  warning:  { color: '#DC6803', bg: '#FFFAEB', icon: 'warning-outline',             label: 'تنبيه'   },
+  info:     { color: '#1570EF', bg: '#EFF8FF', icon: 'information-circle-outline',  label: 'تذكير'   },
+  success:  { color: '#079455', bg: '#ECFDF3', icon: 'checkmark-circle-outline',    label: 'مكتمل'   },
 };
 
 function daysFromNow(iso: string) {

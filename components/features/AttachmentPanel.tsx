@@ -181,10 +181,10 @@ const CATEGORIES: { value: FileCategory; label: string }[] = [
 ];
 
 const TYPE_CONFIG: Record<Attachment['type'], { icon: string; label: string; color: string }> = {
-  image: { icon: 'image-outline',         label: 'صورة', color: '#2E86C1' },
-  pdf:   { icon: 'document-text-outline', label: 'PDF',  color: '#E74C3C' },
-  doc:   { icon: 'document-outline',      label: 'مستند',color: '#8E44AD' },
-  other: { icon: 'attach-outline',        label: 'ملف',  color: '#7F8C8D' },
+  image: { icon: 'image-outline',         label: 'صورة', color: '#1570EF' },
+  pdf:   { icon: 'document-text-outline', label: 'PDF',  color: '#D92D20' },
+  doc:   { icon: 'document-outline',      label: 'مستند',color: '#6938EF' },
+  other: { icon: 'attach-outline',        label: 'ملف',  color: '#6C737F' },
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────

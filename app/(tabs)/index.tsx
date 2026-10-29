@@ -28,7 +28,7 @@ const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','ما
 
 function getTlCfg(colors: any) {
   return {
-    payment:         { color: colors.secondary ?? '#2E86C1', icon: 'cash-outline',            label: 'دفعة',         bg: colors.primarySubtle },
+    payment:         { color: colors.secondary ?? '#1570EF', icon: 'cash-outline',            label: 'دفعة',         bg: colors.primarySubtle },
     contract_expiry: { color: colors.danger,                 icon: 'document-text-outline',   label: 'انتهاء عقد',   bg: colors.dangerSubtle },
     file_expiry:     { color: colors.purple,                 icon: 'document-attach-outline', label: 'انتهاء مرفق',  bg: colors.purpleSubtle },
     maintenance:     { color: colors.warning,                icon: 'construct-outline',       label: 'صيانة',        bg: colors.warningSubtle },
@@ -40,7 +40,7 @@ function tlUrgencyColor(days: number, colors: any): string {
   if (days <= 3)  return colors.danger;
   if (days <= 7)  return colors.warning;
   if (days <= 14) return colors.purple;
-  return colors.secondary ?? '#2E86C1';
+  return colors.secondary ?? '#1570EF';
 }
 
 function tlUrgencyLabel(days: number): string {
@@ -62,9 +62,9 @@ function daysFromNow(iso: string) {
 // ─── Occupancy helpers ────────────────────────────────────────────────────────
 
 function occupancyColor(rate: number, colors: Record<string, string>): string {
-  if (rate >= 80) return colors.success  ?? '#27AE60';
-  if (rate >= 50) return colors.warning  ?? '#F39C12';
-  return colors.danger ?? '#E74C3C';
+  if (rate >= 80) return colors.success  ?? '#079455';
+  if (rate >= 50) return colors.warning  ?? '#DC6803';
+  return colors.danger ?? '#D92D20';
 }
 
 interface OccupancyBarProps {
@@ -479,32 +479,32 @@ export default function DashboardScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + (isSmallPhone ? 6 : 8), paddingHorizontal: hPad, backgroundColor: '#021C36' }]}>
+      <View style={[styles.header, { paddingTop: insets.top + (isSmallPhone ? 6 : 8), paddingHorizontal: hPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
           {Platform.OS === 'web' && !isDesktop ? (
             <TouchableOpacity style={styles.headerBtn} onPress={toggleSidebar} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="menu-outline" size={26} color="#FFFFFF" />
+              <Ionicons name="menu-outline" size={26} color={colors.textSecondary} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={() => router.push('/settings')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <View style={[styles.avatarCircle, isSmallPhone && { width: 32, height: 32, borderRadius: 16 }]}>
-                <Text style={[styles.avatarText, isSmallPhone && { fontSize: Theme.fontSize.sm }]}>{currentUser?.name?.[0] ?? '؟'}</Text>
+              <View style={[styles.avatarCircle, { backgroundColor: colors.primary }, isSmallPhone && { width: 32, height: 32, borderRadius: 16 }]}>
+                <Text style={[styles.avatarText, { color: colors.text }, isSmallPhone && { fontSize: Theme.fontSize.sm }]}>{currentUser?.name?.[0] ?? '؟'}</Text>
               </View>
             </TouchableOpacity>
           )}
 
           <View style={styles.headerCenter}>
             {!isSmallPhone && (
-              <Text style={styles.welcomeText} numberOfLines={1}>مرحباً، {currentUser?.name?.split(' ')[0] ?? ''}</Text>
+              <Text style={[styles.welcomeText, { color: colors.textMuted }]} numberOfLines={1}>مرحباً، {currentUser?.name?.split(' ')[0] ?? ''}</Text>
             )}
-            <Text style={[styles.appName, (isMobile || isSmallPhone) && { fontSize: Theme.fontSize.base }]}>DTG Rentals</Text>
+            <Text style={[styles.appName, { color: colors.text }, (isMobile || isSmallPhone) && { fontSize: Theme.fontSize.base }]}>DTG Rentals</Text>
           </View>
 
           <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color={colors.textInverse} />
+            <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color={colors.textSecondary} />
             {kpis.overduePayments > 0 && (
               <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
-                <Text style={[styles.notifBadgeText, { color: colors.textInverse }]}>{kpis.overduePayments}</Text>
+                <Text style={[styles.notifBadgeText, { color: colors.text }]}>{kpis.overduePayments}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -515,7 +515,7 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 48 }}
         refreshControl={
-          <RefreshControl refreshing={dataLoading} onRefresh={handleRefresh} tintColor="#C3AF76" colors={['#C3AF76']} />
+          <RefreshControl refreshing={dataLoading} onRefresh={handleRefresh} tintColor={colors.primary} colors={[colors.primary]} />
         }
       >
         {/* KPI Cards */}
@@ -815,7 +815,7 @@ export default function DashboardScreen() {
 
                     {/* Date column */}
                     <View style={styles.tlDateCol}>
-                      <Text style={[styles.tlDate, { color: days < 0 ? '#E74C3C' : days === 0 ? colors.primary : colors.text }]}>
+                      <Text style={[styles.tlDate, { color: days < 0 ? colors.danger : days === 0 ? colors.primary : colors.text }]}>
                         {formatTlDate(ev.date)}
                       </Text>
                       <Text style={[styles.tlYear, { color: colors.textMuted }]}>
@@ -957,20 +957,20 @@ const styles = StyleSheet.create({
   },
   headerBtn: { padding: 6, position: 'relative', minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   headerCenter: { alignItems: 'center', gap: 2 },
-  welcomeText: { color: 'rgba(255,255,255,0.85)', fontSize: Theme.fontSize.sm, textAlign: 'center' },
-  appName: { color: '#FFFFFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold, textAlign: 'center' },
+  welcomeText: { fontSize: Theme.fontSize.sm, textAlign: 'center' },
+  appName: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.semibold, textAlign: 'center' },
   notifBadge: {
     position: 'absolute', top: 0, right: 0,
-    backgroundColor: '#E74C3C', borderRadius: 8, width: 16, height: 16,
+    backgroundColor: '#D92D20', borderRadius: 8, width: 16, height: 16,
     justifyContent: 'center', alignItems: 'center',
   },
   notifBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '700' },
   avatarCircle: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#C3AF76',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarText: { color: '#021C36', fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
+  avatarText: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
   kpiGrid: { padding: Theme.spacing.base, gap: Theme.spacing.sm },
   kpiGridWide: { },
   kpiRow: { flexDirection: 'row', gap: Theme.spacing.sm },

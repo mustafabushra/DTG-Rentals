@@ -64,11 +64,11 @@ export function MoreMenu({ visible, onClose }: MoreMenuProps) {
         <StatusBar barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'} />
 
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color={colors.textInverse} />
+            <Ionicons name="close" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.textInverse }]}>القائمة الرئيسية</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>القائمة الرئيسية</Text>
           <View style={styles.closePlaceholder} />
         </View>
 

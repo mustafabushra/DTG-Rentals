@@ -11,8 +11,8 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 
 // لون مميز ثابت لكل مالك بناءً على اسمه
 const AVATAR_COLORS = [
-  '#2E86C1', '#17A589', '#8E44AD', '#E67E22',
-  '#C0392B', '#1ABC9C', '#2980B9', '#D35400',
+  '#1570EF', '#17A589', '#6938EF', '#B54708',
+  '#B42318', '#1ABC9C', '#2980B9', '#D35400',
   '#7D3C98', '#1E8449',
 ];
 function ownerColor(name: string): string {
