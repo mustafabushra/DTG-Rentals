@@ -77,12 +77,6 @@ jobs:
           name: dist
           path: dist
 
-      # صورة ubuntu-latest تغيّرت (Ubuntu 26) — نثبّت نسخة Node التي تعمل معها أداة النشر
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - name: Deploy to Firebase Hosting (staging)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -105,12 +99,6 @@ jobs:
         with:
           name: dist
           path: dist
-
-      # صورة ubuntu-latest تغيّرت (Ubuntu 26) — نثبّت نسخة Node التي تعمل معها أداة النشر
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
 
       - name: Deploy to Firebase Hosting (production)
         uses: FirebaseExtended/action-hosting-deploy@v0
