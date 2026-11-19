@@ -14,10 +14,11 @@ import { ResponsiveGrid } from '../../components/ui/ResponsiveGrid';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { AttachmentPanel } from '../../components/features/AttachmentPanel';
 import { PhotoGallery } from '../../components/features/PhotoGallery';
+import { PropertyFinancePanel } from '../../components/finance/PropertyFinancePanel';
 import { formatCurrency, getPropertyTypeLabel } from '../../data/mockData';
 import { useAppTheme } from '../../hooks/useAppTheme';
 
-type Tab = 'units' | 'maintenance' | 'docs';
+type Tab = 'units' | 'finance' | 'maintenance' | 'docs';
 
 export default function PropertyDetailScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
@@ -25,7 +26,7 @@ export default function PropertyDetailScreen() {
   const { colors } = useAppTheme();
   const { properties, owners, cities, units, maintenance, contracts, payments,
           propertyPhotos, addPropertyPhoto, removePropertyPhoto, setPropertyMainPhoto,
-          canWrite, canDelete, currentUser } = useApp();
+          canWrite, canDelete, currentUser, systemSettings } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('units');
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
@@ -136,6 +137,7 @@ export default function PropertyDetailScreen() {
         <View style={[styles.tabsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {[
             { key: 'units', label: `الوحدات (${propUnits.length})` },
+            ...(systemSettings.modules.finance !== false ? [{ key: 'finance', label: 'المالية' }] : []),
             { key: 'maintenance', label: `الصيانة (${propMaintenance.length})` },
             { key: 'docs', label: 'الوثائق' },
           ].map(tab => (
@@ -181,6 +183,8 @@ export default function PropertyDetailScreen() {
             )}
           </View>
         )}
+
+        {activeTab === 'finance' && id && <PropertyFinancePanel propertyId={id} />}
 
         {activeTab === 'maintenance' && (
           <View style={{ marginTop: 8 }}>

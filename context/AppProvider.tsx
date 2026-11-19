@@ -188,6 +188,8 @@ interface AppContextType extends AppState {
   updateAllPropertiesWithCities: () => Promise<{ updated: number; skipped: number }>;
   /** ختم ownerId على البيانات القديمة (مرة واحدة، للمدير) — لتفعيل عزل المالك */
   backfillOwnerIds: () => Promise<{ updated: number }>;
+  /** تسجيل إجراء في سجل التدقيق — تستخدمه وحدات أخرى (المالية) */
+  logAudit: (action: AuditLog['action'], entityType: string, entityName: string, details: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -2890,6 +2892,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addCity, updateCity, deleteCity,
       updateAllPropertiesWithCities,
       backfillOwnerIds,
+      logAudit: addAuditEntry,
     }}>
       {children}
     </AppContext.Provider>

@@ -99,17 +99,18 @@ service cloud.firestore {
 
     // المجموعات الحساسة التي تخضع لعزل المالك (قراءة/كتابة محصورة بـ ownerId)
     function isOwnerScopedCol(col) {
-      return col in ['properties', 'units', 'contracts', 'payments', 'maintenance', 'bookings'];
+      return col in ['properties', 'units', 'contracts', 'payments', 'maintenance', 'bookings', 'expenses', 'vouchers'];
     }
 
     // مراجع مشتركة يقرؤها أي عضو نشط في المؤسسة (المالك التابع أيضاً)
     function isSharedReadCol(col) {
-      return col in ['cities', 'settings', 'calendarEvents', 'photos', 'tenants', 'attachments'];
+      return col in ['cities', 'settings', 'calendarEvents', 'photos', 'tenants', 'attachments', 'counters'];
     }
 
     // مراجع مشتركة يجوز للمالك التابع الكتابة فيها
     function isOwnerWritableSharedCol(col) {
-      return col in ['calendarEvents', 'photos', 'tenants'];
+      // counters: عدّاد ترقيم السندات — المالك التابع يصدر سندات لعقاراته فيحتاج حجز رقم
+      return col in ['calendarEvents', 'photos', 'tenants', 'counters'];
     }
 
     function validString(val, maxLen) {
@@ -173,7 +174,8 @@ service cloud.firestore {
         isAdmin() ||
         (isManager() && !isSecretDoc(collection, docId)) ||
         (collection == 'owners' && docId == ownerLinkedId()) ||
-        (isOwnerScopedCol(collection) && resource.data.ownerId == ownerLinkedId()) ||
+        // resource == null: قراءة مستند غير موجود (معاملة إصدار السند تتحقق أنه لم يصدر بعد) — لا تكشف شيئاً
+        (isOwnerScopedCol(collection) && (resource == null || resource.data.ownerId == ownerLinkedId())) ||
         (isSharedReadCol(collection) && !isSecretDoc(collection, docId))
       ));
 
@@ -204,7 +206,9 @@ service cloud.firestore {
           (isOwnerRole() && isOwnerWritableSharedCol(collection))
         ));
 
-      allow delete: if isSuperAdmin() || (isSameOrg(orgId) && (
+      // السندات والعدّادات لا تُحذف أبداً (السند يُلغى ويبقى) — حتى المدير.
+      allow delete: if isSuperAdmin() || (isSameOrg(orgId)
+        && !(collection in ['vouchers', 'counters']) && (
         isAdmin() ||
         (isOwnerRole() && collection == 'attachments'
            && resource.data.ownerContext == ownerLinkedId())
@@ -260,6 +264,8 @@ service cloud.firestore {
            : col == 'payments'    ? validatePayment(data)
            : col == 'maintenance' ? validateMaintenance(data)
            : col == 'bookings'    ? validateBooking(data)
+           : col == 'expenses'    ? validateExpense(data)
+           : col == 'vouchers'    ? validateVoucher(data)
            : true; // allow other collections without strict validation
     }
 
@@ -273,6 +279,25 @@ service cloud.firestore {
              data.nightlyRate is number && data.nightlyRate > 0 &&
              data.totalAmount is number && data.totalAmount >= 0 &&
              data.status in ['confirmed', 'cancelled'];
+    }
+
+    function validateExpense(data) {
+      return data.scope in ['property', 'office'] &&
+             (data.scope == 'office' || validString(data.propertyId, 100)) &&
+             validString(data.category, 100) &&
+             data.amount is number && data.amount > 0 &&
+             validString(data.currency, 10) &&
+             validString(data.date, 20) &&
+             data.status in ['active', 'cancelled'];
+    }
+
+    function validateVoucher(data) {
+      return data.type in ['receipt', 'payment'] &&
+             validString(data.number, 30) &&
+             data.seq is int && data.seq > 0 &&
+             data.amount is number && data.amount > 0 &&
+             validString(data.currency, 10) &&
+             data.status in ['issued', 'cancelled'];
     }
 
     function validateProperty(data) {

@@ -1,9 +1,11 @@
-﻿import React from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../../constants/Theme';
 import { useApp } from '../../context/AppProvider';
+import { useFinance } from '../../context/FinanceProvider';
+import { CurrencyText } from '../../components/ui/CurrencyText';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { DeleteButton } from '../../components/ui/DeleteButton';
 import { ConfirmModal, AlertModal } from '../../components/ui/Modal';
@@ -25,6 +27,8 @@ export default function MaintenanceDetailScreen() {
   const { colors } = useAppTheme();
   const { maintenance, properties, units, updateMaintenance, canWrite, canDelete } = useApp();
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
+  const { expenses } = useFinance();
+  const [askCost, setAskCost] = useState(false);
 
   const item = maintenance.find(m => m.id === id);
   const property = item ? properties.find(p => p.id === item.propertyId) ?? null : null;
@@ -40,6 +44,20 @@ export default function MaintenanceDetailScreen() {
   }
 
   const currentStepIdx = STEPS.findIndex(s => s.key === item.status);
+  const linkedExpense = expenses.find(e => e.maintenanceId === item.id && e.status === 'active');
+  const recordCost = () => {
+    const q = new URLSearchParams({
+      scope: 'property',
+      propertyId: item.propertyId ?? '',
+      unitId: item.unitId ?? '',
+      category: 'صيانة',
+      maintenanceId: item.id,
+      notes: item.title ?? '',
+      ...(item.cost ? { amount: String(item.cost) } : {}),
+      ...(item.technicianName ? { vendor: item.technicianName } : {}),
+    });
+    router.push(`/add-expense?${q.toString()}` as any);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -83,6 +101,8 @@ export default function MaintenanceDetailScreen() {
                   if (STEPS[nextIdx].key === 'in_progress') updates.assignedAt = new Date().toISOString().split('T')[0];
                   if (STEPS[nextIdx].key === 'completed') updates.closedAt = new Date().toISOString().split('T')[0];
                   updateMaintenance(id, updates);
+                  // إغلاق الطلب ⇒ نسأل عن التكلفة لتُسجَّل مصروفاً على العقار
+                  if (STEPS[nextIdx].key === 'completed' && !linkedExpense) setAskCost(true);
                 }
               }}
             >
@@ -100,6 +120,29 @@ export default function MaintenanceDetailScreen() {
             <Text style={[styles.mainTitle, { color: colors.text }]}>{item.title}</Text>
           </View>
           <Text style={[styles.desc, { color: colors.textSecondary }]}>{item.description}</Text>
+        </View>
+
+        {/* التكلفة (مصروف العقار) */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>التكلفة</Text>
+          {linkedExpense ? (
+            <TouchableOpacity
+              onPress={() => router.push(`/expense/${linkedExpense.id}` as any)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+            >
+              <View style={{ gap: 2 }}>
+                <CurrencyText amount={linkedExpense.amount} currency={linkedExpense.currency} size={18} />
+                <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'right' }}>مسجّلة كمصروف على العقار</Text>
+              </View>
+              <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : canWrite && (item.status === 'in_progress' || item.status === 'completed') ? (
+            <TouchableOpacity onPress={recordCost} style={[styles.advanceBtn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.borderStrong, marginTop: 0 }]}>
+              <Text style={[styles.advanceBtnText, { color: colors.text }]}>تسجيل التكلفة كمصروف</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'right' }}>تُسجَّل التكلفة عند بدء التنفيذ أو إغلاق الطلب.</Text>
+          )}
         </View>
 
         {/* Property & Unit */}
@@ -209,6 +252,16 @@ export default function MaintenanceDetailScreen() {
         title="لا يمكن الحذف"
         message={blocked ?? ''}
         variant="warning"
+      />
+      <ConfirmModal
+        visible={askCost}
+        onClose={() => setAskCost(false)}
+        onConfirm={() => { setAskCost(false); recordCost(); }}
+        title="تسجيل تكلفة الصيانة"
+        message="أُغلق الطلب. هل تريد تسجيل تكلفته كمصروف على العقار؟ يصدر سند صرف تلقائياً."
+        confirmLabel="تسجيل التكلفة"
+        cancelLabel="لاحقاً"
+        variant="primary"
       />
     </View>
   );

@@ -488,7 +488,7 @@ export default function DashboardScreen() {
           ) : (
             <TouchableOpacity onPress={() => router.push('/settings')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <View style={[styles.avatarCircle, { backgroundColor: colors.primary }, isSmallPhone && { width: 32, height: 32, borderRadius: 16 }]}>
-                <Text style={[styles.avatarText, { color: colors.text }, isSmallPhone && { fontSize: Theme.fontSize.sm }]}>{currentUser?.name?.[0] ?? '؟'}</Text>
+                <Text style={[styles.avatarText, { color: colors.textInverse }, isSmallPhone && { fontSize: Theme.fontSize.sm }]}>{currentUser?.name?.[0] ?? '؟'}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -504,7 +504,7 @@ export default function DashboardScreen() {
             <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color={colors.textSecondary} />
             {kpis.overduePayments > 0 && (
               <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
-                <Text style={[styles.notifBadgeText, { color: colors.text }]}>{kpis.overduePayments}</Text>
+                <Text style={[styles.notifBadgeText, { color: '#FFFFFF' }]}>{kpis.overduePayments}</Text>
               </View>
             )}
           </TouchableOpacity>

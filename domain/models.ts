@@ -316,3 +316,76 @@ export interface Receipt {
   issuedBy:          string;
   currency?:         string;
 }
+
+// ─── المصاريف والسندات ───────────────────────────────────────────────────────
+
+/** مصروف عقار (مربوط بعقار وقد يكون بوحدة) أو مصروف مكتب (غير مربوط بعقار). */
+export type ExpenseScope  = 'property' | 'office';
+export type ExpenseStatus = 'active' | 'cancelled';
+
+export interface Expense {
+  id:               string;
+  scope:            ExpenseScope;
+  propertyId?:      string;
+  unitId?:          string;
+  /** مالك العقار — يُختم للعزل كبقية المجموعات الحساسة */
+  ownerId?:         string;
+  category:         string;
+  amount:           number;
+  currency:         string;
+  date:             string;          // YYYY-MM-DD
+  vendor?:          string;          // المورد / الجهة المستفيدة
+  paymentMethod?:   'cash' | 'transfer' | 'check';
+  referenceNumber?: string;
+  notes?:           string;
+  /** طلب الصيانة الذي نشأ منه المصروف (إن وجد) */
+  maintenanceId?:   string;
+  /** سند الصرف الساري لهذا المصروف */
+  voucherId?:       string;
+  status:           ExpenseStatus;
+  cancelledAt?:     string;
+  cancelledBy?:     string;
+  cancelReason?:    string;
+  createdBy?:       string;
+  createdAt:        string;
+  updatedAt?:       string;
+}
+
+/** receipt = سند قبض (دفعة إيجار)، payment = سند صرف (مصروف) */
+export type VoucherType   = 'receipt' | 'payment';
+export type VoucherStatus = 'issued' | 'cancelled';
+
+export interface Voucher {
+  id:               string;
+  type:             VoucherType;
+  /** الرقم المعروض: ق-00001 أو ص-00001 — تسلسلي لكل نوع، لا يتكرر ولا يُعاد استخدامه */
+  number:           string;
+  seq:              number;
+  date:             string;          // YYYY-MM-DD
+  amount:           number;
+  currency:         string;
+  amountInWords:    string;
+  /** استلمنا من (القبض) / صُرف إلى (الصرف) */
+  partyName:        string;
+  description:      string;
+  paymentMethod?:   'cash' | 'transfer' | 'check';
+  referenceNumber?: string;
+  propertyId?:      string;
+  unitId?:          string;
+  ownerId?:         string;
+  contractId?:      string;
+  paymentId?:       string;
+  expenseId?:       string;
+  status:           VoucherStatus;
+  cancelledAt?:     string;
+  cancelledBy?:     string;
+  cancelReason?:    string;
+  issuedBy:         string;
+  createdAt:        string;
+}
+
+/** إعدادات المالية القابلة للتعديل (تصنيفات يضيفها المستخدم) — settings/finance */
+export interface FinanceSettings {
+  propertyCategories?: string[];
+  officeCategories?:   string[];
+}

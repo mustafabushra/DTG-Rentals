@@ -25,18 +25,24 @@ const TAB_ITEMS: NavItem[] = [
   { icon: 'location-outline',      label: 'المدن',            route: '/cities',              moduleKey: null },
 ];
 
+const FINANCE_ITEMS: NavItem[] = [
+  { icon: 'cash-outline',          label: 'الدفعات',          route: '/payments',            moduleKey: 'payments' },
+  { icon: 'megaphone-outline',     label: 'مركز التحصيل',     route: '/collections',         moduleKey: 'payments' },
+  { icon: 'wallet-outline',        label: 'مصاريف العقارات',  route: '/expenses',            moduleKey: 'finance' },
+  { icon: 'briefcase-outline',     label: 'مصاريف المكتب',    route: '/office-expenses',     moduleKey: 'finance' },
+  { icon: 'documents-outline',     label: 'السندات',          route: '/vouchers',            moduleKey: 'finance' },
+  { icon: 'receipt-outline',       label: 'سجل المدفوعات',    route: '/ledger',              moduleKey: 'ledger' },
+  { icon: 'bar-chart-outline',     label: 'التقارير المالية', route: '/financial-reports',   moduleKey: 'reports' },
+];
+
 const MORE_ITEMS: NavItem[] = [
   { icon: 'home-outline',          label: 'الوحدات',          route: '/units',               moduleKey: 'units' },
   { icon: 'person-outline',        label: 'المستأجرون',       route: '/tenants',             moduleKey: 'tenants' },
-  { icon: 'cash-outline',          label: 'الدفعات',          route: '/payments',            moduleKey: 'payments' },
-  { icon: 'megaphone-outline',     label: 'مركز التحصيل',     route: '/collections',         moduleKey: 'payments' },
   { icon: 'sparkles-outline',      label: 'المساعد الذكي',    route: '/assistant',           moduleKey: 'reports' },
   { icon: 'refresh-outline',       label: 'تجديد العقود',     route: '/renewals',            moduleKey: 'contracts' },
   { icon: 'scan-outline',          label: 'مسح عقد بالصورة', route: '/scan-contract',       moduleKey: 'contracts' },
-  { icon: 'receipt-outline',       label: 'سجل المدفوعات',    route: '/ledger',              moduleKey: 'ledger' },
   { icon: 'construct-outline',     label: 'الصيانة',          route: '/maintenance',         moduleKey: 'maintenance' },
   { icon: 'document-outline',      label: 'المرفقات',         route: '/attachments',         moduleKey: null },
-  { icon: 'bar-chart-outline',     label: 'التقارير المالية', route: '/financial-reports',   moduleKey: 'reports' },
   { icon: 'calendar-outline',      label: 'التقويم',          route: '/calendar',            moduleKey: 'calendar' },
   { icon: 'sparkles-outline',      label: 'التحديثات الجديدة', route: '/updates',             moduleKey: null },
   { icon: 'list-outline',          label: 'سجل الإجراءات',   route: '/audit-log',           moduleKey: 'auditLog' },
@@ -86,6 +92,7 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
   const { payments, contracts, currentUser, systemSettings } = useApp();
   const modules = systemSettings.modules;
   const visibleTab  = TAB_ITEMS.filter(i => !i.moduleKey || modules[i.moduleKey]);
+  const visibleFin  = FINANCE_ITEMS.filter(i => !i.moduleKey || modules[i.moduleKey]);
   const visibleMore = MORE_ITEMS.filter(i => !i.moduleKey || modules[i.moduleKey]);
 
   const overdueCount   = payments.filter(p => p.status === 'overdue').length;
@@ -125,6 +132,24 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
             onPress={() => onNavigate(item.route)}
           />
         ))}
+
+        {visibleFin.length > 0 && (
+          <>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <Text style={[styles.section, { color: colors.textMuted }]}>المالية</Text>
+            {visibleFin.map(item => (
+              <SideItem
+                key={item.route}
+                icon={item.icon}
+                label={item.label}
+                route={item.route}
+                colors={colors}
+                isActive={isActive(item.route)}
+                onPress={() => onNavigate(item.route)}
+              />
+            ))}
+          </>
+        )}
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <Text style={[styles.section, { color: colors.textMuted }]}>أدوات</Text>

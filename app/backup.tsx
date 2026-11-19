@@ -20,6 +20,7 @@ import {
   buildDiff, validateBackup,
 } from '../lib/backupValidator';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { useFinance } from '../context/FinanceProvider';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ImportTab  = 'file' | 'paste';
@@ -52,6 +53,7 @@ export default function BackupScreen() {
     owners, properties, units, tenants, contracts, payments, maintenance,
     attachments, importBackup,
   } = useApp();
+  const { expenses, vouchers } = useFinance();
 
   const [activeSection, setActiveSection] = useState<'export' | 'import'>('export');
 
@@ -68,7 +70,8 @@ export default function BackupScreen() {
       contracts: contracts.length, payments: payments.length,
       maintenance: maintenance.length, attachments: attachments.length,
     },
-    data: { owners, properties, units, tenants, contracts, payments, maintenance },
+    // المصاريف والسندات تُصدَّر للأرشفة؛ الاستعادة لا تمسّها (لا تُحذف ولا تُستبدل)
+    data: { owners, properties, units, tenants, contracts, payments, maintenance, expenses, vouchers } as BackupPayload['data'],
   });
 
   const handleExport = async () => {

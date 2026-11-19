@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from '../context/AppProvider';
 import { SidebarProvider } from '../context/SidebarContext';
+import { FinanceProvider } from '../context/FinanceProvider';
 import { useColorScheme, Platform, View, ActivityIndicator, I18nManager } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useEffect, useRef, useState } from 'react';
@@ -77,6 +78,7 @@ function StackContent() {
       <Stack.Screen name="edit-unit/[id]" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
       <Stack.Screen name="record-payment" options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="audit-log" options={{ headerShown: false }} />
       <Stack.Screen name="calendar" options={{ headerShown: false }} />
       <Stack.Screen name="tenants" options={{ headerShown: false }} />
@@ -243,6 +245,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <AppProvider>
+            <FinanceProvider>
             <SidebarProvider>
               <AuthWatcher onReady={() => setAuthReady(true)} />
               {authReady ? (
@@ -260,6 +263,7 @@ export default function RootLayout() {
                 </View>
               )}
             </SidebarProvider>
+            </FinanceProvider>
           </AppProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

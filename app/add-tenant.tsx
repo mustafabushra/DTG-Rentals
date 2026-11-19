@@ -71,7 +71,7 @@ export default function AddTenantScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>إضافة مستأجر جديد</Text>
         <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.saveText, { color: colors.text }]}>حفظ</Text>
+          <Text style={[styles.saveText, { color: colors.textInverse }]}>حفظ</Text>
         </TouchableOpacity>
       </View>
 

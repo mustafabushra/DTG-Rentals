@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
 import { useApp } from '../context/AppProvider';
+import { useFinance } from '../context/FinanceProvider';
 import { FormInput } from '../components/forms/FormInput';
 import { FormSelect } from '../components/forms/FormSelect';
 import { FormDatePicker } from '../components/forms/FormDatePicker';
@@ -18,6 +19,7 @@ export default function RecordPaymentScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { contracts, payments, tenants, units, properties, updatePayment } = useApp();
+  const { issueReceiptForPayment } = useFinance();
   const { contractId: preselectedContractId } = useLocalSearchParams<{ contractId?: string }>();
 
   const [form, setForm] = useState({
@@ -67,6 +69,7 @@ export default function RecordPaymentScreen() {
 
   const handleSave = () => {
     if (!validate()) return;
+    const receiptOverride = { paidDate: form.paidDate, method: form.method, referenceNumber: form.referenceNumber.trim() || undefined };
     updatePayment(form.installmentId, {
       status: 'paid',
       paidDate: form.paidDate,
@@ -74,6 +77,10 @@ export default function RecordPaymentScreen() {
       referenceNumber: form.referenceNumber.trim() || undefined,
       notes: form.notes.trim() || undefined,
       receiptNumber: `RCP-${String(Date.now()).slice(-4)}`,
+    });
+    // سند القبض يصدر في الخلفية — الفشل لا يمنع التسجيل، ويمكن إصداره لاحقاً من صفحة الدفعة
+    issueReceiptForPayment(form.installmentId, receiptOverride).then(r => {
+      if (!r.ok && typeof window !== 'undefined' && window.alert) window.alert(`سُجّلت الدفعة، لكن تعذّر إصدار سند القبض: ${r.error}`);
     });
     router.back();
   };
@@ -95,7 +102,7 @@ export default function RecordPaymentScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>تسجيل دفعة</Text>
         <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.saveText, { color: colors.text }]}>تسجيل</Text>
+          <Text style={[styles.saveText, { color: colors.textInverse }]}>تسجيل</Text>
         </TouchableOpacity>
       </View>
 

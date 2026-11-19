@@ -8,9 +8,10 @@ import { CurrencyText } from '../components/ui/CurrencyText';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { CURRENCIES, getCurrency, convertToSAR, formatAmount, type CurrencyCode } from '../utils/currency';
 import { BookingService } from '../domain/services/BookingService';
+import { NetIncomeReport } from '../components/finance/NetIncomeReport';
 
 type Period     = '1m' | '3m' | '6m' | '1y';
-type ActiveTab  = 'overview' | 'owners' | 'overdue' | 'countries';
+type ActiveTab  = 'overview' | 'net' | 'owners' | 'overdue' | 'countries';
 type CountryFilter = 'all' | CurrencyCode;
 
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -44,7 +45,7 @@ export default function FinancialReportsScreen() {
   const { width } = useWindowDimensions();
   const isMobile  = width < 768;
   const isDesktop = width >= 1024;
-  const { payments, contracts, properties, units, owners, tenants, bookings } = useApp();
+  const { payments, contracts, properties, units, owners, tenants, bookings, systemSettings } = useApp();
 
   const [period,        setPeriod]        = useState<Period>('6m');
   const [activeTab,     setActiveTab]     = useState<ActiveTab>('overview');
@@ -300,6 +301,7 @@ export default function FinancialReportsScreen() {
 
   const tabs: { key: ActiveTab; label: string }[] = [
     { key: 'overview',   label: 'نظرة عامة' },
+    ...(systemSettings.modules.finance !== false ? [{ key: 'net' as ActiveTab, label: 'الدخل والمصاريف' }] : []),
     { key: 'owners',     label: 'الملاك' },
     { key: 'overdue',    label: 'المتأخرات' },
     { key: 'countries',  label: 'الدول' },
@@ -595,6 +597,14 @@ export default function FinancialReportsScreen() {
             </View>
           </View>
         )}
+
+        {/* ══ NET INCOME TAB ══ */}
+        {activeTab === 'net' && (() => {
+          const now = new Date();
+          const from = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+          const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          return <NetIncomeReport from={iso(from)} to={iso(now)} currency={countryFilter} />;
+        })()}
 
         {/* ══ OWNERS TAB ══ */}
         {activeTab === 'owners' && (

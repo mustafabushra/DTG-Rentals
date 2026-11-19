@@ -17,6 +17,9 @@ interface MenuItem {
 const menuItems: MenuItem[][] = [
   [
     { icon: 'cash-outline', label: 'المدفوعات', route: '/payments', color: '#079455' },
+    { icon: 'wallet-outline', label: 'مصاريف العقارات', route: '/expenses', color: '#D92D20' },
+    { icon: 'briefcase-outline', label: 'مصاريف المكتب', route: '/office-expenses', color: '#B54708' },
+    { icon: 'documents-outline', label: 'السندات', route: '/vouchers', color: '#1B8354' },
     { icon: 'person-outline', label: 'المستأجرون', route: '/tenants', color: '#1570EF' },
     { icon: 'home-outline', label: 'الوحدات', route: '/units', color: '#6938EF' },
   ],

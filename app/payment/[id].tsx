@@ -7,6 +7,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../../constants/Theme';
 import { useApp } from '../../context/AppProvider';
+import { useFinance } from '../../context/FinanceProvider';
+import { openPrintWindow, printVoucher } from '../../components/finance/voucherPrint';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -212,6 +214,8 @@ export default function PaymentDetailScreen() {
     canWrite, canDelete, isAdmin,
   } = useApp();
 
+  const { receiptFor, issueReceiptForPayment, cancelReceiptForPayment } = useFinance();
+  const [voucherBusy, setVoucherBusy]   = useState(false);
   const [showConfirm, setShowConfirm]   = useState(false);
   const [showCancel,  setShowCancel]    = useState(false);
   const [showDelete,  setShowDelete]    = useState(false);
@@ -273,28 +277,36 @@ export default function PaymentDetailScreen() {
     printReceipt(html, payment.receiptNumber ?? '');
   };
 
+  // ── سند القبض ───────────────────────────────────────────────────────────────
+  const receipt = receiptFor(id!);
+  const voucherExtra = { propertyName: property?.name, unitNumber: unit?.number };
+  const notify = (msg: string) => Platform.OS === 'web' ? window.alert(msg) : Alert.alert('سند القبض', msg);
+
+  /** يطبع سند القبض، ويصدره أولاً إن لم يصدر بعد (دفعات سُدّدت قبل نظام السندات). */
+  const handleReceiptVoucher = async () => {
+    if (receipt) { printVoucher(receipt, voucherExtra); return; }
+    const win = openPrintWindow();
+    setVoucherBusy(true);
+    const r = await issueReceiptForPayment(id!);
+    setVoucherBusy(false);
+    if (r.ok && r.value) printVoucher(r.value, voucherExtra, win);
+    else { win?.close(); if (!r.ok) notify(r.error); }
+  };
+
   // ── Confirm payment ──────────────────────────────────────────────────────────
-  const handleConfirm = () => {
-    confirmPayment(id!);
+  const handleConfirm = async () => {
     setShowConfirm(false);
-    setTimeout(() => {
-      const updated = payments.find(p => p.id === id);
-      const rn      = updated?.receiptNumber ?? `RCP-${Date.now()}`;
-      const logoUrl = Platform.OS === 'web'
-        ? `${window.location.origin}/assets/images/sidebar-logo.png`
-        : '';
-      const html = buildReceiptHTML({
-        receiptNumber: rn, tenantName: tenant?.name ?? '—',
-        tenantPhone: tenant?.phone, tenantNationalId: tenant?.nationalId,
-        propertyName: property?.name ?? '—', unitNumber: unit?.number ?? '—',
-        contractNumber: contract?.contractNumber ?? '—',
-        installmentNumber: payment.installmentNumber ?? 1, totalInstallments,
-        amount: payment.amount, paidDate: new Date().toISOString().split('T')[0],
-        dueDate: payment.dueDate, method, referenceNumber: payment.referenceNumber,
-        notes: payment.notes, logoUrl,
-      });
-      printReceipt(html, rn);
-    }, 400);
+    const win = openPrintWindow();
+    const paidDate = new Date().toISOString().split('T')[0];
+    confirmPayment(id!);
+    setVoucherBusy(true);
+    const r = await issueReceiptForPayment(id!, { paidDate, method });
+    setVoucherBusy(false);
+    if (r.ok && r.value) printVoucher(r.value, voucherExtra, win);
+    else {
+      win?.close();
+      if (!r.ok) notify(`تم تأكيد الاستلام، لكن تعذّر إصدار سند القبض: ${r.error}\nيمكنك إصداره لاحقاً من هذه الصفحة.`);
+    }
   };
 
   // ── Detail rows ──────────────────────────────────────────────────────────────
@@ -408,15 +420,30 @@ export default function PaymentDetailScreen() {
           </TouchableOpacity>
         )}
 
-        {/* ── Print / PDF receipt ── */}
+        {/* ── سند القبض ── */}
         {payment.status === 'paid' && (
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary }]}
-            onPress={handlePrintReceipt}
-          >
-            <Ionicons name="print-outline" size={20} color={colors.primary} />
-            <Text style={[styles.actionBtnText, { color: colors.primary }]}>طباعة الإيصال PDF</Text>
-          </TouchableOpacity>
+          <View style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.borderStrong, justifyContent: 'space-between' }]}>
+            <TouchableOpacity
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              onPress={() => receipt && router.push(`/voucher/${receipt.id}` as any)}
+              disabled={!receipt}
+            >
+              <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+              <Text style={[styles.actionBtnText, { color: colors.text }]}>
+                {receipt ? `سند القبض ${receipt.number}` : 'لم يصدر سند قبض بعد'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleReceiptVoucher}
+              disabled={voucherBusy || (!receipt && !canWrite)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 4, paddingHorizontal: 12, minHeight: 34, opacity: voucherBusy ? 0.6 : 1 }}
+            >
+              <Ionicons name={receipt ? 'print-outline' : 'add-circle-outline'} size={16} color={colors.textInverse} />
+              <Text style={{ color: colors.textInverse, fontSize: 13, fontWeight: '500' }}>
+                {voucherBusy ? 'جارٍ الإصدار...' : receipt ? 'طباعة' : 'إصدار وطباعة'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* ── Cancel confirmed payment (paid → pending) ── */}
@@ -448,16 +475,16 @@ export default function PaymentDetailScreen() {
         onClose={() => setShowConfirm(false)}
         onConfirm={handleConfirm}
         title="تأكيد استلام الدفعة"
-        message={`هل تأكدت من استلام مبلغ ${formatAmount(payment.amount, effectiveCurrency)}؟ سيتم تسجيلها كمدفوعة وفتح الإيصال للطباعة.`}
+        message={`هل تأكدت من استلام مبلغ ${formatAmount(payment.amount, effectiveCurrency)}؟ سيتم تسجيلها كمدفوعة وإصدار سند قبض برقم تسلسلي وفتحه للطباعة.`}
         confirmLabel="تأكيد الاستلام"
         variant="warning"
       />
       <ConfirmModal
         visible={showCancel}
         onClose={() => setShowCancel(false)}
-        onConfirm={() => { cancelPayment(id!); setShowCancel(false); }}
+        onConfirm={() => { cancelPayment(id!); cancelReceiptForPayment(id!, 'إلغاء تأكيد استلام الدفعة'); setShowCancel(false); }}
         title="إلغاء تأكيد الدفعة"
-        message="سيتم إرجاع الدفعة إلى حالة «معلقة» وحذف رقم الإيصال. هل تريد المتابعة؟"
+        message={`سيتم إرجاع الدفعة إلى حالة «معلقة»${receipt ? ` وإلغاء سند القبض ${receipt.number} (يبقى ظاهراً بحالة ملغي)` : ''}. هل تريد المتابعة؟`}
         confirmLabel="نعم، إلغاء التأكيد"
         variant="danger"
       />

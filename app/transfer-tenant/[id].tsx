@@ -157,7 +157,7 @@ export default function TransferTenantScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>نقل المستأجر</Text>
         <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]} disabled={saving}>
-          <Text style={[styles.saveText, { color: colors.text }]}>{saving ? '...' : 'تنفيذ'}</Text>
+          <Text style={[styles.saveText, { color: colors.textInverse }]}>{saving ? '...' : 'تنفيذ'}</Text>
         </TouchableOpacity>
       </View>
 

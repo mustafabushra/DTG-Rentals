@@ -89,7 +89,7 @@ export default function AddMaintenanceScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>طلب صيانة جديد</Text>
         <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.saveText, { color: colors.text }]}>إرسال</Text>
+          <Text style={[styles.saveText, { color: colors.textInverse }]}>إرسال</Text>
         </TouchableOpacity>
       </View>
 

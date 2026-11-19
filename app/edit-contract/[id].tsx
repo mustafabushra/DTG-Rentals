@@ -133,7 +133,7 @@ export default function EditContractScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>تعديل العقد</Text>
         <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.saveText, { color: colors.text }]}>حفظ</Text>
+          <Text style={[styles.saveText, { color: colors.textInverse }]}>حفظ</Text>
         </TouchableOpacity>
       </View>
 

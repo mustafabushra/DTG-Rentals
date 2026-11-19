@@ -13,6 +13,7 @@ import { PaymentStatus } from '../data/mockData';
 import { ConfirmModal } from '../components/ui/Modal';
 import { ListSkeleton } from '../components/ui/Skeleton';
 import { useApp } from '../context/AppProvider';
+import { useFinance } from '../context/FinanceProvider';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { CurrencyText } from '../components/ui/CurrencyText';
 import { resolvePaymentCurrency, countryLabel, formatAmount, convertToSAR, type CurrencyCode } from '../utils/currency';
@@ -24,6 +25,13 @@ interface CountryStat { code: string; paid: number; pending: number; overdue: nu
 export default function PaymentsScreen() {
   const { colors } = useAppTheme();
   const { payments, contracts, tenants, units, properties, deletePayment, confirmPayment, dataLoading, secondaryLoading } = useApp();
+  const { issueReceiptForPayment } = useFinance();
+  // تأكيد الاستلام يصدر سند القبض معه — الفشل لا يلغي التأكيد، ويمكن إصدار السند لاحقاً من صفحة الدفعة
+  const confirmWithReceipt = async (pid: string) => {
+    confirmPayment(pid);
+    const r = await issueReceiptForPayment(pid, { paidDate: new Date().toISOString().split('T')[0] });
+    if (!r.ok && typeof window !== 'undefined' && window.alert) window.alert(`تم تأكيد الاستلام، لكن تعذّر إصدار سند القبض: ${r.error}`);
+  };
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [filterCountry, setFilterCountry] = useState('');
@@ -221,7 +229,7 @@ export default function PaymentsScreen() {
       <ConfirmModal
         visible={!!pendingConfirm}
         onClose={() => setPendingConfirm(null)}
-        onConfirm={() => { confirmPayment(pendingConfirm!); setPendingConfirm(null); }}
+        onConfirm={() => { confirmWithReceipt(pendingConfirm!); setPendingConfirm(null); }}
         title="تأكيد استلام الدفعة"
         message="هل تأكدت من استلام هذه الدفعة؟ سيتم تسجيلها كمدفوعة وإنشاء إيصال تلقائي."
         confirmLabel="تأكيد الاستلام"

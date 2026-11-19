@@ -313,3 +313,46 @@ export async function runContractTransaction(p: ContractTransactionPayload): Pro
     }
   });
 }
+
+// ─── إصدار السندات (ترقيم تسلسلي ذرّي) ───────────────────────────────────────
+/**
+ * يصدر سنداً برقم تسلسلي في معاملة واحدة:
+ *  - يقرأ عدّاد النوع من counters/vouchers ويزيده بواحد.
+ *  - يرفض إن كان مستند السند موجوداً (VOUCHER_EXISTS) — المعرّف ثابت لكل مصدر،
+ *    فالضغط المزدوج أو جهازان معاً لا يولّدان سندين ولا يحرقان رقماً.
+ *  - يمكن إلغاء سند سابق في المعاملة نفسها (عند تعديل مصروف) فلا يبقى مصروف بسندين ساريين.
+ * يرجع الرقم التسلسلي المستخدم.
+ */
+export async function runIssueVoucherTransaction(p: {
+  orgId: string;
+  voucherId: string;
+  type: 'receipt' | 'payment';
+  build: (seq: number) => DocumentData;
+  cancelVoucherId?: string;
+  cancelPatch?: DocumentData;
+  sourcePatch?: { col: string; id: string; data: DocumentData };
+}): Promise<{ seq: number; data: DocumentData }> {
+  const now = serverTimestamp();
+  return runTransaction(db, async tx => {
+    const counterRef = orgDoc(p.orgId, 'counters', 'vouchers');
+    const voucherRef = orgDoc(p.orgId, 'vouchers', p.voucherId);
+    const counterSnap = await tx.get(counterRef);
+    const voucherSnap = await tx.get(voucherRef);
+    if (voucherSnap.exists()) throw new TxError('VOUCHER_EXISTS');
+
+    const current = Number(counterSnap.exists() ? counterSnap.data()?.[p.type] ?? 0 : 0);
+    const seq = current + 1;
+    const data = stripUndefined(p.build(seq));
+
+    tx.set(counterRef, { [p.type]: seq, updatedAt: now }, { merge: true });
+    tx.set(voucherRef, { ...data, createdAt: now });
+    if (p.cancelVoucherId && p.cancelPatch) {
+      tx.set(orgDoc(p.orgId, 'vouchers', p.cancelVoucherId), stripUndefined(p.cancelPatch), { merge: true });
+    }
+    if (p.sourcePatch) {
+      tx.set(orgDoc(p.orgId, p.sourcePatch.col, p.sourcePatch.id),
+        stripUndefined({ ...p.sourcePatch.data, updatedAt: now }), { merge: true });
+    }
+    return { seq, data };
+  });
+}

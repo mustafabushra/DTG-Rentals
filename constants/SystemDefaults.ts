@@ -13,6 +13,7 @@ export interface ModuleFlags {
   backup:      boolean;
   auditLog:    boolean;
   ledger:      boolean;
+  finance:     boolean;
 }
 
 export interface RolePermissions {
@@ -47,6 +48,7 @@ export const DEFAULT_MODULES: ModuleFlags = {
   backup:      true,
   auditLog:    true,
   ledger:      true,
+  finance:     true,
 };
 
 export const DEFAULT_PERMISSIONS: Record<string, RolePermissions> = {
@@ -114,6 +116,7 @@ export const MODULE_META: Record<keyof ModuleFlags, { icon: string; label: strin
   backup:      { icon: 'cloud-upload-outline',   label: 'النسخ الاحتياطي',  description: 'تصدير واستيراد بيانات النظام' },
   auditLog:    { icon: 'list-outline',           label: 'سجل الإجراءات',    description: 'مراجعة جميع عمليات النظام' },
   ledger:      { icon: 'receipt-outline',        label: 'سجل المدفوعات',    description: 'كشف حساب مفصّل لكل مستأجر' },
+  finance:     { icon: 'wallet-outline',         label: 'المصاريف والسندات', description: 'مصاريف العقارات والمكتب وسندات القبض والصرف' },
 };
 
 /** Role metadata for display */
