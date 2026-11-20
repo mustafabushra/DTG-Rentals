@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Theme } from '../../constants/Theme';
@@ -23,6 +23,7 @@ interface PropertyCardProps {
   rentedCount?: number;
   vacantCount?: number;
   onDelete?: () => void;
+  style?: any;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -57,9 +58,12 @@ const TYPE_COLORS: Record<string, [string, string]> = {
   land:      ['#214670', '#365A80'],
 };
 
-export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCount = 0, onDelete }: PropertyCardProps) {
+/**
+ * بطاقة عقار مضغوطة: صورة مصغّرة، الاسم والموقع، وسطر واحد للوحدات والإشغال.
+ * (كانت صورة كبيرة بشريط داكن وأربعة أرقام — صعبة القراءة وتأخذ الشاشة كلها في الجوال)
+ */
+export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCount = 0, style }: PropertyCardProps) {
   const { colors } = useAppTheme();
-  const { width } = useWindowDimensions();
   const { cities } = useApp();
 
   const location = property.address ?? property.location ?? '';
@@ -67,254 +71,63 @@ export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCou
     ? (cities.find(c => c.id === property.cityId)?.displayName ?? cities.find(c => c.id === property.cityId)?.name ?? '')
     : (property as any).city ?? '';
   const mainPhoto = photos.find(p => p.isMain) ?? photos[0];
-  const photoUri  = mainPhoto?.uri;
   const total     = property.totalUnits;
   const occupancy = total > 0 ? Math.round((rentedCount / total) * 100) : 0;
   const typeLabel = TYPE_LABELS[property.type] ?? property.type;
   const typeIcon  = TYPE_ICONS[property.type] ?? 'home-outline';
-  const [bgFrom]  = TYPE_COLORS[property.type] ?? ['#0F2A47', '#214670'];
-
-  // Responsive image height: 44% of card width (card = screen - 32px margin)
-  // سقف للارتفاع: في الشبكة على الشاشات العريضة كانت الصورة تأخذ ارتفاع عرض الشاشة كاملة
-  const imageHeight = Math.min(Math.round((width - 32) * 0.44), 180);
-
-  const occupancyColor =
-    occupancy >= 80 ? colors.success :
-    occupancy >= 50 ? colors.warning :
-    colors.danger;
+  const place = [location, cityName].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join('، ');
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, style]}
       onPress={() => router.push(`/property/${property.id}` as any)}
-      activeOpacity={0.88}
+      activeOpacity={0.75}
     >
-      {photoUri ? (
-        <View style={[styles.imageWrap, { height: imageHeight }]}>
-          <Image source={{ uri: photoUri }} style={styles.image} />
-          <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
-            <Ionicons name={typeIcon as any} size={11} color="#fff" />
-            <Text style={styles.typeBadgeText}>{typeLabel}</Text>
-          </View>
-          <View style={styles.gradientOverlay} pointerEvents="none" />
-          <View style={styles.overlay} pointerEvents="none">
-            <Text style={styles.overlayName} numberOfLines={1}>{property.name}</Text>
-            {(location || cityName) && (
-              <View style={styles.overlayLocation}>
-                <Ionicons name="location-outline" size={11} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.overlayLocationText} numberOfLines={1}>
-                  {[location, cityName].filter(Boolean).join('، ')}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
+      {mainPhoto?.uri ? (
+        <Image source={{ uri: mainPhoto.uri }} style={styles.thumb} />
       ) : (
-        // بلا صورة: رأس مضغوط بدل مساحة كحلية فارغة
-        <View style={styles.plainHead}>
-          <View style={[styles.plainIcon, { backgroundColor: colors.surface }]}>
-            <Ionicons name={typeIcon as any} size={22} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1, gap: 3 }}>
-            <Text style={[styles.plainName, { color: colors.text }]} numberOfLines={1}>{property.name}</Text>
-            <Text style={[styles.plainSub, { color: colors.textMuted }]} numberOfLines={1}>
-              {[typeLabel, location, cityName].filter(Boolean).join('، ')}
-            </Text>
-          </View>
+        <View style={[styles.thumb, { backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }]}>
+          <Ionicons name={typeIcon as any} size={24} color={colors.primary} />
         </View>
-      )}
-      {onDelete && (
-        <TouchableOpacity
-          style={[styles.deleteBtn, { backgroundColor: photoUri ? 'rgba(0,0,0,0.45)' : 'transparent' }]}
-          onPress={e => { (e as any).stopPropagation?.(); onDelete(); }}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          accessibilityLabel="حذف العقار"
-        >
-          <Ionicons name="trash-outline" size={16} color={photoUri ? '#fff' : colors.textMuted} />
-        </TouchableOpacity>
       )}
 
-      {/* ── Stats row ── */}
-      <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
-        <StatBox value={rentedCount} label="مؤجرة" color={colors.text} icon="key-outline" />
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <StatBox value={vacantCount} label="شاغرة" color={colors.text} icon="home-outline" />
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <StatBox value={total} label="إجمالي" color={colors.text} icon="grid-outline" />
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        {/* Occupancy bar */}
-        <View style={styles.occupancyBox}>
-          <View style={styles.occupancyBarWrap}>
-            <View style={[styles.occupancyBarFill, { width: `${occupancy}%` as any, backgroundColor: occupancyColor }]} />
-          </View>
-          <Text style={[styles.occupancyLabel, { color: occupancyColor }]}>إشغال {occupancy}%</Text>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{property.name}</Text>
+        <Text style={[styles.place, { color: colors.textMuted }]} numberOfLines={1}>
+          {[typeLabel, place].filter(Boolean).join('، ')}
+        </Text>
+        <View style={styles.metaRow}>
+          <Text style={[styles.meta, { color: colors.textSecondary }]}>
+            {total} {total === 1 ? 'وحدة' : 'وحدات'}
+          </Text>
+          <Text style={[styles.meta, { color: colors.textMuted }]}>·</Text>
+          <Text style={[styles.meta, { color: colors.success }]}>{rentedCount} مؤجرة</Text>
+          {vacantCount > 0 && (
+            <>
+              <Text style={[styles.meta, { color: colors.textMuted }]}>·</Text>
+              <Text style={[styles.meta, { color: colors.warning }]}>{vacantCount} شاغرة</Text>
+            </>
+          )}
         </View>
       </View>
+
+      <View style={[styles.occ, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.occVal, { color: colors.text }]}>{occupancy}%</Text>
+        <Text style={[styles.occLbl, { color: colors.textMuted }]}>مؤجّر</Text>
+      </View>
+      <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
     </TouchableOpacity>
   );
 }
 
-function StatBox({ value, label, color, icon }: { value: number; label: string; color: string; icon: string }) {
-  return (
-    <View style={styles.statBox}>
-      <Ionicons name={icon as any} size={13} color={color} />
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  plainHead: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, paddingLeft: 44 },
-  plainIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  plainName: { fontSize: 16, fontWeight: '600', textAlign: 'right' },
-  plainSub: { fontSize: 12, textAlign: 'right' },
-  deleteBtn: { position: 'absolute', top: 10, left: 10, width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  card: {
-    borderRadius: Theme.radius.xl,
-    borderWidth: 1,
-    marginHorizontal: Theme.spacing.base,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  imageWrap: {
-    position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  overlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    paddingTop: 20,
-  },
-  // We use a semi-transparent dark bar instead of LinearGradient
-  overlayName: {
-    color: '#FFFFFF',
-    fontSize: Theme.fontSize.lg,
-    fontWeight: Theme.fontWeight.bold,
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-    textAlign: 'right',
-  },
-  overlayLocation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginTop: 2,
-  },
-  overlayLocationText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: Theme.fontSize.xs,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  typeBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: Theme.radius.full,
-  },
-  typeBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  occupancyBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: Theme.radius.full,
-  },
-  occupancyText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  deleteOverlay: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    backgroundColor: 'rgba(200,30,30,0.75)',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderTopWidth: 1,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  statValue: {
-    fontSize: Theme.fontSize.base,
-    fontWeight: Theme.fontWeight.bold,
-    lineHeight: 18,
-  },
-  statLabel: {
-    fontSize: 10,
-    color: '#9CA3AF',
-  },
-  divider: {
-    width: 1,
-    height: 28,
-    marginHorizontal: 4,
-  },
-  occupancyBox: {
-    flex: 1.4,
-    alignItems: 'center',
-    gap: 4,
-  },
-  occupancyBarWrap: {
-    width: '85%',
-    height: 5,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    borderRadius: 99,
-    overflow: 'hidden',
-  },
-  occupancyBarFill: {
-    height: '100%',
-    borderRadius: 99,
-  },
-  occupancyLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 12, padding: 12, marginHorizontal: Theme.spacing.base, marginBottom: Theme.spacing.sm },
+  thumb: { width: 64, height: 64, borderRadius: 10 },
+  name: { fontSize: 15, fontWeight: '600', textAlign: 'right' },
+  place: { fontSize: 12, textAlign: 'right' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' },
+  meta: { fontSize: 12, fontWeight: '500' },
+  occ: { width: 54, borderRadius: 8, paddingVertical: 6, alignItems: 'center' },
+  occVal: { fontSize: 14, fontWeight: '700' },
+  occLbl: { fontSize: 10 },
 });

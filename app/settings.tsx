@@ -435,6 +435,7 @@ export default function SettingsScreen() {
               <Item icon="scan-outline" label="قراءة عقد من صورة" onPress={() => router.push('/scan-contract')} />
               <Item icon="folder-open-outline" label="كل المرفقات" onPress={() => router.push('/attachments')} />
               <Item icon="location-outline" label="المدن" onPress={() => router.push('/cities')} />
+              <Item icon="cloud-upload-outline" label="استيراد عقارات من ملف Excel" onPress={() => router.push('/bulk-import-properties')} />
               <Item icon="list-outline" label="سجل الإجراءات" onPress={() => router.push('/audit-log')} />
               <Item icon="gift-outline" label="التحديثات الجديدة" onPress={() => router.push('/updates')} />
             </View>

@@ -132,15 +132,6 @@ export default function PropertiesScreen() {
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity style={[styles.groupToggle, { backgroundColor: groupByCity ? colors.primarySubtle : colors.surface }]}
-              onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setGroupByCity(prev => !prev); }}>
-              <Ionicons name={groupByCity ? 'list-outline' : 'folder-open-outline'} size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-            {canWrite && (
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={() => router.push('/bulk-import-properties')}>
-                <Ionicons name="cloud-upload-outline" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
             {canWrite && (
               <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => router.push('/add-property')}>
                 <Ionicons name="add" size={22} color={colors.textInverse} />
@@ -203,17 +194,11 @@ export default function PropertiesScreen() {
 
       <FilterPanel visible={filterPanelVisible} onClose={() => setFilterPanelVisible(false)} filters={activeFilter} onChange={setActiveFilter} />
 
-      <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.stat}><Text style={[styles.statVal, { color: colors.text }]}>{total}</Text><Text style={[styles.statLbl, { color: colors.textMuted }]}>عقار</Text></View>
-        <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
-        <View style={styles.stat}><Text style={[styles.statVal, { color: colors.success }]}>{rentedUnits}</Text><Text style={[styles.statLbl, { color: colors.textMuted }]}>مؤجرة</Text></View>
-        <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
-        <View style={styles.stat}><Text style={[styles.statVal, { color: colors.warning }]}>{vacantUnits}</Text><Text style={[styles.statLbl, { color: colors.textMuted }]}>شاغرة</Text></View>
-        <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
-        <View style={styles.stat}><Text style={[styles.statVal, { color: overallOccupancy >= 80 ? colors.success : overallOccupancy >= 50 ? colors.warning : colors.danger }]}>{overallOccupancy}%</Text><Text style={[styles.statLbl, { color: colors.textMuted }]}>إشغال</Text></View>
-      </View>
+      <Text style={[styles.summaryLine, { color: colors.textSecondary }]}>
+        {total} عقار، {rentedUnits + vacantUnits} وحدة: <Text style={{ color: colors.success }}>{rentedUnits} مؤجرة</Text>، <Text style={{ color: colors.warning }}>{vacantUnits} شاغرة</Text>
+      </Text>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[{ paddingVertical: Theme.spacing.sm, paddingBottom: 32 }, isWide && { paddingHorizontal: Theme.spacing.base }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[{ paddingVertical: Theme.spacing.sm, paddingBottom: 32 }, isWide && { paddingHorizontal: Theme.spacing.base, width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
         {filteredProperties.length === 0 ? (
           <EmptyState icon="business-outline" title="لا توجد عقارات"
             subtitle={search || activeChipCount > 0 ? 'لم يتم العثور على نتائج تطابق الفلاتر المحددة' : 'ابدأ بإضافة عقارك الأول'}
@@ -291,10 +276,10 @@ export default function PropertiesScreen() {
               if (unitId) {
                 const exUnit = externalOwnedUnits.find(u => u.id === unitId);
                 if (!exUnit) return null;
-                return <View key={p.id} style={{ width: cols3 ? '32%' : '48%', flexGrow: 1 }}><UnitCard unit={exUnit} propertyName={exUnit.parentPropertyName} /></View>;
+                return <View key={p.id} style={{ width: '48%', flexGrow: 1 }}><UnitCard unit={exUnit} propertyName={exUnit.parentPropertyName} /></View>;
               }
               const stats = getUnitStats(p);
-              return <View key={p.id} style={{ width: cols3 ? '32%' : '48%', flexGrow: 1 }}><PropertyCard property={{ ...p, totalUnits: stats.total }} photos={propertyPhotos[p.id] ?? []} rentedCount={stats.rented} vacantCount={stats.vacant} /></View>;
+              return <View key={p.id} style={{ width: '48%', flexGrow: 1 }}><PropertyCard style={{ marginHorizontal: 0, marginBottom: 0 }} property={{ ...p, totalUnits: stats.total }} photos={propertyPhotos[p.id] ?? []} rentedCount={stats.rented} vacantCount={stats.vacant} /></View>;
             })}
           </View>
         ) : !groupByCity && (
@@ -320,6 +305,7 @@ export default function PropertiesScreen() {
 }
 
 const styles = StyleSheet.create({
+  summaryLine: { fontSize: 13, textAlign: 'right', paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4, width: '100%', maxWidth: 1200, alignSelf: 'center' },
   container: { flex: 1 },
   header: { paddingBottom: 14 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },

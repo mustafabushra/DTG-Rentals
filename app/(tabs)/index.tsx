@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
+import { UpcomingRents } from '../../components/dashboard/UpcomingRents';
 import { OwnerTimeline } from '../../components/owners/OwnerTimeline';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform, Animated, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -661,24 +662,20 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ── Expiring Contracts + Due Payments ── */}
-        {!ownerMode && (expiringContracts.length > 0 || duePaymentsData.today.length > 0 || duePaymentsData.week.length > 0) && (
-          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-            <Text style={[styles.secLabel, { color: colors.text }]}>العقود والدفعات</Text>
-            {isWide ? (
-              <View style={styles.rowPair}>
-                {expiringContracts.length > 0 && <ExpiringContracts contracts={expiringContracts} />}
-                {expiringContracts.length > 0 && <View style={{ width: 16 }} />}
-                <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
-              </View>
-            ) : (
-              <View style={{ gap: 16 }}>
-                {expiringContracts.length > 0 && <ExpiringContracts contracts={expiringContracts} />}
-                <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
-              </View>
-            )}
+        {/* ── الإيجارات القادمة (شهرين) + العقود التي تنتهي ── */}
+        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }, isWide && styles.rowPair]}>
+          <View style={isWide ? { flex: 3 } : undefined}>
+            <UpcomingRents days={60} />
           </View>
-        )}
+          {!ownerMode && expiringContracts.length > 0 && (
+            <>
+              {isWide ? <View style={{ width: 16 }} /> : <View style={{ height: 16 }} />}
+              <View style={isWide ? { flex: 2 } : undefined}>
+                <ExpiringContracts contracts={expiringContracts} />
+              </View>
+            </>
+          )}
+        </View>
 
         {/* الرسوم والإشغال والتفاصيل انتقلت إلى "التقارير" — الرئيسية لما يحتاج إجراء فقط */}
         <View style={[styles.sectionPad, { marginTop: 24, alignItems: 'center' }]}>

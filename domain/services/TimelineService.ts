@@ -43,7 +43,7 @@ export function ownerUnitIds(src: Pick<Src, 'units' | 'properties'>, ownerId?: s
 
 export function buildOwnerTimeline(src: Src, opts: { ownerId?: string; today?: string; aheadDays?: number } = {}): TimelineEvent[] {
   const today = opts.today ?? new Date().toISOString().slice(0, 10);
-  const ahead = new Date(today); ahead.setDate(ahead.getDate() + (opts.aheadDays ?? 30));
+  const ahead = new Date(today); ahead.setDate(ahead.getDate() + (opts.aheadDays ?? 60));
   const horizon = ahead.toISOString().slice(0, 10);
 
   const unitIds = ownerUnitIds(src, opts.ownerId);
