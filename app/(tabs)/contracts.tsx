@@ -24,7 +24,7 @@ type FilterStatus = 'all' | ContractStatus;
 export default function ContractsScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { contracts, canWrite, canDelete, dataLoading } = useApp();
+  const { contracts, tenants, units, properties, canWrite, canDelete, dataLoading } = useApp();
   const { isSmallPhone: cSmallPhone, hPad: cHPad } = useScreenSize();
 
   useEffect(() => { trackScreen('Contracts'); }, []);
@@ -34,13 +34,35 @@ export default function ContractsScreen() {
   const { isWide, isDesktop } = useScreenSize();
   const { toggle: toggleSidebar } = useSidebar();
 
+  // البحث باسم المستأجر أو رقم الوحدة أو اسم العقار أو رقم العقد
+  const haystack = (c: typeof contracts[0]) => {
+    const t = tenants.find(x => x.id === c.tenantId);
+    const u = units.find(x => x.id === c.unitId);
+    const p = u ? properties.find(x => x.id === u.propertyId) : undefined;
+    return [c.contractNumber, t?.name, u?.number, p?.name].filter(Boolean).join(' ').toLowerCase();
+  };
+  const statusCounts = useMemo(() => {
+    const m: Record<string, number> = { all: contracts.length };
+    for (const c of contracts) m[c.status] = (m[c.status] ?? 0) + 1;
+    return m;
+  }, [contracts]);
+  const filterOptions = useMemo(() => [
+    { value: 'all', label: `الكل ${contracts.length}` },
+    ...[['active', 'ساري'], ['expired', 'منتهي'], ['terminated', 'أُنهي'], ['cancelled', 'ملغي'], ['pending', 'معلّق']]
+      .filter(([v]) => statusCounts[v])
+      .map(([v, l]) => ({ value: v, label: `${l} ${statusCounts[v]}` })),
+  ], [statusCounts, contracts.length]);
+
   const filteredContracts = useMemo(() => {
-    return contracts.filter(c => {
-      const matchSearch = !search || (c.contractNumber ?? '').includes(search);
-      const matchFilter = activeFilter === 'all' || c.status === activeFilter;
-      return matchSearch && matchFilter;
+    const q = search.trim().toLowerCase();
+    const list = contracts.filter(c => (!q || haystack(c).includes(q)) && (activeFilter === 'all' || c.status === activeFilter));
+    // الساري أولاً بالأقرب انتهاءً، ثم البقية بالأحدث
+    return list.sort((a, b) => {
+      const aa = a.status === 'active' ? 0 : 1, bb = b.status === 'active' ? 0 : 1;
+      if (aa !== bb) return aa - bb;
+      return aa === 0 ? a.endDate.localeCompare(b.endDate) : b.endDate.localeCompare(a.endDate);
     });
-  }, [contracts, search, activeFilter]);
+  }, [contracts, tenants, units, properties, search, activeFilter]);
 
   if (dataLoading) return <ListSkeleton count={5} />;
 
@@ -56,9 +78,6 @@ export default function ContractsScreen() {
               </TouchableOpacity>
             )}
             <Text style={[styles.headerTitle, { color: colors.text }]}>العقود والمستأجرون</Text>
-            <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.countText, { color: colors.textMuted }]}>{contracts.length}</Text>
-          </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {canWrite && (
@@ -67,7 +86,7 @@ export default function ContractsScreen() {
                 onPress={() => router.push('/scan-contract')}
                 accessibilityLabel="قراءة عقد من صورة"
               >
-                <Ionicons name="scan-outline" size={20} color={colors.textSecondary} />
+                <Ionicons name="camera-outline" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
             {canWrite && (
@@ -86,10 +105,10 @@ export default function ContractsScreen() {
       <SearchBar
         value={search}
         onChangeText={setSearch}
-        placeholder="ابحث برقم العقد..."
+        placeholder="ابحث باسم المستأجر أو الوحدة أو رقم العقد..."
       />
 
-      <FilterBar options={CONTRACT_FILTERS} value={activeFilter} onChange={v => setActiveFilter(v as FilterStatus)} />
+      <FilterBar options={filterOptions} value={activeFilter} onChange={v => setActiveFilter(v as FilterStatus)} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -110,9 +129,7 @@ export default function ContractsScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm }}>
             {filteredContracts.map(c => (
               <View key={c.id} style={{ width: '48%', flexGrow: 1 }}>
-                <ContractCard
-                  contract={c}
-                />
+                <ContractCard contract={c} style={{ marginHorizontal: 0, marginBottom: 0 }} />
               </View>
             ))}
           </View>
