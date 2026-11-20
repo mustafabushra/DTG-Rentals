@@ -84,12 +84,6 @@ export function OwnerCard({ owner, onDelete }: OwnerCardProps) {
             {onDelete && (
               <DeleteButton variant="icon" onPress={onDelete} />
             )}
-            <TouchableOpacity
-              style={[styles.editBtn, { backgroundColor: colors.surface }]}
-              onPress={e => { e.stopPropagation(); router.push(`/edit-owner/${owner.id}`); }}
-            >
-              <Ionicons name="pencil-outline" size={15} color={colors.textSecondary} />
-            </TouchableOpacity>
           </View>
         </View>
 

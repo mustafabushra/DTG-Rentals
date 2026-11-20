@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { FilterPanel } from '../components/ui/FilterPanel';
+import { PageHint } from '../components/ui/PageHint';
 import { formatDate } from '../data/mockData';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
@@ -58,22 +60,14 @@ export default function MaintenanceScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="الصيانة" showBack={false} rightAction={{ icon: "add", onPress: () => router.push("/add-maintenance"), label: "طلب صيانة" }} />
+      <PageHint text="طلبات الإصلاح في الوحدات وحالتها وتكلفتها. اضغط + لطلب صيانة جديد." />
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث في الطلبات..." />
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
-        <FilterBar options={statusOptions} value={statusFilter} onChange={v => setStatusFilter(v as StatusFilter)} />
-        <FilterBar options={priorityOptions} value={priorityFilter} onChange={v => setPriorityFilter(v as PriorityFilter)} containerStyle={{ paddingHorizontal: 0 }} />
-      </View>
-
-      {/* Stats */}
-      <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.stat}><Text style={[styles.sv, { color: colors.secondary }]}>{counts.new}</Text><Text style={[styles.sl, { color: colors.textMuted }]}>جديد</Text></View>
-        <View style={[styles.sd, { backgroundColor: colors.border }]} />
-        <View style={styles.stat}><Text style={[styles.sv, { color: colors.warning }]}>{counts.in_progress}</Text><Text style={[styles.sl, { color: colors.textMuted }]}>جاري</Text></View>
-        <View style={[styles.sd, { backgroundColor: colors.border }]} />
-        <View style={styles.stat}><Text style={[styles.sv, { color: colors.success }]}>{counts.completed}</Text><Text style={[styles.sl, { color: colors.textMuted }]}>مكتمل</Text></View>
-      </View>
+      <FilterBar options={statusOptions} value={statusFilter} onChange={v => setStatusFilter(v as StatusFilter)} />
+      <FilterPanel activeCount={priorityFilter !== 'all' ? 1 : 0}>
+        <FilterBar options={priorityOptions} value={priorityFilter} onChange={v => setPriorityFilter(v as PriorityFilter)} />
+      </FilterPanel>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {filtered.length === 0 ? (
@@ -95,7 +89,6 @@ export default function MaintenanceScreen() {
                     <StatusBadge status={m.priority} size="sm" />
                   </View>
                   <Text style={[styles.title, { color: colors.text }]}>{m.title}</Text>
-                  <DeleteButton variant="icon" onPress={() => requestDelete({ id: m.id, entityType: 'maintenance', label: m.title })} />
                 </View>
                 <Text style={[styles.desc, { color: colors.textSecondary }]} numberOfLines={2}>{m.description}</Text>
                 <View style={styles.cardFooter}>

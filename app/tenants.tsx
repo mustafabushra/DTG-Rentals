@@ -143,8 +143,7 @@ export default function TenantsScreen() {
                   </View>
                 </View>
                 <View style={styles.cardTrailing}>
-                  <DeleteButton variant="icon" onPress={() => requestDelete({ id: tenant.id, entityType: 'tenant', label: tenant.name })} />
-                  <Ionicons name="chevron-forward-outline" size={18} color={colors.textMuted} />
+                  <Ionicons name="chevron-back-outline" size={18} color={colors.textMuted} />
                 </View>
               </TouchableOpacity>
             );

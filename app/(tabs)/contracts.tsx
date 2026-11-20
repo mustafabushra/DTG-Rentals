@@ -112,7 +112,6 @@ export default function ContractsScreen() {
               <View key={c.id} style={{ width: '48%', flexGrow: 1 }}>
                 <ContractCard
                   contract={c}
-                  onDelete={canDelete ? () => requestDelete({ id: c.id, entityType: 'contract', label: c.contractNumber ?? c.id }) : undefined}
                 />
               </View>
             ))}
@@ -122,7 +121,6 @@ export default function ContractsScreen() {
             <ContractCard
               key={c.id}
               contract={c}
-              onDelete={() => requestDelete({ id: c.id, entityType: 'contract', label: c.contractNumber ?? c.id })}
             />
           ))
         )}

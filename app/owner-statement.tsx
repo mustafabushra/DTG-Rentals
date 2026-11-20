@@ -3,6 +3,7 @@
  * كم دخل، كم صُرف، وكم بقي؛ لكل عقار، ثم حصة المالك في كل وحدة حسب سند الملكية إن وُجد.
  * عملات مختلفة لا تُجمع في رقم واحد.
  */
+import { PageHint } from '../components/ui/PageHint';
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
@@ -56,6 +57,7 @@ export default function OwnerStatementScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="الدخل والمصاريف" showBack={false} />
+      <PageHint text="كم انحصّل من إيجاراتك، كم انصرف على عقاراتك، وكم بقي لك." />
       <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
 
       <ScrollView contentContainerStyle={styles.content}>

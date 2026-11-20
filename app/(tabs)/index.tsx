@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
+import { OwnerTimeline } from '../../components/owners/OwnerTimeline';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform, Animated, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -133,15 +134,15 @@ const makeQuickActions = (colors: Record<string, string>) => [
 const OWNER_LINKS = [
   { icon: 'stats-chart-outline', label: 'الدخل والمصاريف', route: '/owner-statement' },
   { icon: 'business-outline', label: 'عقاراتي', route: '/(tabs)/properties' },
+  { icon: 'git-commit-outline', label: 'الخط الزمني', route: '/owner-timeline' },
   { icon: 'folder-open-outline', label: 'المستندات', route: '/attachments' },
-  { icon: 'notifications-outline', label: 'الإشعارات', route: '/notifications' },
 ];
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { kpis, payments, contracts, maintenance, auditLogs, currentUser,
-          owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData, isOwner, previewing } = useApp();
+          owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData, isOwner, previewing, previewOwnerId } = useApp();
   const ownerMode = isOwner || previewing;
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -302,7 +303,7 @@ export default function DashboardScreen() {
   }, [calendarEvents, contracts, payments, maintenance, attachments, currentUser, owners, properties, units]);
 
   const recentActivity = [...auditLogs].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 5);
-  const QUICK_ACTIONS  = makeQuickActions(colors).filter(a => canWrite || !a.writeOnly);
+  const QUICK_ACTIONS  = makeQuickActions(colors).filter(a => (canWrite || !a.writeOnly) && !['/calendar', '/audit-log', '/action-log'].includes(a.route));
   const { isWide, cols3, isDesktop, isMobile, isSmallPhone, hPad } = useScreenSize();
   const { toggle: toggleSidebar } = useSidebar();
 
@@ -625,6 +626,9 @@ export default function DashboardScreen() {
                 ))}
               </View>
             </View>
+            <View style={{ marginTop: 16 }}>
+              <OwnerTimeline ownerId={(previewing ? previewOwnerId : currentUser?.ownerId) ?? undefined} limit={8} title="آخر الأحداث" showAll="/owner-timeline" />
+            </View>
           </View>
         )}
 
@@ -658,7 +662,7 @@ export default function DashboardScreen() {
         )}
 
         {/* ── Expiring Contracts + Due Payments ── */}
-        {(expiringContracts.length > 0 || duePaymentsData.today.length > 0 || duePaymentsData.week.length > 0) && (
+        {!ownerMode && (expiringContracts.length > 0 || duePaymentsData.today.length > 0 || duePaymentsData.week.length > 0) && (
           <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
             <Text style={[styles.secLabel, { color: colors.text }]}>العقود والدفعات</Text>
             {isWide ? (

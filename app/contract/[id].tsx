@@ -288,7 +288,7 @@ export default function ContractDetailScreen() {
                   >
                     <Ionicons name="swap-horizontal-outline" size={15} color={btnColor} />
                     <Text style={[styles.currencyBtnText, { color: btnColor }]}>
-                      {getCurrency(contract.currency).code}
+                      العملة: {getCurrency(contract.currency).code}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -299,7 +299,7 @@ export default function ContractDetailScreen() {
                     onPress={() => router.push(`/transfer-tenant/${id}`)}
                   >
                     <Ionicons name="git-compare-outline" size={15} color={btnColor} />
-                    <Text style={[styles.currencyBtnText, { color: btnColor }]}>نقل</Text>
+                    <Text style={[styles.currencyBtnText, { color: btnColor }]}>نقل لوحدة أخرى</Text>
                   </TouchableOpacity>
                 )}
                 {/* Terminate button — admin only, active contracts only */}
@@ -308,8 +308,8 @@ export default function ContractDetailScreen() {
                     style={styles.terminateBtn}
                     onPress={() => setShowConfirm(true)}
                   >
-                    <Ionicons name="close-circle-outline" size={16} color="#FFF" />
-                    <Text style={styles.terminateBtnText}>إنهاء العقد</Text>
+                    <Ionicons name="close-circle-outline" size={16} color="#B42318" />
+                    <Text style={[styles.terminateBtnText, { color: '#B42318' }]}>إنهاء العقد</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     minHeight: 44,
     borderRadius: Theme.radius.full,
-    backgroundColor: '#B42318',
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F3B8B2',
   },
   terminateBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
 

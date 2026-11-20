@@ -7,6 +7,7 @@ import { router, usePathname } from 'expo-router';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { HUBS, HubKey } from '../../constants/Navigation';
 import { useApp } from '../../context/AppProvider';
+import { PageHint } from '../ui/PageHint';
 
 export function HubTabs({ hub }: { hub: HubKey }) {
   const { colors } = useAppTheme();
@@ -15,9 +16,12 @@ export function HubTabs({ hub }: { hub: HubKey }) {
   let tabs = HUBS[hub];
   // المالك لا يحتاج تبويب "الوحدات" المنفصل ولا أدوات الموظفين
   if ((isOwner || previewing) && hub !== 'properties') return null;
+  if ((isOwner || previewing)) tabs = tabs.map(t => t.match === '/properties' ? { ...t, hint: 'عقاراتك. اضغط على أي عقار تشوف وحداته ومن ساكن فيها.' } : t);
   if (tabs.length < 2) return null;
   const active = tabs.findIndex(t => pathname === t.match || pathname.startsWith(t.match + '/'));
+  const current = tabs[active < 0 ? 0 : active];
   return (
+    <>
     <View style={[styles.wrap, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {tabs.map((t, i) => {
@@ -36,6 +40,8 @@ export function HubTabs({ hub }: { hub: HubKey }) {
         })}
       </ScrollView>
     </View>
+    <PageHint text={current.hint} />
+    </>
   );
 }
 

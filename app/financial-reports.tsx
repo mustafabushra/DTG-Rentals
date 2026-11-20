@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { PageHint } from '../components/ui/PageHint';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Share, Platform, useWindowDimensions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
@@ -312,6 +313,7 @@ export default function FinancialReportsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="التقارير" showBack={false} rightAction={{ icon: 'share-outline', onPress: handleExport }} />
+      <PageHint text="الدخل والمصاريف والمتأخرات لأي فترة تختارها." />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 

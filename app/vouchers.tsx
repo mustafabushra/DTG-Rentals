@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { FilterPanel } from '../components/ui/FilterPanel';
 import { HubTabs } from '../components/navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
@@ -108,13 +109,13 @@ export default function VouchersScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث برقم السند أو الاسم أو البيان..." />
         <FilterBar options={TYPE_OPTIONS} value={type} onChange={setType} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+        <FilterPanel activeCount={(period !== 'month' ? 1 : 0) + (status !== 'issued' ? 1 : 0) + (propertyId !== 'all' ? 1 : 0)}>
           <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
-          <FilterBar options={STATUS_OPTIONS} value={status} onChange={setStatus} containerStyle={{ paddingHorizontal: 0 }} />
-        </View>
-        <View style={{ paddingHorizontal: hPad, marginTop: Theme.spacing.sm }}>
-          <FormSelect label="العقار" value={propertyId} options={propOptions} onSelect={setPropertyId} />
-        </View>
+          <FilterBar options={STATUS_OPTIONS} value={status} onChange={setStatus} />
+          <View style={{ paddingHorizontal: hPad, marginTop: Theme.spacing.sm }}>
+            <FormSelect label="العقار" value={propertyId} options={propOptions} onSelect={setPropertyId} />
+          </View>
+        </FilterPanel>
 
         {/* ── الملخص ── */}
         <View style={[styles.summary, { marginHorizontal: hPad, backgroundColor: colors.card, borderColor: colors.borderStrong }]}>

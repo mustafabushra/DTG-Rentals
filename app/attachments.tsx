@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { PageHint } from '../components/ui/PageHint';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -81,6 +82,7 @@ export default function AttachmentsScreen() {
         title={ownerMode ? 'المستندات' : 'كل المرفقات'}
         showBack={!ownerMode}
       />
+      <PageHint text={ownerMode ? "صكوك وعقود وملفات عقاراتك في مكان واحد." : "كل الملفات المرفوعة في النظام. ابحث بالاسم أو النوع."} />
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث عن وثيقة، ملاحظة أو نوع..." />
 

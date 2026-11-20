@@ -89,7 +89,6 @@ export default function UnitsScreen() {
             <UnitCard
               key={u.id}
               unit={u}
-              onDelete={() => requestDelete({ id: u.id, entityType: 'unit', label: `وحدة ${u.number}` })}
             />
           ))}</ResponsiveGrid>
         )}

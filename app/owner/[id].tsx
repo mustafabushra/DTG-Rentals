@@ -1,4 +1,5 @@
 ﻿import React, { useMemo } from 'react';
+import { OwnerTimeline } from '../../components/owners/OwnerTimeline';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -230,6 +231,11 @@ export default function OwnerDetailScreen() {
             ))}
           </View>
         )}
+
+        {/* الخط الزمني للمالك */}
+        <View style={{ marginHorizontal: 16, marginTop: 12 }}>
+          <OwnerTimeline ownerId={id} limit={6} showAll={`/owner-timeline?ownerId=${id}`} />
+        </View>
 
         {/* حصص الملكية في السندات */}
         {deedShares.length > 0 && (

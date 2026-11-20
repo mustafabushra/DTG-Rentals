@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { FilterPanel } from '../ui/FilterPanel';
 import { HubTabs } from '../navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
@@ -107,11 +108,9 @@ export function ExpensesScreen({ scope }: { scope: ExpenseScope }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث بالتصنيف أو المورد أو رقم السند..." />
-        <View style={styles.filtersRow}>
-          <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
-          <FilterBar options={STATUS_OPTIONS} value={status} onChange={setStatus} containerStyle={{ paddingHorizontal: 0 }} />
-        </View>
-
+        <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
+        <FilterPanel activeCount={(status !== 'active' ? 1 : 0) + (propertyId !== 'all' ? 1 : 0) + (category !== 'all' ? 1 : 0)}>
+        <FilterBar options={STATUS_OPTIONS} value={status} onChange={setStatus} />
         <View style={[styles.selects, { paddingHorizontal: hPad }]}>
           {scope === 'property' && (
             <View style={{ flex: 1 }}>
@@ -122,6 +121,7 @@ export function ExpensesScreen({ scope }: { scope: ExpenseScope }) {
             <FormSelect label="التصنيف" value={category} options={catOptions} onSelect={setCategory} />
           </View>
         </View>
+        </FilterPanel>
 
         {/* ── الملخص ── */}
         <View style={[styles.summary, { marginHorizontal: hPad, backgroundColor: colors.card, borderColor: colors.borderStrong }]}>

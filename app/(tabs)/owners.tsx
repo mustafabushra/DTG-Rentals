@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { PageHint } from '../../components/ui/PageHint';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useScreenSize } from '../../hooks/useScreenSize';
 import { useSidebar } from '../../context/SidebarContext';
@@ -68,6 +69,7 @@ export default function OwnersScreen() {
           </View>
         </View>
       </View>
+      <PageHint text="أصحاب العقارات. اضغط على المالك تشوف عقاراته ودخله والخط الزمني." />
 
       <SearchBar
         value={search}
@@ -94,7 +96,7 @@ export default function OwnersScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm }}>
             {filteredOwners.map(o => (
               <View key={o.id} style={{ width: '48%', flexGrow: 1 }}>
-                <OwnerCard owner={o} onDelete={canDelete ? () => requestDelete({ id: o.id, entityType: 'owner', label: o.name }) : undefined} />
+                <OwnerCard owner={o} />
               </View>
             ))}
           </View>
@@ -103,7 +105,6 @@ export default function OwnersScreen() {
             <OwnerCard
               key={o.id}
               owner={o}
-              onDelete={() => requestDelete({ id: o.id, entityType: 'owner', label: o.name })}
             />
           ))
         )}

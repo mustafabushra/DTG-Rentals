@@ -276,8 +276,7 @@ export default function PropertiesScreen() {
                           return <UnitCard key={p.id} unit={exUnit} propertyName={exUnit.parentPropertyName} />;
                         }
                         const stats = getUnitStats(p);
-                        return <PropertyCard key={p.id} property={{ ...p, totalUnits: stats.total }} photos={propertyPhotos[p.id] ?? []} rentedCount={stats.rented} vacantCount={stats.vacant}
-                          onDelete={canDelete ? () => requestDelete({ id: p.id, entityType: 'property', label: p.name }) : undefined} />;
+                        return <PropertyCard key={p.id} property={{ ...p, totalUnits: stats.total }} photos={propertyPhotos[p.id] ?? []} rentedCount={stats.rented} vacantCount={stats.vacant} />;
                       })}
                     </CollapsibleSection>
                   );
@@ -295,8 +294,7 @@ export default function PropertiesScreen() {
                 return <View key={p.id} style={{ width: cols3 ? '32%' : '48%', flexGrow: 1 }}><UnitCard unit={exUnit} propertyName={exUnit.parentPropertyName} /></View>;
               }
               const stats = getUnitStats(p);
-              return <View key={p.id} style={{ width: cols3 ? '32%' : '48%', flexGrow: 1 }}><PropertyCard property={{ ...p, totalUnits: stats.total }} photos={propertyPhotos[p.id] ?? []} rentedCount={stats.rented} vacantCount={stats.vacant}
-                onDelete={canDelete ? () => requestDelete({ id: p.id, entityType: 'property', label: p.name }) : undefined} /></View>;
+              return <View key={p.id} style={{ width: cols3 ? '32%' : '48%', flexGrow: 1 }}><PropertyCard property={{ ...p, totalUnits: stats.total }} photos={propertyPhotos[p.id] ?? []} rentedCount={stats.rented} vacantCount={stats.vacant} /></View>;
             })}
           </View>
         ) : !groupByCity && (
@@ -308,8 +306,7 @@ export default function PropertiesScreen() {
               return <UnitCard key={p.id} unit={exUnit} propertyName={exUnit.parentPropertyName} />;
             }
             const stats = getUnitStats(p);
-            return <PropertyCard key={p.id} property={{ ...p, totalUnits: stats.total }} photos={propertyPhotos[p.id] ?? []} rentedCount={stats.rented} vacantCount={stats.vacant}
-              onDelete={canDelete ? () => requestDelete({ id: p.id, entityType: 'property', label: p.name }) : undefined} />;
+            return <PropertyCard key={p.id} property={{ ...p, totalUnits: stats.total }} photos={propertyPhotos[p.id] ?? []} rentedCount={stats.rented} vacantCount={stats.vacant} />;
           })
         )}
       </ScrollView>

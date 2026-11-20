@@ -173,9 +173,7 @@ export default function PropertyDetailScreen() {
                           <Text style={{ color: '#365A80', fontSize: 11, fontWeight: '600' }}>مملوكة لمالك آخر</Text>
                         </View>
                       )}
-                      <UnitCard unit={u} onDelete={!isExternal && canDelete
-                        ? () => requestDelete({ id: u.id, entityType: 'unit', label: `وحدة ${u.number}` })
-                        : undefined} />
+                      <UnitCard unit={u} />
                     </View>
                   );
                 })}
