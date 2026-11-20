@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate } from '../data/mockData';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { router } from 'expo-router';
@@ -99,7 +100,7 @@ export default function MaintenanceScreen() {
                 <Text style={[styles.desc, { color: colors.textSecondary }]} numberOfLines={2}>{m.description}</Text>
                 <View style={styles.cardFooter}>
                   <View style={styles.footerLeft}>
-                    <Text style={[styles.date, { color: colors.textMuted }]}>{m.openedAt}</Text>
+                    <Text style={[styles.date, { color: colors.textMuted }]}>{formatDate(m.openedAt)}</Text>
                     {m.cost !== undefined && (
                       <Text style={[styles.cost, { color: colors.success }]}>{formatCurrency(m.cost)}</Text>
                     )}

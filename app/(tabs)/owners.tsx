@@ -45,12 +45,18 @@ export default function OwnersScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + (ownerSmallPhone ? 6 : 8), paddingHorizontal: ownerHPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
-          <View style={styles.headerActions}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
             {Platform.OS === 'web' && !isDesktop && (
               <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={toggleSidebar}>
                 <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
+            <Text style={[styles.headerTitle, { color: colors.text }]}>الملاك</Text>
+            <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.countText, { color: colors.textMuted }]}>{owners.length}</Text>
+          </View>
+          </View>
+          <View style={styles.headerActions}>
             {canWrite && (
               <TouchableOpacity
                 style={[styles.addBtn, { backgroundColor: colors.primary }]}
@@ -59,10 +65,6 @@ export default function OwnersScreen() {
                 <Ionicons name="add" size={22} color={colors.textInverse} />
               </TouchableOpacity>
             )}
-          </View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>الملاك</Text>
-          <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.countText, { color: colors.textMuted }]}>{owners.length}</Text>
           </View>
         </View>
       </View>

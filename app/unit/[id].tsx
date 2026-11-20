@@ -58,7 +58,7 @@ export default function UnitDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
-        title={`وحدة ${unit.number}`}
+        title="تفاصيل الوحدة"
         rightText={canWrite ? { label: 'تعديل', onPress: () => router.push(`/edit-unit/${id}`) } : undefined}
       />
 
@@ -222,7 +222,7 @@ export default function UnitDetailScreen() {
             <Text style={[styles.cardTitle, { color: colors.text }]}>سجل الصيانة ({unitMaintenance.length})</Text>
             {canWrite && (
               <TouchableOpacity onPress={() => router.push('/add-maintenance')}>
-                <Text style={[styles.cardAction, { color: colors.secondary }]}>طلب صيانة</Text>
+                <Text style={[styles.cardAction, { color: colors.primary }]}>طلب صيانة</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -235,19 +235,19 @@ export default function UnitDetailScreen() {
                 style={[styles.maintRow, { borderBottomColor: colors.border }]}
                 onPress={() => router.push(`/maintenance/${m.id}`)}
               >
-                <Ionicons name="chevron-back-outline" size={14} color={colors.textMuted} />
                 <View style={styles.maintInfo}>
                   <Text style={[styles.maintTitle, { color: colors.text }]}>{m.title}</Text>
-                  <Text style={[styles.maintDate, { color: colors.textMuted }]}>{m.openedAt}</Text>
+                  <Text style={[styles.maintDate, { color: colors.textMuted }]}>{formatDate(m.openedAt)}</Text>
                 </View>
                 <StatusBadge status={m.status} size="sm" />
+                <Ionicons name="chevron-back-outline" size={14} color={colors.textMuted} />
               </TouchableOpacity>
             ))
           )}
         </View>
 
         {/* Attachments */}
-        <View style={styles.card}>
+        <View style={{ marginHorizontal: 16, marginTop: 12, borderWidth: 1, borderRadius: 14, padding: 16, backgroundColor: colors.card, borderColor: colors.border }}>
           <AttachmentPanel entityType="unit" entityId={id!} />
         </View>
 

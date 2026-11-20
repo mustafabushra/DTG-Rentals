@@ -64,7 +64,7 @@ export default function PropertyDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
-        title={property.name}
+        title="تفاصيل العقار"
         rightText={canWrite ? { label: 'تعديل', onPress: () => router.push(`/edit-property/${id}`) } : undefined}
       />
 
@@ -113,7 +113,7 @@ export default function PropertyDetailScreen() {
             { label: 'إجمالي الوحدات', value: propUnits.length, color: colors.text },
             { label: 'مؤجرة', value: rentedCount, color: colors.success },
             { label: 'شاغرة', value: vacantCount, color: colors.secondary },
-            { label: 'الإيراد الشهري', value: formatCurrency(monthlyRevenue), color: '#6938EF' },
+            { label: 'الإيراد الشهري', value: formatCurrency(monthlyRevenue), color: '#365A80' },
           ].map((kpi, i) => (
             <React.Fragment key={kpi.label}>
               {i > 0 && <View style={[styles.kpiDiv, { backgroundColor: colors.border }]} />}
@@ -169,8 +169,8 @@ export default function PropertyDetailScreen() {
                           backgroundColor: 'rgba(142,68,173,0.1)', borderRadius: 8,
                           paddingHorizontal: 10, paddingVertical: 4,
                           marginHorizontal: 16, marginBottom: 4 }}>
-                          <Ionicons name="lock-closed-outline" size={12} color="#6938EF" />
-                          <Text style={{ color: '#6938EF', fontSize: 11, fontWeight: '600' }}>مملوكة لمالك آخر</Text>
+                          <Ionicons name="lock-closed-outline" size={12} color="#365A80" />
+                          <Text style={{ color: '#365A80', fontSize: 11, fontWeight: '600' }}>مملوكة لمالك آخر</Text>
                         </View>
                       )}
                       <UnitCard unit={u} onDelete={!isExternal && canDelete

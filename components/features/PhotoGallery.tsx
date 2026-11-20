@@ -163,23 +163,22 @@ export function PhotoGallery({
   // ── Empty state ─────────────────────────────────────────────────────────────
 
   if (photos.length === 0) {
+    // بلا صور: زر مضغوط بدل مساحة فارغة تأخذ ثلث الشاشة، ولا شيء لمن لا يملك التعديل
+    if (!editable) return null;
     return (
       <TouchableOpacity
-        onPress={editable ? showUploadOptions : undefined}
-        style={[styles.emptyBox, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={showUploadOptions}
+        style={[styles.emptyBox, { backgroundColor: colors.card, borderColor: colors.borderStrong }]}
         activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel="إضافة صور"
       >
         {uploading ? (
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="small" color={colors.primary} />
         ) : (
           <>
-            <View style={[styles.emptyIconBox, { backgroundColor: colors.primarySubtle }]}>
-              <Ionicons name="camera-outline" size={36} color={colors.primary} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>لا توجد صور</Text>
-            {editable && (
-              <Text style={[styles.emptyHint, { color: colors.textMuted }]}>اضغط لإضافة صور</Text>
-            )}
+            <Ionicons name="camera-outline" size={20} color={colors.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>إضافة صور</Text>
           </>
         )}
       </TouchableOpacity>
@@ -467,12 +466,9 @@ export function PhotoGallery({
 
 const styles = StyleSheet.create({
   // Empty state
-  emptyBox: {
-    height: GALLERY_H, alignItems: 'center', justifyContent: 'center', gap: spacing[2],
-    borderBottomWidth: 1,
-  },
+  emptyBox:     { marginHorizontal: 16, marginTop: 12, height: 52, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   emptyIconBox: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center' },
-  emptyTitle:   { fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  emptyTitle:   { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   emptyHint:    { fontSize: fontSize.sm },
 
   // Slider

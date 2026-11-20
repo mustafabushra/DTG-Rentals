@@ -191,12 +191,10 @@ export default function NotificationsScreen() {
     return (
       <View key={key} style={styles.group}>
         {/* Group header */}
-        <View style={[styles.groupHeader, { backgroundColor: cfg.bg, borderColor: cfg.color + '40' }]}>
-          <Text style={[styles.groupCount, { color: cfg.color }]}>{items.length}</Text>
-          <View style={styles.groupHeaderContent}>
-            <Text style={[styles.groupTitle, { color: cfg.color }]}>{title}</Text>
-          </View>
-          <Ionicons name={cfg.icon as any} size={18} color={cfg.color} />
+        <View style={styles.groupHeader}>
+          <View style={[styles.groupDot, { backgroundColor: cfg.color }]} />
+          <Text style={[styles.groupTitle, { color: colors.text }]}>{title}</Text>
+          <Text style={[styles.groupCount, { color: colors.textMuted }]}>{items.length}</Text>
         </View>
 
         {/* Notifications */}
@@ -208,9 +206,8 @@ export default function NotificationsScreen() {
               style={[
                 styles.notifCard,
                 {
-                  backgroundColor: isRead ? colors.card : colors.background,
-                  borderColor:     isRead ? colors.border : cfg.color + '30',
-                  borderLeftColor: cfg.color,
+                  backgroundColor: colors.card,
+                  borderColor:     colors.border,
                 },
               ]}
               onPress={() => { markRead(n.id); if (n.route) router.push(n.route as any); }}
@@ -236,9 +233,6 @@ export default function NotificationsScreen() {
                   <Text style={[styles.notifDate, { color: colors.textMuted }]}>
                     {formatArabicDate(n.date)}
                   </Text>
-                  <View style={[styles.urgencyBadge, { backgroundColor: cfg.bg }]}>
-                    <Text style={[styles.urgencyBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                  </View>
                 </View>
               </View>
 
@@ -282,9 +276,9 @@ export default function NotificationsScreen() {
                 if (count === 0) return null;
                 const cfg = URGENCY_CFG[key];
                 return (
-                  <View key={key} style={[styles.summaryStat, { backgroundColor: cfg.bg }]}>
+                  <View key={key} style={[styles.summaryStat, { backgroundColor: colors.surface }]}>
                     <Text style={[styles.summaryCount, { color: cfg.color }]}>{count}</Text>
-                    <Text style={[styles.summaryLabel, { color: cfg.color }]}>{cfg.label}</Text>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{cfg.label}</Text>
                   </View>
                 );
               })}
@@ -313,21 +307,19 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
 
   group:       { gap: spacing[2] },
-  groupHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing[2],
-    padding: spacing[3], borderRadius: radius.lg, borderWidth: 1,
-  },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], paddingHorizontal: 4, paddingTop: spacing[2] },
+  groupDot: { width: 8, height: 8, borderRadius: 4 },
   groupHeaderContent: { flex: 1 },
-  groupTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, textAlign: 'right' },
-  groupCount: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, minWidth: 28, textAlign: 'center' },
+  groupTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, textAlign: 'right' },
+  groupCount: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
 
   notifCard: {
     flexDirection: 'row', alignItems: 'flex-start',
     padding: spacing[3], borderRadius: radius.xl,
-    borderWidth: 1, borderLeftWidth: 4,
+    borderWidth: 1,
     gap: spacing[2],
   },
-  notifIcon:    { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  notifIcon:    { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   notifContent: { flex: 1, gap: 3 },
   notifTitle:   { fontSize: fontSize.sm, textAlign: 'right' },
   notifBody:    { fontSize: fontSize.xs, lineHeight: 18, textAlign: 'right' },

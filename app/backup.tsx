@@ -96,7 +96,7 @@ export default function BackupScreen() {
   };
 
   const stats = [
-    { label: 'الملاك',      value: owners.length,      icon: 'person-outline',        color: '#6938EF' },
+    { label: 'الملاك',      value: owners.length,      icon: 'person-outline',        color: '#365A80' },
     { label: 'العقارات',    value: properties.length,   icon: 'business-outline',      color: colors.primary },
     { label: 'الوحدات',     value: units.length,        icon: 'home-outline',          color: colors.secondary },
     { label: 'المستأجرون',  value: tenants.length,      icon: 'people-outline',        color: '#DC6803' },

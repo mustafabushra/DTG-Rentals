@@ -48,12 +48,18 @@ export default function ContractsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + (cSmallPhone ? 6 : 8), paddingHorizontal: cHPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
             {Platform.OS === 'web' && !isDesktop && (
               <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={toggleSidebar}>
                 <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
+            <Text style={[styles.headerTitle, { color: colors.text }]}>العقود</Text>
+            <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.countText, { color: colors.textMuted }]}>{contracts.length}</Text>
+          </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             {canWrite && (
               <TouchableOpacity
                 style={[styles.addBtn, { backgroundColor: colors.primary }]}
@@ -62,10 +68,6 @@ export default function ContractsScreen() {
                 <Ionicons name="add" size={22} color={colors.textInverse} />
               </TouchableOpacity>
             )}
-          </View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>العقود</Text>
-          <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.countText, { color: colors.textMuted }]}>{contracts.length}</Text>
           </View>
         </View>
       </View>

@@ -2,8 +2,9 @@
  * بيانات الملكية لوحدة: سند الملكية + الملاك بحصصهم.
  * يمكن تعبئتها بقراءة ملف السند (PDF أو صورة) ثم مراجعتها قبل الحفظ.
  */
+import { Toggle } from '../../components/ui/Toggle';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -304,12 +305,12 @@ export default function EditDeedScreen() {
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border, gap: 14 }]}>
           <View style={styles.switchRow}>
             <Text style={[styles.switchTxt, { color: colors.text }]}>تحديث مساحة الوحدة وطابقها من السند</Text>
-            <Switch value={syncUnit} onValueChange={setSyncUnit} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" />
+            <Toggle value={syncUnit} onValueChange={setSyncUnit} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" />
           </View>
           {file && (
             <View style={styles.switchRow}>
               <Text style={[styles.switchTxt, { color: colors.text }]}>إرفاق ملف السند بمرفقات الوحدة</Text>
-              <Switch value={attachFile} onValueChange={setAttachFile} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" />
+              <Toggle value={attachFile} onValueChange={setAttachFile} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" />
             </View>
           )}
         </View>

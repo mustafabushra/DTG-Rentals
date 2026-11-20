@@ -112,16 +112,13 @@ export default function CitiesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>إدارة المدن</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>المدن</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={handleUpdateAllProperties} style={styles.headerBtn}>
-            <Ionicons name="refresh-outline" size={24} color={colors.textSecondary} />
+          <TouchableOpacity onPress={handleUpdateAllProperties} style={[styles.headerBtn, { backgroundColor: colors.surface }]} accessibilityLabel="تحديث مدن العقارات">
+            <Ionicons name="refresh-outline" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { resetForm(); setShowForm(true); }}>
-            <Ionicons name="add-circle-outline" size={28} color={colors.textSecondary} />
+          <TouchableOpacity onPress={() => { resetForm(); setShowForm(true); }} style={[styles.headerBtn, { backgroundColor: colors.primary }]} accessibilityLabel="إضافة مدينة">
+            <Ionicons name="add" size={22} color={colors.textInverse} />
           </TouchableOpacity>
         </View>
       </View>
@@ -247,15 +244,8 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     paddingHorizontal: Theme.spacing.base,
   },
-  headerBtn: {
-    padding: 6,
-    position: 'relative',
-    minWidth: 44,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
+  headerBtn: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { color: '#FFF', fontSize: 19, fontWeight: '600' },
   content: { padding: Theme.spacing.base, gap: Theme.spacing.md, paddingBottom: 20 },
 
   // Form

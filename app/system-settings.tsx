@@ -1,6 +1,7 @@
+import { Toggle } from '../components/ui/Toggle';
 import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
@@ -251,7 +252,7 @@ export default function SystemSettingsScreen() {
                     {isSaved && (
                       <Ionicons name="checkmark-circle" size={18} color={colors.success} style={{ marginLeft: 8 }} />
                     )}
-                    <Switch
+                    <Toggle
                       value={enabled}
                       onValueChange={v => toggleModule(key, v)}
                       trackColor={{ false: colors.border, true: colors.primary }}
@@ -316,7 +317,7 @@ export default function SystemSettingsScreen() {
                         {isSaved && (
                           <Ionicons name="checkmark-circle" size={16} color={colors.success} style={{ marginLeft: 6 }} />
                         )}
-                        <Switch
+                        <Toggle
                           value={val}
                           onValueChange={v => togglePermission(roleKey, row.key, v)}
                           trackColor={{ false: colors.border, true: colors.success }}
@@ -360,7 +361,7 @@ export default function SystemSettingsScreen() {
                 {savedKey === 'ownerDataIsolation' && (
                   <Ionicons name="checkmark-circle" size={18} color={colors.success} style={{ marginLeft: 8 }} />
                 )}
-                <Switch
+                <Toggle
                   value={systemSettings.ownerDataIsolation ?? true}
                   onValueChange={async v => {
                     setSaving(true);

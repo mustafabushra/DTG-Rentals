@@ -1,6 +1,7 @@
+import { Toggle } from '../components/ui/Toggle';
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, Platform, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -99,7 +100,7 @@ export default function SettingsScreen() {
     >
       <View style={styles.itemRight}>
         {isSwitch ? (
-          <Switch
+          <Toggle
             value={switchVal}
             onValueChange={onSwitch}
             trackColor={{ false: colors.border, true: color || colors.primary }}
@@ -115,8 +116,8 @@ export default function SettingsScreen() {
         )}
       </View>
       <View style={styles.itemLeft}>
-        <View style={[styles.itemIcon, { backgroundColor: `${color || (danger ? colors.danger : colors.primary)}18` }]}>
-          <Ionicons name={icon as any} size={18} color={color || (danger ? colors.danger : colors.primary)} />
+        <View style={[styles.itemIcon, { backgroundColor: danger ? colors.dangerSubtle : colors.surface }]}>
+          <Ionicons name={icon as any} size={18} color={danger ? colors.danger : colors.primary} />
         </View>
         <Text style={[styles.itemLabel, { color: danger ? colors.danger : colors.text }]}>{label}</Text>
       </View>
@@ -483,9 +484,9 @@ export default function SettingsScreen() {
                 onPress={() => router.push('/user-management')} />
               <Item icon="toggle-outline" label="وحدات النظام والصلاحيات" color={colors.accent}
                 onPress={() => router.push('/system-settings')} />
-              <Item icon="sparkles-outline" label="المساعد الذكي" color="#6938EF"
+              <Item icon="sparkles-outline" label="المساعد الذكي" color="#365A80"
                 onPress={() => router.push('/assistant-settings')} />
-              <Item icon="bar-chart-outline" label="تقارير النظام" color="#6938EF"
+              <Item icon="bar-chart-outline" label="تقارير النظام" color="#365A80"
                 onPress={() => router.push('/audit-log')} />
               <Item icon="cloud-upload-outline" label="نسخ احتياطي" color={colors.success}
                 onPress={() => router.push('/backup')} />

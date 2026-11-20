@@ -85,64 +85,60 @@ export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCou
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.borderStrong }]}
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={() => router.push(`/property/${property.id}` as any)}
       activeOpacity={0.88}
     >
-      {/* ── Image / Placeholder ── */}
-      <View style={[styles.imageWrap, { height: imageHeight }]}>
-        {photoUri ? (
+      {photoUri ? (
+        <View style={[styles.imageWrap, { height: imageHeight }]}>
           <Image source={{ uri: photoUri }} style={styles.image} />
-        ) : (
-          <View style={[styles.imagePlaceholder, { backgroundColor: bgFrom }]}>
-            <Ionicons name={typeIcon as any} size={48} color="rgba(255,255,255,0.35)" />
+          <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
+            <Ionicons name={typeIcon as any} size={11} color="#fff" />
+            <Text style={styles.typeBadgeText}>{typeLabel}</Text>
           </View>
-        )}
-
-        {/* Type badge — top right */}
-        <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
-          <Ionicons name={typeIcon as any} size={11} color="#fff" />
-          <Text style={styles.typeBadgeText}>{typeLabel}</Text>
+          <View style={styles.gradientOverlay} pointerEvents="none" />
+          <View style={styles.overlay} pointerEvents="none">
+            <Text style={styles.overlayName} numberOfLines={1}>{property.name}</Text>
+            {(location || cityName) && (
+              <View style={styles.overlayLocation}>
+                <Ionicons name="location-outline" size={11} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.overlayLocationText} numberOfLines={1}>
+                  {[location, cityName].filter(Boolean).join('، ')}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
-
-        {/* Occupancy pill — top left */}
-        <View style={[styles.occupancyBadge, { backgroundColor: occupancyColor }]}>
-          <Text style={styles.occupancyText}>{occupancy}%</Text>
+      ) : (
+        // بلا صورة: رأس مضغوط بدل مساحة كحلية فارغة
+        <View style={styles.plainHead}>
+          <View style={[styles.plainIcon, { backgroundColor: colors.surface }]}>
+            <Ionicons name={typeIcon as any} size={22} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={[styles.plainName, { color: colors.text }]} numberOfLines={1}>{property.name}</Text>
+            <Text style={[styles.plainSub, { color: colors.textMuted }]} numberOfLines={1}>
+              {[typeLabel, location, cityName].filter(Boolean).join('، ')}
+            </Text>
+          </View>
         </View>
-
-        {/* Delete button — bottom left */}
-        {onDelete && (
-          <TouchableOpacity
-            style={styles.deleteOverlay}
-            onPress={e => { (e as any).stopPropagation?.(); onDelete(); }}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <Ionicons name="trash-outline" size={15} color="#fff" />
-          </TouchableOpacity>
-        )}
-
-        {/* Gradient overlay */}
-        <View style={styles.gradientOverlay} pointerEvents="none" />
-
-        {/* Name + location overlay — bottom */}
-        <View style={styles.overlay} pointerEvents="none">
-          <Text style={styles.overlayName} numberOfLines={1}>{property.name}</Text>
-          {(location || cityName) && (
-            <View style={styles.overlayLocation}>
-              <Ionicons name="location-outline" size={11} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.overlayLocationText} numberOfLines={1}>
-                {[location, cityName].filter(Boolean).join('، ')}
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
+      )}
+      {onDelete && (
+        <TouchableOpacity
+          style={[styles.deleteBtn, { backgroundColor: photoUri ? 'rgba(0,0,0,0.45)' : 'transparent' }]}
+          onPress={e => { (e as any).stopPropagation?.(); onDelete(); }}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          accessibilityLabel="حذف العقار"
+        >
+          <Ionicons name="trash-outline" size={16} color={photoUri ? '#fff' : colors.textMuted} />
+        </TouchableOpacity>
+      )}
 
       {/* ── Stats row ── */}
       <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
-        <StatBox value={rentedCount} label="مؤجرة" color={colors.success} icon="key-outline" />
+        <StatBox value={rentedCount} label="مؤجرة" color={colors.text} icon="key-outline" />
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <StatBox value={vacantCount} label="شاغرة" color={colors.warning} icon="home-outline" />
+        <StatBox value={vacantCount} label="شاغرة" color={colors.text} icon="home-outline" />
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <StatBox value={total} label="إجمالي" color={colors.text} icon="grid-outline" />
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -169,6 +165,11 @@ function StatBox({ value, label, color, icon }: { value: number; label: string; 
 }
 
 const styles = StyleSheet.create({
+  plainHead: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, paddingLeft: 44 },
+  plainIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  plainName: { fontSize: 16, fontWeight: '600', textAlign: 'right' },
+  plainSub: { fontSize: 12, textAlign: 'right' },
+  deleteBtn: { position: 'absolute', top: 10, left: 10, width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   card: {
     borderRadius: Theme.radius.xl,
     borderWidth: 1,

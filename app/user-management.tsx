@@ -35,7 +35,7 @@ const ROLE_OPTIONS = [
   {
     value: 'admin',
     label: 'مدير النظام',
-    color: '#6938EF',
+    color: '#365A80',
     bg: '#F4ECF7',
     icon: 'shield-checkmark-outline',
     perms: { view: true, add: true, edit: true, delete: true, users: true },

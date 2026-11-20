@@ -119,12 +119,22 @@ export default function PropertiesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + (isSmallPhone ? 6 : 8), paddingHorizontal: hPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
             {Platform.OS === 'web' && !isDesktop && (
               <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={toggleSidebar}>
                 <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
+            <Text style={[styles.headerTitle, { color: colors.text }]}>العقارات</Text>
+            <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.countText, { color: colors.textMuted }]}>{total}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={[styles.groupToggle, { backgroundColor: groupByCity ? colors.primarySubtle : colors.surface }]}
+              onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setGroupByCity(prev => !prev); }}>
+              <Ionicons name={groupByCity ? 'list-outline' : 'folder-open-outline'} size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
             {canWrite && (
               <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={() => router.push('/bulk-import-properties')}>
                 <Ionicons name="cloud-upload-outline" size={20} color={colors.textSecondary} />
@@ -135,16 +145,6 @@ export default function PropertiesScreen() {
                 <Ionicons name="add" size={22} color={colors.textInverse} />
               </TouchableOpacity>
             )}
-          </View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>العقارات</Text>
-          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-            <TouchableOpacity style={[styles.groupToggle, { backgroundColor: groupByCity ? colors.primarySubtle : colors.surface }]}
-              onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setGroupByCity(prev => !prev); }}>
-              <Ionicons name={groupByCity ? 'list-outline' : 'folder-open-outline'} size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.countText, { color: colors.textMuted }]}>{total}</Text>
-            </View>
           </View>
         </View>
       </View>
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingBottom: 14 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
-  headerTitle: { color: '#FFFFFF', fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold },
+  headerTitle: { color: '#FFFFFF', fontSize: 19, fontWeight: '600' },
   addBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   countBadge: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: Theme.radius.full },
   countText: { color: '#FFFFFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },

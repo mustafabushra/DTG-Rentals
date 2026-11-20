@@ -11,9 +11,9 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 
 // لون مميز ثابت لكل مالك بناءً على اسمه
 const AVATAR_COLORS = [
-  '#1570EF', '#17A589', '#6938EF', '#B54708',
+  '#1570EF', '#17A589', '#365A80', '#B54708',
   '#B42318', '#1ABC9C', '#2980B9', '#D35400',
-  '#7D3C98', '#1E8449',
+  '#365A80', '#1E8449',
 ];
 function ownerColor(name: string): string {
   let hash = 0;
@@ -40,7 +40,8 @@ export function OwnerCard({ owner, onDelete }: OwnerCardProps) {
   const { colors } = useAppTheme();
   const { properties, units, contracts } = useApp();
 
-  const color     = ownerColor(owner.name ?? '');
+  // هوية DTG: أفاتار كحلي موحد بدل لون عشوائي لكل مالك
+  const color     = colors.primary;
   const initials  = safeInitials(owner.name);
 
   // إحصائيات المالك — تتضمن الوحدات التي يملكها داخل عقارات غيره (كل وحدة خارجية تُحسب كعقار)
@@ -65,49 +66,47 @@ export function OwnerCard({ owner, onDelete }: OwnerCardProps) {
       onPress={() => router.push(`/owner/${owner.id}`)}
       activeOpacity={0.88}
     >
-      {/* شريط لوني علوي */}
-      <View style={[styles.topBar, { backgroundColor: color }]} />
 
       <View style={styles.body}>
         {/* رأس الكرت */}
         <View style={styles.header}>
+          {/* أفاتار + اسم */}
+          <View style={styles.headerRight}>
+            <View style={[styles.avatar, { backgroundColor: color }]}>
+              <Text style={styles.initials}>{initials}</Text>
+            </View>
+            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+              {owner.name}
+            </Text>
+          </View>
+
           <View style={styles.headerLeft}>
             {onDelete && (
               <DeleteButton variant="icon" onPress={onDelete} />
             )}
             <TouchableOpacity
-              style={[styles.editBtn, { backgroundColor: colors.accent }]}
+              style={[styles.editBtn, { backgroundColor: colors.surface }]}
               onPress={e => { e.stopPropagation(); router.push(`/edit-owner/${owner.id}`); }}
             >
-              <Ionicons name="pencil-outline" size={15} color={colors.primary} />
+              <Ionicons name="pencil-outline" size={15} color={colors.textSecondary} />
             </TouchableOpacity>
-          </View>
-
-          {/* أفاتار + اسم */}
-          <View style={styles.headerRight}>
-            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-              {owner.name}
-            </Text>
-            <View style={[styles.avatar, { backgroundColor: color }]}>
-              <Text style={styles.initials}>{initials}</Text>
-            </View>
           </View>
         </View>
 
         {/* معلومات التواصل */}
-        <View style={[styles.contactBox, { backgroundColor: colors.accent, borderColor: colors.border }]}>
+        <View style={[styles.contactBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TouchableOpacity
             style={styles.contactRow}
             onPress={e => { e.stopPropagation(); owner.phone && Linking.openURL(`tel:${owner.phone}`); }}
             disabled={!owner.phone}
             activeOpacity={0.7}
           >
+            <View style={[styles.contactIcon, { backgroundColor: colors.card }]}>
+              <Ionicons name="call-outline" size={14} color={colors.textSecondary} />
+            </View>
             <Text style={[styles.contactText, { color: owner.phone ? colors.text : colors.textMuted }]} numberOfLines={1}>
               {owner.phone || '—'}
             </Text>
-            <View style={[styles.contactIcon, { backgroundColor: `${color}20` }]}>
-              <Ionicons name="call-outline" size={14} color={color} />
-            </View>
           </TouchableOpacity>
           <View style={[styles.contactDivider, { backgroundColor: colors.border }]} />
           <TouchableOpacity
@@ -116,24 +115,24 @@ export function OwnerCard({ owner, onDelete }: OwnerCardProps) {
             disabled={!owner.email}
             activeOpacity={0.7}
           >
+            <View style={[styles.contactIcon, { backgroundColor: colors.card }]}>
+              <Ionicons name="mail-outline" size={14} color={colors.textSecondary} />
+            </View>
             <Text style={[styles.contactText, { color: owner.email ? colors.textSecondary : colors.textMuted }]} numberOfLines={1}>
               {owner.email || '—'}
             </Text>
-            <View style={[styles.contactIcon, { backgroundColor: `${color}20` }]}>
-              <Ionicons name="mail-outline" size={14} color={color} />
-            </View>
           </TouchableOpacity>
         </View>
 
         {/* إحصائيات */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={[styles.statVal, { color: color }]}>{propertyCount}</Text>
+            <Text style={[styles.statVal, { color: colors.text }]}>{propertyCount}</Text>
             <Text style={[styles.statLbl, { color: colors.textMuted }]}>عقار</Text>
           </View>
           <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statVal, { color: colors.success }]}>{rentedCount}</Text>
+            <Text style={[styles.statVal, { color: colors.text }]}>{rentedCount}</Text>
             <Text style={[styles.statLbl, { color: colors.textMuted }]}>مؤجرة</Text>
           </View>
           <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
@@ -170,15 +169,15 @@ const styles = StyleSheet.create({
   headerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
 
   avatar: {
-    width: 46, height: 46, borderRadius: 23,
+    width: 42, height: 42, borderRadius: 21,
     justifyContent: 'center', alignItems: 'center',
     flexShrink: 0,
   },
-  initials: { color: '#FFF', fontSize: 17, fontWeight: '700' },
+  initials: { color: '#FFF', fontSize: 15, fontWeight: '600' },
   name: {
     flex: 1,
     fontSize: Theme.fontSize.base,
-    fontWeight: Theme.fontWeight.bold,
+    fontWeight: Theme.fontWeight.semibold,
     textAlign: 'right',
   },
   editBtn: {
@@ -196,7 +195,6 @@ const styles = StyleSheet.create({
   contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
     gap: 8,
     paddingVertical: 5,
   },

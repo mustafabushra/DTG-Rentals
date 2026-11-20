@@ -162,7 +162,7 @@ export default function OwnerDetailScreen() {
             { label: 'العقارات', value: ownerProperties.length, color: colors.primary },
             { label: 'الوحدات', value: stats.totalUnits, color: colors.secondary },
             { label: 'المؤجرة', value: stats.rentedUnits, color: colors.success },
-            { label: 'الإشغال', value: stats.totalUnits > 0 ? `${Math.round((stats.rentedUnits / stats.totalUnits) * 100)}%` : '0%', color: '#6938EF' },
+            { label: 'الإشغال', value: stats.totalUnits > 0 ? `${Math.round((stats.rentedUnits / stats.totalUnits) * 100)}%` : '0%', color: '#365A80' },
           ].map((kpi, i) => (
             <React.Fragment key={kpi.label}>
               {i > 0 && <View style={[styles.div, { backgroundColor: colors.border }]} />}
@@ -219,8 +219,8 @@ export default function OwnerDetailScreen() {
         {externalUnits.length > 0 && (
           <View style={styles.sectionPad}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <Ionicons name="layers-outline" size={16} color="#6938EF" />
-              <Text style={[styles.sectionTitle, { color: '#6938EF', marginBottom: 0 }]}>
+              <Ionicons name="layers-outline" size={16} color="#365A80" />
+              <Text style={[styles.sectionTitle, { color: '#365A80', marginBottom: 0 }]}>
                 وحدات في عقارات أخرى ({externalUnits.length})
               </Text>
             </View>
@@ -262,7 +262,7 @@ export default function OwnerDetailScreen() {
         )}
 
         {/* Attachments */}
-        <View style={styles.sectionPad}>
+        <View style={{ marginHorizontal: 16, marginTop: 12, borderWidth: 1, borderRadius: 14, padding: 16, backgroundColor: colors.card, borderColor: colors.border }}>
           <AttachmentPanel entityType="owner" entityId={id!} />
         </View>
 

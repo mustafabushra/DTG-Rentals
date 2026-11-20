@@ -23,7 +23,7 @@ type ViewMode = 'weekly' | 'monthly' | 'yearly';
 const EVENT_CFG: Record<CalendarEventType, { color: string; icon: string; label: string; bg: string }> = {
   payment:         { color: '#1570EF', icon: 'cash-outline',             label: 'دفعة',          bg: '#EFF8FF' },
   contract_expiry: { color: '#D92D20', icon: 'document-text-outline',    label: 'انتهاء عقد',    bg: '#FEF3F2' },
-  file_expiry:     { color: '#6938EF', icon: 'document-attach-outline',  label: 'انتهاء مرفق',   bg: '#F5EEF8' },
+  file_expiry:     { color: '#365A80', icon: 'document-attach-outline',  label: 'انتهاء مرفق',   bg: '#F5EEF8' },
   maintenance:     { color: '#DC6803', icon: 'construct-outline',        label: 'صيانة',         bg: '#FFFAEB' },
   manual:          { color: '#079455', icon: 'calendar-outline',         label: 'حدث يدوي',      bg: '#ECFDF3' },
 };
@@ -56,7 +56,7 @@ function urgencyColor(days: number, fallback: string): string {
   if (days < 0)  return '#D92D20';
   if (days <= 3) return '#D92D20';
   if (days <= 7) return '#DC6803';
-  if (days <= 14) return '#6938EF';
+  if (days <= 14) return '#365A80';
   if (days <= 30) return '#1570EF';
   return fallback;
 }
@@ -469,7 +469,7 @@ export default function CalendarScreen() {
       {[
         { color: '#D92D20', label: 'متأخر / ٣ أيام' },
         { color: '#DC6803', label: '٧ أيام' },
-        { color: '#6938EF', label: '١٤ يوم' },
+        { color: '#365A80', label: '١٤ يوم' },
         { color: '#1570EF', label: '٣٠ يوم' },
       ].map(u => (
         <View key={u.label} style={styles.urgencyLegendItem}>

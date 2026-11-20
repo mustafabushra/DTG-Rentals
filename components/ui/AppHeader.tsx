@@ -26,7 +26,8 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
   const bgColor   = transparent ? 'transparent' : colors.card;
   const textColor = transparent ? '#FFFFFF' : colors.text;
   const iconColor = transparent ? '#FFFFFF' : colors.textSecondary;
-  const showHamburger = Platform.OS === 'web' && !isDesktop;
+  // في صفحات التفاصيل زر الرجوع يكفي؛ زر القائمة للصفحات الرئيسية فقط
+  const showHamburger = Platform.OS === 'web' && !isDesktop && !showBack;
 
   // Compact title on small phones
   const titleSize = isSmallPhone ? 17 : 19;
@@ -107,7 +108,9 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
               accessibilityRole="button"
               accessibilityLabel={rightText.label}
             >
-              <Text style={[styles.actionText, { color: transparent ? '#FFFFFF' : colors.primary }]}>{rightText.label}</Text>
+              <View style={[styles.textBtn, { borderColor: transparent ? 'rgba(255,255,255,0.5)' : colors.borderStrong }]}>
+                <Text style={[styles.actionText, { color: transparent ? '#FFFFFF' : colors.text }]}>{rightText.label}</Text>
+              </View>
             </TouchableOpacity>
           )}
         </View>
@@ -128,7 +131,8 @@ const styles = StyleSheet.create({
   backText:  { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   // العنوان يبدأ من جهة البداية (يمين) كعناوين الصفحات، لا في المنتصف
   title:     { flex: 1, fontWeight: fontWeight.semibold, textAlign: 'right', paddingHorizontal: spacing[2] },
-  actionText:{ fontSize: fontSize.md, fontWeight: fontWeight.semibold },
+  actionText:{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+  textBtn:   { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
   iconBtn:   { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   badge: {
     position: 'absolute', top: 4, right: 4,
