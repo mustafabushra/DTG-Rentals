@@ -15,6 +15,7 @@ import { ConfirmModal, AlertModal } from '../../components/ui/Modal';
 import { useDelete } from '../../hooks/useDelete';
 import { formatCurrency } from '../../data/mockData';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { shareLabel } from '../../domain/services/DeedService';
 
 export default function OwnerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +27,11 @@ export default function OwnerDetailScreen() {
   const ownerProperties = properties.filter(p => p.ownerId === id);
 
   // الوحدات الخارجية: مُسندة لهذا المالك في عقارات غيره
+  // حصص هذا المالك في سندات الملكية (الوحدات المسجّل فيها كشريك)
+  const deedShares = units
+    .map(u => ({ u, share: u.titleDeed?.owners?.find(o => o.ownerId === id) }))
+    .filter(x => !!x.share)
+    .map(x => ({ unit: x.u, percent: x.share!.sharePercent, property: properties.find(p => p.id === x.u.propertyId) }));
   const externalUnits = units.filter(u => u.ownerId === id && !ownerProperties.some(p => p.id === u.propertyId));
 
   const stats = useMemo(() => {
@@ -221,6 +227,26 @@ export default function OwnerDetailScreen() {
             {externalUnits.map(u => (
               <UnitCard key={u.id} unit={u}
                 propertyName={properties.find(p => p.id === u.propertyId)?.name} />
+            ))}
+          </View>
+        )}
+
+        {/* حصص الملكية في السندات */}
+        {deedShares.length > 0 && (
+          <View style={{ marginHorizontal: 16, marginTop: 12, borderWidth: 1, borderRadius: 14, padding: 16, backgroundColor: colors.card, borderColor: colors.border }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, textAlign: 'right', marginBottom: 4 }}>حصص الملكية</Text>
+            {deedShares.map(({ unit, percent, property }, i) => (
+              <TouchableOpacity
+                key={unit.id}
+                onPress={() => router.push(`/unit/${unit.id}` as any)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, textAlign: 'right' }}>{property?.name ?? 'عقار'}، وحدة {unit.number}</Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{shareLabel(percent)}</Text>
+                <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
             ))}
           </View>
         )}

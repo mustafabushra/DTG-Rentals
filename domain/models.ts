@@ -389,3 +389,40 @@ export interface FinanceSettings {
   propertyCategories?: string[];
   officeCategories?:   string[];
 }
+
+// ─── سند الملكية (صك / Title Deed) ──────────────────────────────────────────
+
+/** مالك مسجَّل في السند بحصته. ownerId يربطه بسجل مالك في النظام إن وُجد. */
+export interface DeedOwner {
+  name:         string;
+  ownerNumber?: string | null;   // رقم المالك لدى الجهة المصدرة
+  shareArea?:   number | null;   // الحصة بالمتر المربع كما في السند
+  sharePercent: number;          // الحصة كنسبة مئوية (محسوبة من المساحة إن لم تُذكر)
+  ownerId?:     string | null;
+}
+
+export interface TitleDeed {
+  issuer?:          string | null;   // دائرة الأراضي والأملاك - دبي / وزارة العدل ...
+  certificateNo?:   string | null;   // رقم الشهادة / الصك
+  issueDate?:       string | null;   // YYYY-MM-DD
+  mortgaged?:       boolean | null;
+  mortgageNote?:    string | null;
+  propertyType?:    string | null;
+  community?:       string | null;   // المنطقة / الحي
+  plotNo?:          string | null;
+  municipalityNo?:  string | null;
+  buildingNo?:      string | null;
+  buildingName?:    string | null;
+  propertyNo?:      string | null;
+  floorNo?:         string | null;
+  parking?:         string | null;
+  suiteArea?:       number | null;   // م²
+  balconyArea?:     number | null;
+  commonArea?:      number | null;
+  totalArea?:       number | null;
+  totalAreaSqFt?:   number | null;
+  transferNote?:    string | null;   // سبب انتقال الملكية (إرث، شراء، حكم...)
+  owners:           DeedOwner[];
+  updatedAt?:       string;
+  updatedBy?:       string;
+}

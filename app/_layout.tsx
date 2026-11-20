@@ -79,6 +79,7 @@ function StackContent() {
       <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
       <Stack.Screen name="record-payment" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="edit-deed/[unitId]" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="audit-log" options={{ headerShown: false }} />
       <Stack.Screen name="calendar" options={{ headerShown: false }} />
       <Stack.Screen name="tenants" options={{ headerShown: false }} />

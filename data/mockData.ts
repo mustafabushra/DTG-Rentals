@@ -111,6 +111,7 @@ export interface Unit {
   // عند 'nightly' يُدار إيرادها بالإشغال (حجوزات) بدل الأقساط السنوية.
   rentalModel?: RentalModel;
   nightlyRate?: number;      // سعر الليلة (بعملة الوحدة) للوحدات nightly
+  titleDeed?: import('../domain/models').TitleDeed;  // سند الملكية والملاك بحصصهم
 }
 
 // حجز بيت المصيف — سجل إقامة قصير الأجل مقابل وحدة nightly.

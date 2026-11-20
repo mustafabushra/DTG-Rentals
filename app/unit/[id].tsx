@@ -16,6 +16,7 @@ import { formatCurrency, getUnitTypeLabel, formatDate } from '../../data/mockDat
 import { CurrencyText } from '../../components/ui/CurrencyText';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { BookingService } from '../../domain/services/BookingService';
+import { OwnershipCard } from '../../components/units/OwnershipCard';
 
 export default function UnitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -109,6 +110,9 @@ export default function UnitDetailScreen() {
             </React.Fragment>
           ))}
         </View>
+
+        {/* الملكية: سند الملكية والملاك بحصصهم */}
+        <OwnershipCard unitId={unit.id} deed={unit.titleDeed} canWrite={canWrite} />
 
         {/* Description */}
         {unit.description && (
