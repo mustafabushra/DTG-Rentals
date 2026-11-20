@@ -57,7 +57,7 @@ export default function MaintenanceScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="الصيانة" rightAction={{ icon: 'add', onPress: () => router.push('/add-maintenance') }} />
+      <AppHeader title="الصيانة" showBack={false} rightAction={{ icon: "add", onPress: () => router.push("/add-maintenance"), label: "طلب صيانة" }} />
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث في الطلبات..." />
 

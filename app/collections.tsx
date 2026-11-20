@@ -5,6 +5,7 @@
  * الرسالة من الذاكرة في كل مرة. هنا تُرسَل رسالة واحدة جاهزة تغطي كل أقساط
  * المستأجر المستحقة، ويُسجَّل التذكير حتى لا تُلحّ على من ذكّرته للتو.
  */
+import { HubTabs } from '../components/navigation/HubTabs';
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Platform } from 'react-native';
 import { router } from 'expo-router';
@@ -82,7 +83,8 @@ export default function CollectionsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="مركز التحصيل" />
+      <AppHeader title="التحصيل" showBack={false} rightAction={{ icon: 'add', onPress: () => router.push('/record-payment'), label: 'تسجيل دفعة' }} />
+      <HubTabs hub="collections" />
 
       {/* ملخّص */}
       <View style={[styles.summary, { backgroundColor: colors.card, borderColor: colors.border }]}>

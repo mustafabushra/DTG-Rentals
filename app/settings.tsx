@@ -27,7 +27,7 @@ export default function SettingsScreen() {
     notificationPrefs, setNotificationPref,
     resetSystem,
     kpis,
-    contracts, payments, tenants, units, properties,
+    contracts, payments, tenants, units, properties, isOwner, previewing,
   } = useApp();
 
   const [showReset,        setShowReset]        = useState(false);
@@ -35,6 +35,7 @@ export default function SettingsScreen() {
   const [calLoading,       setCalLoading]       = useState(false);
   const [calSyncing,       setCalSyncing]       = useState(false);
   const isAdmin = isAdminRole(currentUser.role);
+  const ownerMode = isOwner || previewing;
   const initials = (currentUser.name || '؟').split(' ').slice(0, 2).map((n: string) => n[0] ?? '').join('') || '؟';
   const { isMobile, isDesktop, isTablet } = useScreenSize();
   const { toggle: toggleSidebar } = useSidebar();
@@ -239,35 +240,7 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* ── Quick Stats ── */}
-        {(() => {
-          const stats = [
-            { label: 'عقار',         value: kpis.totalProperties,  color: colors.primary,  icon: 'business-outline' },
-            { label: 'عقد نشط',      value: kpis.activeContracts,  color: colors.success,  icon: 'document-text-outline' },
-            { label: 'وحدة شاغرة',   value: kpis.vacantUnits,      color: colors.warning,  icon: 'home-outline' },
-            { label: 'دفعة متأخرة',  value: kpis.overduePayments,  color: colors.danger,   icon: 'alert-circle-outline' },
-          ];
-          return (
-            <View style={[styles.statsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {stats.map((s, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.statItem,
-                    i % 2 === 0 && { borderRightWidth: 1, borderRightColor: colors.border },
-                    i < 2      && { borderBottomWidth: 1, borderBottomColor: colors.border },
-                  ]}
-                >
-                  <View style={[styles.statIconWrap, { backgroundColor: `${s.color}18` }]}>
-                    <Ionicons name={s.icon as any} size={18} color={s.color} />
-                  </View>
-                  <Text style={[styles.statVal, { color: s.color }]}>{s.value}</Text>
-                  <Text style={[styles.statLbl, { color: colors.textMuted }]}>{s.label}</Text>
-                </View>
-              ))}
-            </View>
-          );
-        })()}
+        {/* الإحصائيات موجودة في الرئيسية؛ الإعدادات للإعدادات فقط */}
 
         </View>{/* end desktopLeft */}
 
@@ -451,6 +424,22 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
+
+        {/* ── Tools: الصفحات التي خرجت من القائمة الجانبية ── */}
+        {!ownerMode && (
+          <>
+            <SectionHeader title="أدوات" />
+            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Item icon="calendar-outline" label="التقويم" onPress={() => router.push('/calendar')} />
+              <Item icon="sparkles-outline" label="المساعد الذكي" onPress={() => router.push('/assistant')} />
+              <Item icon="scan-outline" label="قراءة عقد من صورة" onPress={() => router.push('/scan-contract')} />
+              <Item icon="folder-open-outline" label="كل المرفقات" onPress={() => router.push('/attachments')} />
+              <Item icon="location-outline" label="المدن" onPress={() => router.push('/cities')} />
+              <Item icon="list-outline" label="سجل الإجراءات" onPress={() => router.push('/audit-log')} />
+              <Item icon="gift-outline" label="التحديثات الجديدة" onPress={() => router.push('/updates')} />
+            </View>
+          </>
+        )}
 
         {/* ── Account ── */}
         <SectionHeader title="الحساب" />

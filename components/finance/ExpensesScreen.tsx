@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { HubTabs } from '../navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -98,9 +99,11 @@ export function ExpensesScreen({ scope }: { scope: ExpenseScope }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
-        title={title}
+        title="المصاريف"
+        showBack={false}
         rightAction={canWrite ? { icon: 'add', onPress: () => router.push(addRoute), label: 'إضافة مصروف' } : undefined}
       />
+      <HubTabs hub="expenses" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث بالتصنيف أو المورد أو رقم السند..." />

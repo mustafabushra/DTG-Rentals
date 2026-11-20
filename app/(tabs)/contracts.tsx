@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { HubTabs } from '../../components/navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useScreenSize } from '../../hooks/useScreenSize';
 import { useSidebar } from '../../context/SidebarContext';
@@ -54,12 +55,21 @@ export default function ContractsScreen() {
                 <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
-            <Text style={[styles.headerTitle, { color: colors.text }]}>العقود</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>العقود والمستأجرون</Text>
             <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
             <Text style={[styles.countText, { color: colors.textMuted }]}>{contracts.length}</Text>
           </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
+            {canWrite && (
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: colors.surface }]}
+                onPress={() => router.push('/scan-contract')}
+                accessibilityLabel="قراءة عقد من صورة"
+              >
+                <Ionicons name="scan-outline" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
             {canWrite && (
               <TouchableOpacity
                 style={[styles.addBtn, { backgroundColor: colors.primary }]}
@@ -71,6 +81,7 @@ export default function ContractsScreen() {
           </View>
         </View>
       </View>
+      <HubTabs hub="contracts" />
 
       <SearchBar
         value={search}

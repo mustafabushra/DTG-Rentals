@@ -251,6 +251,7 @@ export default function NotificationsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
+        showBack={false}
         title={`الإشعارات${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
         rightText={unreadCount > 0 ? { label: 'قراءة الكل', onPress: markAllRead } : undefined}
       />

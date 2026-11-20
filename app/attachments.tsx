@@ -28,7 +28,8 @@ type CategoryFilter = 'all' | string;
 export default function AttachmentsScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { attachments, dataLoading, secondaryLoading, deleteAttachment } = useApp();
+  const { attachments, dataLoading, secondaryLoading, deleteAttachment, isOwner, previewing, canWrite } = useApp();
+  const ownerMode = isOwner || previewing;
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CategoryFilter>('all');
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
@@ -77,7 +78,8 @@ export default function AttachmentsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
-        title={`المرفقات (${attachments.length})`}
+        title={ownerMode ? 'المستندات' : 'كل المرفقات'}
+        showBack={!ownerMode}
       />
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث عن وثيقة، ملاحظة أو نوع..." />
@@ -135,12 +137,14 @@ export default function AttachmentsScreen() {
         )}
       </ScrollView>
 
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={() => setIsAdding(true)}
-      >
-        <Ionicons name="add" size={30} color="#fff" />
-      </TouchableOpacity>
+      {canWrite && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: colors.primary }]}
+          onPress={() => setIsAdding(true)}
+        >
+          <Ionicons name="add" size={30} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       <FileViewer
         attachment={selectedAttachment}

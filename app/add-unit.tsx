@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MoreFields } from '../components/forms/MoreFields';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -167,7 +168,9 @@ export default function AddUnitScreen() {
           : <FormInput label="الإيجار الشهري (﷼)" value={form.monthlyRent} onChangeText={set('monthlyRent')} placeholder="مثال: 5000" keyboardType="number-pad" required icon="cash-outline" error={errors.monthlyRent} />
         }
         <FormSelect label="عملة الوحدة / الدولة" value={form.currency} options={CURRENCY_OPTIONS} onSelect={set('currency')} placeholder="اختر العملة..." />
-        <FormInput label="الوصف (اختياري)" value={form.description} onChangeText={set('description')} placeholder="وصف الوحدة..." multiline numberOfLines={3} icon="document-text-outline" />
+        <MoreFields>
+          <FormInput label="الوصف" value={form.description} onChangeText={set('description')} placeholder="وصف الوحدة..." multiline numberOfLines={3} icon="document-text-outline" />
+        </MoreFields>
 
         {/* Features */}
         <View style={styles.featuresSection}>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { HubTabs } from '../components/navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,9 +74,11 @@ export default function TenantsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
-        title={`المستأجرون (${tenants.length})`}
-        rightAction={{ icon: 'add', onPress: () => router.push('/add-tenant') }}
+        title="العقود والمستأجرون"
+        showBack={false}
+        rightAction={{ icon: 'add', onPress: () => router.push('/add-tenant'), label: 'إضافة مستأجر' }}
       />
+      <HubTabs hub="contracts" />
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث بالاسم أو الهاتف..." />
 

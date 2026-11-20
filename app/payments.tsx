@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { HubTabs } from '../components/navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
@@ -104,7 +105,8 @@ export default function PaymentsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="المدفوعات" rightAction={{ icon: 'add', onPress: () => router.push('/record-payment') }} />
+      <AppHeader title="التحصيل" showBack={false} rightAction={{ icon: 'add', onPress: () => router.push('/record-payment'), label: 'تسجيل دفعة' }} />
+      <HubTabs hub="collections" />
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث بالاسم أو الإيصال أو المبلغ..." />
 
@@ -189,17 +191,6 @@ export default function PaymentsScreen() {
           })}
         </View>
       )}
-
-      {/* Link to ledger */}
-      <TouchableOpacity
-        style={[styles.ledgerLink, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
-        onPress={() => router.push('/ledger')}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="receipt-outline" size={15} color={colors.primary} />
-        <Text style={[styles.ledgerLinkText, { color: colors.primary }]}>عرض سجل المدفوعات مجمّعاً لكل مستأجر</Text>
-        <Ionicons name="chevron-back" size={14} color={colors.primary} />
-      </TouchableOpacity>
 
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { HubTabs } from '../../components/navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, LayoutAnimation, UIManager } from 'react-native';
 import { useScreenSize } from '../../hooks/useScreenSize';
 import { useSidebar } from '../../context/SidebarContext';
@@ -27,7 +28,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 export default function PropertiesScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { properties, units, propertyPhotos, cities, canWrite, canDelete, dataLoading, externalOwnedUnits } = useApp();
+  const { properties, units, propertyPhotos, cities, canWrite, canDelete, dataLoading, externalOwnedUnits, isOwner, previewing } = useApp();
   const { isSmallPhone, hPad } = useScreenSize();
 
   useEffect(() => { trackScreen('Properties'); }, []);
@@ -125,7 +126,7 @@ export default function PropertiesScreen() {
                 <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
-            <Text style={[styles.headerTitle, { color: colors.text }]}>العقارات</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{isOwner || previewing ? "عقاراتي" : "العقارات"}</Text>
             <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
               <Text style={[styles.countText, { color: colors.textMuted }]}>{total}</Text>
             </View>
@@ -148,6 +149,7 @@ export default function PropertiesScreen() {
           </View>
         </View>
       </View>
+      <HubTabs hub="properties" />
 
       <SearchBar
         value={search}

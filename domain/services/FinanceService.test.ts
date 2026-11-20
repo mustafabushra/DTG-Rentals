@@ -150,3 +150,26 @@ describe('categories and validation', () => {
     expect(inRange(undefined)).toBe(false);
   });
 });
+
+describe('netByUnit / ownerShareOf', () => {
+  it('sums paid income per unit and unit-level expenses only', async () => {
+    const { netByUnit, ownerShareOf } = await import('./FinanceService');
+    const m = netByUnit({
+      payments: [
+        { id: 'p1', contractId: 'c1', amount: 1000, status: 'paid', paidDate: '2026-11-05' },
+        { id: 'p2', contractId: 'c1', amount: 500, status: 'pending' },
+        { id: 'p3', contractId: 'c2', amount: 300, status: 'paid', paidDate: '2025-01-01' },
+      ],
+      contracts: [{ id: 'c1', unitId: 'u1' }, { id: 'c2', unitId: 'u2' }],
+      units: [{ id: 'u1', propertyId: 'p' }, { id: 'u2', propertyId: 'p' }],
+      properties: [{ id: 'p', name: 'x' }],
+      expenses: [
+        { status: 'active', scope: 'property', propertyId: 'p', unitId: 'u1', amount: 200, date: '2026-11-10' } as any,
+        { status: 'active', scope: 'property', propertyId: 'p', amount: 999, date: '2026-11-10' } as any,
+      ],
+    }, '2026-11-01', '2026-11-30');
+    expect(m.get('u1')).toMatchObject({ income: 1000, expenses: 200, net: 800 });
+    expect(m.has('u2')).toBe(false);
+    expect(ownerShareOf(800, 33.33)).toBe(266.64);
+  });
+});

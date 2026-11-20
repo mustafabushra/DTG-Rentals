@@ -15,40 +15,7 @@ const DRAWER_W = 260;
 import { ModuleFlags } from '../../constants/SystemDefaults';
 import { useAppTheme } from '../../hooks/useAppTheme';
 
-type NavItem = { icon: string; label: string; route: string; moduleKey?: keyof ModuleFlags | null };
-
-const TAB_ITEMS: NavItem[] = [
-  { icon: 'grid-outline',          label: 'الرئيسية',         route: '/(tabs)/',             moduleKey: null },
-  { icon: 'business-outline',      label: 'العقارات',         route: '/(tabs)/properties',   moduleKey: 'properties' },
-  { icon: 'people-outline',        label: 'الملاك',           route: '/(tabs)/owners',       moduleKey: 'owners' },
-  { icon: 'document-text-outline', label: 'العقود',           route: '/(tabs)/contracts',    moduleKey: 'contracts' },
-  { icon: 'location-outline',      label: 'المدن',            route: '/cities',              moduleKey: null },
-];
-
-const FINANCE_ITEMS: NavItem[] = [
-  { icon: 'cash-outline',          label: 'الدفعات',          route: '/payments',            moduleKey: 'payments' },
-  { icon: 'megaphone-outline',     label: 'مركز التحصيل',     route: '/collections',         moduleKey: 'payments' },
-  { icon: 'wallet-outline',        label: 'مصاريف العقارات',  route: '/expenses',            moduleKey: 'finance' },
-  { icon: 'briefcase-outline',     label: 'مصاريف المكتب',    route: '/office-expenses',     moduleKey: 'finance' },
-  { icon: 'documents-outline',     label: 'السندات',          route: '/vouchers',            moduleKey: 'finance' },
-  { icon: 'receipt-outline',       label: 'سجل المدفوعات',    route: '/ledger',              moduleKey: 'ledger' },
-  { icon: 'bar-chart-outline',     label: 'التقارير المالية', route: '/financial-reports',   moduleKey: 'reports' },
-];
-
-const MORE_ITEMS: NavItem[] = [
-  { icon: 'home-outline',          label: 'الوحدات',          route: '/units',               moduleKey: 'units' },
-  { icon: 'person-outline',        label: 'المستأجرون',       route: '/tenants',             moduleKey: 'tenants' },
-  { icon: 'sparkles-outline',      label: 'المساعد الذكي',    route: '/assistant',           moduleKey: 'reports' },
-  { icon: 'refresh-outline',       label: 'تجديد العقود',     route: '/renewals',            moduleKey: 'contracts' },
-  { icon: 'scan-outline',          label: 'مسح عقد بالصورة', route: '/scan-contract',       moduleKey: 'contracts' },
-  { icon: 'construct-outline',     label: 'الصيانة',          route: '/maintenance',         moduleKey: 'maintenance' },
-  { icon: 'document-outline',      label: 'المرفقات',         route: '/attachments',         moduleKey: null },
-  { icon: 'calendar-outline',      label: 'التقويم',          route: '/calendar',            moduleKey: 'calendar' },
-  { icon: 'sparkles-outline',      label: 'التحديثات الجديدة', route: '/updates',             moduleKey: null },
-  { icon: 'list-outline',          label: 'سجل الإجراءات',   route: '/audit-log',           moduleKey: 'auditLog' },
-  { icon: 'notifications-outline', label: 'الإشعارات',        route: '/notifications',       moduleKey: null },
-  { icon: 'settings-outline',      label: 'الإعدادات',        route: '/settings',            moduleKey: null },
-];
+import { STAFF_NAV, OWNER_NAV, FOOTER_NAV, isNavActive, NavItem } from '../../constants/Navigation';
 
 function SideItem({
   icon, label, route, badge, colors, isActive, onPress,
@@ -88,12 +55,10 @@ function SideItem({
 
 function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (route: string) => void }) {
   const pathname = usePathname();
-  const { scheme } = useAppTheme();
-  const { payments, contracts, currentUser, systemSettings } = useApp();
+  const { payments, contracts, currentUser, systemSettings, isOwner, previewing } = useApp();
   const modules = systemSettings.modules;
-  const visibleTab  = TAB_ITEMS.filter(i => !i.moduleKey || modules[i.moduleKey]);
-  const visibleFin  = FINANCE_ITEMS.filter(i => !i.moduleKey || modules[i.moduleKey]);
-  const visibleMore = MORE_ITEMS.filter(i => !i.moduleKey || modules[i.moduleKey]);
+  const ownerMode = isOwner || previewing;
+  const main = (ownerMode ? OWNER_NAV : STAFF_NAV).filter(i => !i.moduleKey || modules[i.moduleKey]);
 
   const overdueCount   = payments.filter(p => p.status === 'overdue').length;
   const expiringCount  = contracts.filter(c => {
@@ -101,15 +66,24 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
     const days = Math.ceil((new Date(c.endDate).getTime() - Date.now()) / 86400000);
     return days >= 0 && days <= 30;
   }).length;
-  const notifBadge = overdueCount + expiringCount;
-
-  const isActive = (route: string) => {
-    if (route === '/(tabs)/') return pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/';
-    return pathname.startsWith(route.replace('/(tabs)', ''));
-  };
+  const badgeFor = (item: NavItem) =>
+    item.badge === 'overdue' ? overdueCount : item.badge === 'alerts' ? overdueCount + expiringCount : undefined;
 
   // القائمة داكنة دائماً ⇒ الشعار الأبيض/الذهبي الأصلي
   const logo = require('../../assets/images/sidebar-logo.png');
+
+  const render = (item: NavItem) => (
+    <SideItem
+      key={item.route}
+      icon={item.icon}
+      label={item.label}
+      route={item.route}
+      badge={badgeFor(item)}
+      colors={colors}
+      isActive={isNavActive(item, pathname)}
+      onPress={() => onNavigate(item.route)}
+    />
+  );
 
   return (
     <View style={[styles.sidebar, { backgroundColor: colors.chrome, borderLeftColor: colors.chromeBorder }]}>
@@ -118,53 +92,14 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
         <Image source={logo} style={styles.logoImage} resizeMode="contain" />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: spacing[2] }}>
-        <Text style={[styles.section, { color: colors.chromeMuted }]}>الرئيسية</Text>
-        {visibleTab.map(item => (
-          <SideItem
-            key={item.route}
-            icon={item.icon}
-            label={item.label}
-            route={item.route}
-            colors={colors}
-            isActive={isActive(item.route)}
-            onPress={() => onNavigate(item.route)}
-          />
-        ))}
-
-        {visibleFin.length > 0 && (
-          <>
-            <View style={[styles.divider, { backgroundColor: colors.chromeBorder }]} />
-            <Text style={[styles.section, { color: colors.chromeMuted }]}>المالية</Text>
-            {visibleFin.map(item => (
-              <SideItem
-                key={item.route}
-                icon={item.icon}
-                label={item.label}
-                route={item.route}
-                colors={colors}
-                isActive={isActive(item.route)}
-                onPress={() => onNavigate(item.route)}
-              />
-            ))}
-          </>
-        )}
-
-        <View style={[styles.divider, { backgroundColor: colors.chromeBorder }]} />
-        <Text style={[styles.section, { color: colors.chromeMuted }]}>أدوات</Text>
-        {visibleMore.map(item => (
-          <SideItem
-            key={item.route}
-            icon={item.icon}
-            label={item.label}
-            route={item.route}
-            badge={item.route === '/notifications' ? notifBadge : undefined}
-            colors={colors}
-            isActive={isActive(item.route)}
-            onPress={() => onNavigate(item.route)}
-          />
-        ))}
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: spacing[3] }}>
+        {main.map(render)}
       </ScrollView>
+
+      <View style={{ paddingBottom: spacing[2] }}>
+        <View style={[styles.divider, { backgroundColor: colors.chromeBorder }]} />
+        {FOOTER_NAV.map(render)}
+      </View>
 
       {/* User Footer */}
       <TouchableOpacity

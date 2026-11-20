@@ -311,7 +311,7 @@ export default function FinancialReportsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="التقارير المالية" rightAction={{ icon: 'share-outline', onPress: handleExport }} />
+      <AppHeader title="التقارير" showBack={false} rightAction={{ icon: 'share-outline', onPress: handleExport }} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 

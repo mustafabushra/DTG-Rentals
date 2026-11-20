@@ -130,11 +130,19 @@ const makeQuickActions = (colors: Record<string, string>) => [
   },
 ];
 
+const OWNER_LINKS = [
+  { icon: 'stats-chart-outline', label: 'الدخل والمصاريف', route: '/owner-statement' },
+  { icon: 'business-outline', label: 'عقاراتي', route: '/(tabs)/properties' },
+  { icon: 'folder-open-outline', label: 'المستندات', route: '/attachments' },
+  { icon: 'notifications-outline', label: 'الإشعارات', route: '/notifications' },
+];
+
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { kpis, payments, contracts, maintenance, auditLogs, currentUser,
-          owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData } = useApp();
+          owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData, isOwner, previewing } = useApp();
+  const ownerMode = isOwner || previewing;
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const spinAnim = useRef(new Animated.Value(0)).current;
 
@@ -573,6 +581,7 @@ export default function DashboardScreen() {
         />
 
         {/* ── يحتاج انتباهك + إجراءات سريعة ── */}
+        {!ownerMode && (
         <View style={[styles.sectionPad, { marginTop: 20 }, isWide && styles.rowPair]}>
           <View style={isWide ? { flex: 3 } : undefined}>
             <AttentionList items={attentionItems} />
@@ -597,6 +606,27 @@ export default function DashboardScreen() {
             </View>
           </View>
         </View>
+
+        )}
+        {ownerMode && (
+          <View style={[styles.sectionPad, { marginTop: 20 }]}>
+            <View style={[styles.qaCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.qaGrid}>
+                {OWNER_LINKS.map(action => (
+                  <TouchableOpacity
+                    key={action.label}
+                    style={[styles.qaBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
+                    onPress={() => router.push(action.route as any)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name={action.icon as any} size={20} color={colors.primary} />
+                    <Text style={[styles.qaLabel, { color: colors.text }]} numberOfLines={1}>{action.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* ── Holiday-Home revenue breakdown (only when nightly units exist) ── */}
         {kpis.holidayUnitsCount > 0 && (
@@ -646,231 +676,12 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ── Revenue Chart 6-month ── */}
-        {chartData.some(d => d.revenue > 0) && (
-          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-            <Text style={[styles.secLabel, { color: colors.text }]}>اتجاه الإيرادات</Text>
-            <RevenueChart data={chartData} />
-          </View>
-        )}
-
-        {/* ── Occupancy Section ── */}
-        <View style={styles.sectionPad}>
-          <View style={styles.rowBetween}>
-            <Text style={[styles.sectionHeading, { color: colors.text }]}>نسبة الإشغال</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/properties' as any)}>
-              <Text style={[styles.seeAll, { color: colors.accent }]}>تفاصيل</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Overall card */}
-          <View style={[styles.occOverallCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.occOverallTop}>
-              {/* Circular rate display */}
-              <View style={[styles.occRingWrap, { borderColor: occupancyColor(occupancy.overall, colors) + '30' }]}>
-                <Text style={[styles.occRingPct, { color: occupancyColor(occupancy.overall, colors) }]}>
-                  {occupancy.overall}%
-                </Text>
-                <Text style={[styles.occRingLabel, { color: colors.textMuted }]}>إشغال</Text>
-              </View>
-
-              {/* Stats */}
-              <View style={styles.occOverallStats}>
-                <Text style={[styles.occOverallTitle, { color: colors.text }]}>الإشغال العام</Text>
-                <OccupancyBar rate={occupancy.overall} color={occupancyColor(occupancy.overall, colors)} height={10} colors={colors} />
-                <View style={styles.occStatRow}>
-                  <View style={styles.occStatItem}>
-                    <View style={[styles.occDot, { backgroundColor: colors.success }]} />
-                    <Text style={[styles.occStatVal, { color: colors.success }]}>{occupancy.rented}</Text>
-                    <Text style={[styles.occStatLbl, { color: colors.textMuted }]}>مؤجرة</Text>
-                  </View>
-                  <View style={styles.occStatItem}>
-                    <View style={[styles.occDot, { backgroundColor: colors.warning }]} />
-                    <Text style={[styles.occStatVal, { color: colors.warning }]}>{occupancy.vacant}</Text>
-                    <Text style={[styles.occStatLbl, { color: colors.textMuted }]}>شاغرة</Text>
-                  </View>
-                  <View style={styles.occStatItem}>
-                    <View style={[styles.occDot, { backgroundColor: colors.textMuted }]} />
-                    <Text style={[styles.occStatVal, { color: colors.text }]}>{occupancy.total}</Text>
-                    <Text style={[styles.occStatLbl, { color: colors.textMuted }]}>إجمالي</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Per-owner breakdown */}
-          {occupancy.byOwner.length > 0 && (
-            <View style={[styles.occOwnersCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.occOwnersTitle, { color: colors.text }]}>الإشغال حسب المالك</Text>
-              {occupancy.byOwner.map((item, idx) => {
-                const color = occupancyColor(item.rate, colors);
-                const isLast = idx === occupancy.byOwner.length - 1;
-                return (
-                  <TouchableOpacity
-                    key={item.owner.id}
-                    onPress={() => router.push(`/owner/${item.owner.id}` as any)}
-                    activeOpacity={0.75}
-                    style={[styles.occOwnerRow, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                  >
-                    {/* Avatar */}
-                    <View style={[styles.occOwnerAvatar, { backgroundColor: color + '20' }]}>
-                      <Text style={[styles.occOwnerAvatarText, { color }]}>
-                        {(item.owner.name ?? '؟').trim()[0] ?? '؟'}
-                      </Text>
-                    </View>
-
-                    {/* Info */}
-                    <View style={styles.occOwnerInfo}>
-                      <View style={styles.occOwnerTopRow}>
-                        <Text style={[styles.occOwnerRate, { color }]}>{item.rate}%</Text>
-                        <Text style={[styles.occOwnerName, { color: colors.text }]} numberOfLines={1}>
-                          {item.owner.name}
-                        </Text>
-                      </View>
-                      <OccupancyBar rate={item.rate} color={color} height={6} colors={colors} />
-                      <View style={styles.occOwnerMeta}>
-                        <Text style={[styles.occOwnerMetaText, { color: colors.textMuted }]}>
-                          {item.propCount} {item.propCount === 1 ? 'عقار' : 'عقارات'}
-                        </Text>
-                        <Text style={[styles.occOwnerMetaText, { color: colors.textMuted }]}>·</Text>
-                        <Text style={[styles.occOwnerMetaText, { color: colors.success }]}>
-                          {item.rented} مؤجرة
-                        </Text>
-                        <Text style={[styles.occOwnerMetaText, { color: colors.textMuted }]}>·</Text>
-                        <Text style={[styles.occOwnerMetaText, { color: colors.warning }]}>
-                          {item.vacant} شاغرة
-                        </Text>
-                        <Text style={[styles.occOwnerMetaText, { color: colors.textMuted }]}>
-                          / {item.total}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Ionicons name="chevron-back" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
-
-        {/* ── Upcoming Timeline ───────────────────────────────────────────── */}
-        {upcomingTimeline.length > 0 && (
-          <View style={styles.sectionPad}>
-            <View style={styles.rowBetween}>
-              <Text style={[styles.sectionHeading, { color: colors.text }]}>المواعيد القادمة</Text>
-              <TouchableOpacity onPress={() => router.push('/calendar' as any)}>
-                <Text style={[styles.seeAll, { color: colors.accent }]}>عرض التقويم</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.tlCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {upcomingTimeline.map((ev, idx) => {
-                const tlCfg = getTlCfg(colors);
-                const cfg  = tlCfg[ev.type] ?? tlCfg.manual;
-                const days = daysFromNow(ev.date);
-                const uc   = tlUrgencyColor(days, colors);
-                const ul   = tlUrgencyLabel(days);
-                const isLast = idx === upcomingTimeline.length - 1;
-
-                const navigate = () => {
-                  if (ev.entityType === 'contract')    router.push(`/contract/${ev.entityId}` as any);
-                  else if (ev.entityType === 'payment') router.push(`/payment/${ev.entityId}` as any);
-                  else if (ev.entityType === 'maintenance') router.push(`/maintenance/${ev.entityId}` as any);
-                };
-
-                return (
-                  <TouchableOpacity
-                    key={ev.id}
-                    onPress={navigate}
-                    activeOpacity={0.8}
-                    style={[styles.tlRow, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-                  >
-                    {/* Timeline dot + line */}
-                    <View style={styles.tlDotCol}>
-                      <View style={[styles.tlDot, { backgroundColor: cfg.color }]} />
-                      {!isLast && <View style={[styles.tlConnector, { backgroundColor: colors.border }]} />}
-                    </View>
-
-                    {/* Date column */}
-                    <View style={styles.tlDateCol}>
-                      <Text style={[styles.tlDate, { color: days < 0 ? colors.danger : days === 0 ? colors.primary : colors.text }]}>
-                        {formatTlDate(ev.date)}
-                      </Text>
-                      <Text style={[styles.tlYear, { color: colors.textMuted }]}>
-                        {ev.date.split('-')[0]}
-                      </Text>
-                    </View>
-
-                    {/* Event info */}
-                    <View style={styles.tlInfo}>
-                      <View style={styles.tlInfoTop}>
-                        <View style={[styles.tlTypeBadge, { backgroundColor: cfg.bg }]}>
-                          <Ionicons name={cfg.icon as any} size={11} color={cfg.color} />
-                          <Text style={[styles.tlTypeText, { color: cfg.color }]}>{cfg.label}</Text>
-                        </View>
-                        {(ev as any).overdue && (
-                          <View style={[styles.tlTypeBadge, { backgroundColor: colors.dangerSubtle, marginRight: 4 }]}>
-                            <Ionicons name="warning-outline" size={11} color={colors.danger} />
-                            <Text style={[styles.tlTypeText, { color: colors.danger }]}>متأخرة</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={[styles.tlTitle, { color: colors.text }]} numberOfLines={1}>{ev.title}</Text>
-                      {(ev as any).subtitle ? (
-                        <View style={styles.tlSubRow}>
-                          <Ionicons name="location-outline" size={11} color={colors.textMuted} />
-                          <Text style={[styles.tlNotes, { color: colors.textMuted }]} numberOfLines={1}>{(ev as any).subtitle}</Text>
-                        </View>
-                      ) : null}
-                      {ev.notes ? <Text style={[styles.tlNotes, { color: colors.textSecondary }]} numberOfLines={1}>{ev.notes}</Text> : null}
-                    </View>
-
-                    {/* Urgency badge */}
-                    <View style={[styles.tlUrgency, { backgroundColor: uc + '18', borderColor: uc + '40' }]}>
-                      <Text style={[styles.tlUrgencyText, { color: uc }]}>{ul}</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* ── Vacant Units ── */}
-        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-          <Text style={[styles.secLabel, { color: colors.text }]}>الوحدات الشاغرة</Text>
-          <VacantUnits units={vacantUnitsData} />
-        </View>
-
-        {/* ── City Stats ── */}
-        {cityStats.length > 0 && (
-          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-            <Text style={[styles.secLabel, { color: colors.text }]}>التوزيع الجغرافي</Text>
-            <CityStats totalRentedProperties={Object.values(kpis.rentedByCity ?? {}).reduce((s, v) => s + v, 0)} />
-          </View>
-        )}
-
-        {/* Recent Activity */}
-        <View style={styles.sectionPad}>
-          <View style={styles.rowBetween}>
-            <Text style={[styles.sectionHeading, { color: colors.text }]}>آخر العمليات</Text>
-            <TouchableOpacity onPress={() => router.push('/audit-log')}>
-              <Text style={[styles.seeAll, { color: colors.accent }]}>عرض الكل</Text>
-            </TouchableOpacity>
-          </View>
-          {recentActivity.map(log => (
-            <View key={log.id} style={[styles.logCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.logDot, { backgroundColor: log.action === 'add' ? colors.success : log.action === 'edit' ? colors.warning : colors.danger }]} />
-              <View style={styles.logContent}>
-                <Text style={[styles.logTitle, { color: colors.text }]} numberOfLines={1}>{log.details}</Text>
-                <Text style={[styles.logTime, { color: colors.textMuted }]}>
-                  {log.userName} · {new Date(log.timestamp).toLocaleDateString('ar-SA')}
-                </Text>
-              </View>
-            </View>
-          ))}
+        {/* الرسوم والإشغال والتفاصيل انتقلت إلى "التقارير" — الرئيسية لما يحتاج إجراء فقط */}
+        <View style={[styles.sectionPad, { marginTop: 24, alignItems: 'center' }]}>
+          <TouchableOpacity onPress={() => router.push((ownerMode ? '/owner-statement' : '/financial-reports') as any)} style={[styles.reportsLink, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Ionicons name="bar-chart-outline" size={16} color={colors.primary} />
+            <Text style={{ color: colors.text, fontSize: 14, fontWeight: '500' }}>{ownerMode ? 'الدخل والمصاريف بالتفصيل' : 'الإيرادات والإشغال في التقارير'}</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -878,6 +689,7 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  reportsLink: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, height: 42 },
   container: { flex: 1 },
   header: {
     paddingBottom: 14,

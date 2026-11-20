@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { HubTabs } from '../components/navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -102,7 +103,8 @@ export default function VouchersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="السندات" />
+      <AppHeader title="المصاريف" showBack={false} />
+      <HubTabs hub="expenses" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث برقم السند أو الاسم أو البيان..." />
         <FilterBar options={TYPE_OPTIONS} value={type} onChange={setType} />

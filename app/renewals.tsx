@@ -4,6 +4,7 @@
  * كان التطبيق ينبّه أن عقداً يقترب من الانتهاء ثم يتركك: تفتح واتساب يدوياً،
  * وتنتظر حتى ينتهي العقد فعلاً ليظهر زر التجديد — وقد فرّغ الوحدة قبلها.
  */
+import { HubTabs } from '../components/navigation/HubTabs';
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Platform } from 'react-native';
 import { router } from 'expo-router';
@@ -82,7 +83,8 @@ export default function RenewalsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="تجديد العقود" />
+      <AppHeader title="العقود والمستأجرون" showBack={false} />
+      <HubTabs hub="contracts" />
 
       <View style={[styles.summary, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.sumCell}>

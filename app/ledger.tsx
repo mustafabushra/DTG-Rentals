@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { HubTabs } from '../components/navigation/HubTabs';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
@@ -394,7 +395,8 @@ export default function LedgerScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="سجل المدفوعات" />
+      <AppHeader title="التحصيل" showBack={false} />
+      <HubTabs hub="collections" />
 
       {/* Search */}
       <SearchBar

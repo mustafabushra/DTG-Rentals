@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MoreFields } from '../components/forms/MoreFields';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -146,9 +147,11 @@ export default function AddPropertyScreen() {
           <FormInput label="عدد الطوابق" value={form.floors} onChangeText={set('floors')} placeholder="مثال: 8" keyboardType="number-pad" required icon="layers-outline" error={errors.floors} />
           <FormSelect label="المالك" value={form.ownerId} options={ownerOptions} onSelect={set('ownerId')} required placeholder="اختر المالك..." error={errors.ownerId} />
           <FormSelect label="عملة العقار" value={form.currency} options={CURRENCY_OPTIONS} onSelect={set('currency')} required />
-          <FormInput label="رقم الصك (اختياري)" value={form.deedNumber} onChangeText={set('deedNumber')} placeholder="مثال: 1234567890" icon="document-outline" />
-          <FormInput label="المساحة بالمتر المربع (اختياري)" value={form.area} onChangeText={set('area')} placeholder="مثال: 500" keyboardType="number-pad" icon="resize-outline" />
-          <FormInput label="الوصف (اختياري)" value={form.description} onChangeText={set('description')} placeholder="وصف موجز للعقار..." multiline numberOfLines={3} icon="document-text-outline" />
+          <MoreFields>
+            <FormInput label="رقم الصك" value={form.deedNumber} onChangeText={set('deedNumber')} placeholder="مثال: 1234567890" icon="document-outline" />
+            <FormInput label="المساحة بالمتر المربع" value={form.area} onChangeText={set('area')} placeholder="مثال: 500" keyboardType="number-pad" icon="resize-outline" />
+            <FormInput label="الوصف" value={form.description} onChangeText={set('description')} placeholder="وصف موجز للعقار..." multiline numberOfLines={3} icon="document-text-outline" />
+          </MoreFields>
         </ScrollView>
       </FormContainer>
     </View>

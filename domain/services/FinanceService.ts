@@ -257,3 +257,36 @@ export function expenseVoucherFieldsChanged(before: Expense, after: Partial<Expe
   const keys: (keyof Expense)[] = ['amount', 'currency', 'date', 'vendor', 'category', 'paymentMethod', 'referenceNumber', 'propertyId', 'unitId'];
   return keys.some(k => k in after && (after as any)[k] !== (before as any)[k]);
 }
+
+export interface UnitNet { unitId: string; propertyId: string; income: number; expenses: number; net: number }
+
+/**
+ * صافي كل وحدة: المحصَّل من عقودها − مصاريفها المسجلة على الوحدة نفسها.
+ * مصاريف العقار العامة (بلا وحدة) لا تُوزَّع هنا — تظهر في صافي العقار فقط.
+ */
+export function netByUnit(src: IncomeSource, from?: string, to?: string): Map<string, UnitNet> {
+  const unitProp = new Map(src.units.map(u => [u.id, u.propertyId]));
+  const contractUnit = new Map(src.contracts.map(c => [c.id, c.unitId]));
+  const out = new Map<string, UnitNet>();
+  const row = (uid: string) => {
+    let r = out.get(uid);
+    if (!r) { r = { unitId: uid, propertyId: unitProp.get(uid) ?? '', income: 0, expenses: 0, net: 0 }; out.set(uid, r); }
+    return r;
+  };
+  for (const pay of src.payments) {
+    if (pay.status !== 'paid' || !inRange(pay.paidDate, from, to)) continue;
+    const uid = contractUnit.get(pay.contractId);
+    if (uid) row(uid).income += pay.amount || 0;
+  }
+  for (const e of src.expenses) {
+    if (e.status !== 'active' || e.scope !== 'property' || !e.unitId || !inRange(e.date, from, to)) continue;
+    row(e.unitId).expenses += e.amount || 0;
+  }
+  for (const r of out.values()) r.net = r.income - r.expenses;
+  return out;
+}
+
+/** حصة مالك من صافي الوحدة حسب نسبته في سند الملكية. */
+export function ownerShareOf(net: number, percent: number): number {
+  return Math.round(net * percent) / 100;
+}

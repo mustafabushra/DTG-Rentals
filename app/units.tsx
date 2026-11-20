@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { HubTabs } from '../components/navigation/HubTabs';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { router } from 'expo-router';
@@ -20,7 +21,7 @@ type Filter = 'all' | UnitStatus;
 
 export default function UnitsScreen() {
   const { colors } = useAppTheme();
-  const { units, properties, dataLoading } = useApp();
+  const { units, properties, dataLoading, canWrite } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [filterCountry, setFilterCountry] = useState('');
@@ -58,7 +59,8 @@ export default function UnitsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title={`الوحدات (${units.length})`} rightAction={{ icon: 'add', onPress: () => router.push('/add-unit') }} />
+      <AppHeader title="العقارات" showBack={false} rightAction={canWrite ? { icon: 'add', onPress: () => router.push('/add-unit'), label: 'إضافة وحدة' } : undefined} />
+      <HubTabs hub="properties" />
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث برقم الوحدة..." />
 
