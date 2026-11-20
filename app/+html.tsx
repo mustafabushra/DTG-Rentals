@@ -118,7 +118,9 @@ export default function Root({ children }: PropsWithChildren) {
           }
           body {
             height: 100%;
-            min-height: -webkit-fill-available;
+            /* border-box: الحشوة (النوتش وشريط الآيفون) من ضمن الارتفاع، فما ينقص شي من تحت */
+            box-sizing: border-box;
+            margin: 0;
             /* env() safe-area for notch/Dynamic Island */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
@@ -137,7 +139,6 @@ export default function Root({ children }: PropsWithChildren) {
           /* Expo root div */
           #root, [data-reactroot] {
             height: 100%;
-            height: 100dvh;
             display: flex;
             flex-direction: column;
             /* Reset body's safe-area padding — handled by the app itself */

@@ -25,6 +25,7 @@ import { VacantUnits } from '../../components/dashboard/VacantUnits';
 import { RevenueChart } from '../../components/dashboard/RevenueChart';
 import { CityStats } from '../../components/dashboard/CityStats';
 import { DashboardHero } from '../../components/dashboard/DashboardHero';
+import { useSmartNotifications } from '../../hooks/useSmartNotifications';
 import { AttentionList, type AttentionItem } from '../../components/dashboard/AttentionList';
 
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
@@ -142,6 +143,7 @@ const OWNER_LINKS = [
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
+  const { urgentCount } = useSmartNotifications();
   const { kpis, payments, contracts, maintenance, auditLogs, currentUser,
           owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData, isOwner, previewing, previewOwnerId } = useApp();
   const ownerMode = isOwner || previewing;
@@ -570,8 +572,8 @@ export default function DashboardScreen() {
         <DashboardHero
           firstName={currentUser?.name?.split(' ')[0] ?? ''}
           topInset={insets.top}
-          notifCount={kpis.overduePayments}
-          onMenu={Platform.OS === 'web' && !isDesktop ? toggleSidebar : undefined}
+          notifCount={urgentCount}
+          onMenu={undefined}
           stats={{
             properties: kpis.totalProperties,
             rented: kpis.rentedUnits,

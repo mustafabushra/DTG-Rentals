@@ -203,13 +203,8 @@ export default function SettingsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
-          {Platform.OS === 'web' && !isDesktop && (
-            <TouchableOpacity onPress={toggleSidebar} style={styles.menuBtn}>
-              <Ionicons name="menu-outline" size={26} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
           <Text style={[styles.headerTitle, { color: colors.text }]}>الإعدادات</Text>
-          <View style={{ width: Platform.OS === 'web' && !isDesktop ? 34 : 0 }} />
+          
         </View>
       </View>
 

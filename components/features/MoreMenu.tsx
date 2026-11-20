@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { lightColors, darkColors, spacing, fontSize, fontWeight, radius } from '../../constants/DesignTokens';
+import { useSmartNotifications } from '../../hooks/useSmartNotifications';
 import { useApp } from '../../context/AppProvider';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useColorScheme } from 'react-native';
@@ -43,13 +44,7 @@ export function MoreMenu({ visible, onClose }: MoreMenuProps) {
   const colorScheme = useColorScheme();
   const scheme = colorScheme ?? 'light';
   const { payments, contracts } = useApp();
-  // عدد الإشعارات = الدفعات المتأخرة + العقود التي تنتهي خلال 30 يوماً
-  const unread = payments.filter(p => p.status === 'overdue').length
-    + contracts.filter(c => {
-        if (c.status !== 'active') return false;
-        const days = Math.ceil((new Date(c.endDate).getTime() - Date.now()) / 86400000);
-        return days >= 0 && days <= 30;
-      }).length;
+  const { urgentCount: unread } = useSmartNotifications();
 
   const navigate = (route: string) => {
     onClose();

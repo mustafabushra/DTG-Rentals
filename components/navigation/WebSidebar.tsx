@@ -15,6 +15,7 @@ const DRAWER_W = 260;
 import { ModuleFlags } from '../../constants/SystemDefaults';
 import { useAppTheme } from '../../hooks/useAppTheme';
 
+import { useSmartNotifications } from '../../hooks/useSmartNotifications';
 import { STAFF_NAV, OWNER_NAV, FOOTER_NAV, isNavActive, NavItem } from '../../constants/Navigation';
 
 function SideItem({
@@ -55,19 +56,23 @@ function SideItem({
 
 function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (route: string) => void }) {
   const pathname = usePathname();
-  const { payments, contracts, currentUser, systemSettings, isOwner, previewing } = useApp();
+  const { payments, currentUser, systemSettings, isOwner, previewing, logout } = useApp();
+  const { urgentCount } = useSmartNotifications();
   const modules = systemSettings.modules;
   const ownerMode = isOwner || previewing;
   const main = (ownerMode ? OWNER_NAV : STAFF_NAV).filter(i => !i.moduleKey || modules[i.moduleKey]);
 
   const overdueCount   = payments.filter(p => p.status === 'overdue').length;
-  const expiringCount  = contracts.filter(c => {
-    if (c.status !== 'active') return false;
-    const days = Math.ceil((new Date(c.endDate).getTime() - Date.now()) / 86400000);
-    return days >= 0 && days <= 30;
-  }).length;
+  // الإشعارات = عدد "العاجل" في صفحة الإشعارات، نفس رقم الجرس
   const badgeFor = (item: NavItem) =>
-    item.badge === 'overdue' ? overdueCount : item.badge === 'alerts' ? overdueCount + expiringCount : undefined;
+    item.badge === 'overdue' ? overdueCount : item.badge === 'alerts' ? urgentCount : undefined;
+  const doLogout = () => {
+    const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
+      ? window.confirm('تبي تسجّل خروج؟') : true;
+    if (!ok) return;
+    logout();
+    router.replace('/login');
+  };
 
   // القائمة داكنة دائماً ⇒ الشعار الأبيض/الذهبي الأصلي
   const logo = require('../../assets/images/sidebar-logo.png');
@@ -101,23 +106,24 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
         {FOOTER_NAV.map(render)}
       </View>
 
-      {/* User Footer */}
-      <TouchableOpacity
-        style={[styles.userRow, { borderTopColor: colors.chromeBorder, backgroundColor: colors.chromeRaised }]}
-        onPress={() => onNavigate('/settings')}
-        activeOpacity={0.8}
-      >
-        <View style={[styles.avatar, { backgroundColor: '#D4BC8A' }]}>
-          <Text style={[styles.avatarText, { color: '#071729' }]}>
-            {(currentUser.name ?? 'م').split(' ').slice(0, 2).map((n: string) => n[0]).join('')}
-          </Text>
-        </View>
-        <View style={styles.userInfo}>
-          <Text style={[styles.userName, { color: colors.chromeText }]} numberOfLines={1}>{currentUser.name}</Text>
-          <Text style={[styles.userRole, { color: colors.chromeMuted }]} numberOfLines={1}>{currentUser.role}</Text>
-        </View>
-        <Ionicons name="settings-outline" size={18} color={colors.chromeMuted} />
-      </TouchableOpacity>
+      {/* User Footer: الاسم يفتح الإعدادات، وزر الخروج واضح بجنبه */}
+      <View style={[styles.userRow, { borderTopColor: colors.chromeBorder, backgroundColor: colors.chromeRaised }]}>
+        <TouchableOpacity style={styles.userTap} onPress={() => onNavigate('/settings')} activeOpacity={0.8} accessibilityLabel="الإعدادات">
+          <View style={[styles.avatar, { backgroundColor: '#D4BC8A' }]}>
+            <Text style={[styles.avatarText, { color: '#071729' }]}>
+              {(currentUser.name ?? 'م').split(' ').slice(0, 2).map((n: string) => n[0]).join('')}
+            </Text>
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={[styles.userName, { color: colors.chromeText }]} numberOfLines={1}>{currentUser.name}</Text>
+            <Text style={[styles.userRole, { color: colors.chromeMuted }]} numberOfLines={1}>{currentUser.role}</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={doLogout} style={styles.logoutBtn} activeOpacity={0.75} accessibilityLabel="تسجيل الخروج">
+          <Ionicons name="log-out-outline" size={18} color="#F2A6A0" />
+          <Text style={styles.logoutText}>خروج</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -265,6 +271,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   avatarText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  userTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing[3], minWidth: 0 },
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, height: 34,
+    borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(242,166,160,0.35)',
+  },
+  logoutText: { color: '#F2A6A0', fontSize: fontSize.sm, fontWeight: '600' },
   userInfo: { flex: 1 },
   userName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, textAlign: 'right' },
   userRole: { fontSize: fontSize.xs, textAlign: 'right' },

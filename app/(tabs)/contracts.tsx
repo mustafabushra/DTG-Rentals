@@ -72,11 +72,6 @@ export default function ContractsScreen() {
       <View style={[styles.header, { paddingTop: insets.top + (cSmallPhone ? 6 : 8), paddingHorizontal: cHPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <View style={styles.headerRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-            {Platform.OS === 'web' && !isDesktop && (
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.surface }]} onPress={toggleSidebar}>
-                <Ionicons name="menu-outline" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
             <Text style={[styles.headerTitle, { color: colors.text }]}>العقود والمستأجرون</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>

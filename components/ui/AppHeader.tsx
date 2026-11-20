@@ -16,10 +16,14 @@ interface AppHeaderProps {
   transparent?: boolean;
 }
 
+import { usePathname } from 'expo-router';
+import { shouldShowBottomBar } from '../navigation/WebBottomBar';
+
 export function AppHeader({ title, showBack = true, rightAction, rightText, transparent }: AppHeaderProps) {
   const insets  = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { isDesktop, isSmallPhone, hPad } = useScreenSize();
+  const pathname = usePathname();
   const { toggle } = useSidebar();
 
   // منصات: هيدر أبيض بحد سفلي رفيع ونص داكن
@@ -27,7 +31,8 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
   const textColor = transparent ? '#FFFFFF' : colors.text;
   const iconColor = transparent ? '#FFFFFF' : colors.textSecondary;
   // في صفحات التفاصيل زر الرجوع يكفي؛ زر القائمة للصفحات الرئيسية فقط
-  const showHamburger = Platform.OS === 'web' && !isDesktop && !showBack;
+  // على الجوال صفحات الأقسام فيها شريط سفلي بزر "المزيد"، فما نكرر ☰
+  const showHamburger = Platform.OS === 'web' && !isDesktop && !showBack && !shouldShowBottomBar(pathname);
 
   // Compact title on small phones
   const titleSize = isSmallPhone ? 17 : 19;

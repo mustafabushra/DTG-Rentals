@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { onAuthChange } from '../lib/auth';
 import { useScreenSize } from '../hooks/useScreenSize';
 import { WebSidebar, WebDrawer } from '../components/navigation/WebSidebar';
+import { WebBottomBar } from '../components/navigation/WebBottomBar';
 import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -120,7 +121,8 @@ function StackContent() {
     }
     return (
       <View style={{ flex: 1 }}>
-        {stack}
+        <View style={{ flex: 1 }}>{stack}</View>
+        <WebBottomBar />
         <WebDrawer />
       </View>
     );
