@@ -6,6 +6,7 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, usePathname } from 'expo-router';
 import { lightColors, darkColors, spacing, fontSize, fontWeight, radius } from '../../constants/DesignTokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppProvider';
 import { useSidebar } from '../../context/SidebarContext';
 import { WEB_SIDEBAR_W } from '../../hooks/useScreenSize';
@@ -58,6 +59,7 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
   const pathname = usePathname();
   const { payments, currentUser, systemSettings, isOwner, previewing, logout } = useApp();
   const { urgentCount } = useSmartNotifications();
+  const insets = useSafeAreaInsets();
   const modules = systemSettings.modules;
   const ownerMode = isOwner || previewing;
   const main = (ownerMode ? OWNER_NAV : STAFF_NAV).filter(i => !i.moduleKey || modules[i.moduleKey]);
@@ -93,7 +95,7 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
   return (
     <View style={[styles.sidebar, { backgroundColor: colors.chrome, borderLeftColor: colors.chromeBorder }]}>
       {/* Logo */}
-      <View style={[styles.logoRow, { borderBottomColor: colors.chromeBorder }]}>
+      <View style={[styles.logoRow, { borderBottomColor: colors.chromeBorder, paddingTop: spacing[4] + insets.top }]}>
         <Image source={logo} style={styles.logoImage} resizeMode="contain" />
       </View>
 
@@ -107,7 +109,7 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
       </View>
 
       {/* User Footer: الاسم يفتح الإعدادات، وزر الخروج واضح بجنبه */}
-      <View style={[styles.userRow, { borderTopColor: colors.chromeBorder, backgroundColor: colors.chromeRaised }]}>
+      <View style={[styles.userRow, { borderTopColor: colors.chromeBorder, backgroundColor: colors.chromeRaised, paddingBottom: spacing[3] + insets.bottom }]}>
         <TouchableOpacity style={styles.userTap} onPress={() => onNavigate('/settings')} activeOpacity={0.8} accessibilityLabel="الإعدادات">
           <View style={[styles.avatar, { backgroundColor: '#D4BC8A' }]}>
             <Text style={[styles.avatarText, { color: '#071729' }]}>
@@ -147,6 +149,7 @@ export function WebSidebar() {
 
 export function WebDrawer() {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const { open, close } = useSidebar();
 
   const slideAnim   = useRef(new Animated.Value(DRAWER_W)).current;
@@ -184,7 +187,7 @@ export function WebDrawer() {
       >
         {/* Close button */}
         <TouchableOpacity
-          style={[styles.closeBtn, { backgroundColor: colors.chromeRaised }]}
+          style={[styles.closeBtn, { backgroundColor: colors.chromeRaised, top: spacing[3] + insets.top }]}
           onPress={close}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >

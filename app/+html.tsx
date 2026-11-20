@@ -121,11 +121,9 @@ export default function Root({ children }: PropsWithChildren) {
             /* border-box: الحشوة (النوتش وشريط الآيفون) من ضمن الارتفاع، فما ينقص شي من تحت */
             box-sizing: border-box;
             margin: 0;
-            /* env() safe-area for notch/Dynamic Island */
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
+            /* بدون حشوة: كل صفحة تحسب النوتش وشريط الآيفون بنفسها (useSafeAreaInsets)،
+               وإلا تتكرر المسافة فوق وتحت */
+            padding: 0;
             overflow: hidden;
             /* Disable pull-to-refresh on iOS Safari */
             overscroll-behavior-y: none;

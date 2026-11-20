@@ -7,6 +7,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppProvider';
 import { useSidebar } from '../../context/SidebarContext';
 import { useAppTheme } from '../../hooks/useAppTheme';
@@ -30,6 +31,7 @@ export function shouldShowBottomBar(pathname: string) {
 export function WebBottomBar() {
   const { colors } = useAppTheme();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const { open: drawerOpen, toggle } = useSidebar();
   const { payments, systemSettings, isOwner, previewing } = useApp();
   const ownerMode = isOwner || previewing;
@@ -72,7 +74,7 @@ export function WebBottomBar() {
   };
 
   return (
-    <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border }]} accessibilityRole="tablist">
+    <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border, height: 60 + insets.bottom, paddingBottom: insets.bottom }]} accessibilityRole="tablist">
       {items.map(i => (
         <Tab key={i.key} item={i} active={!drawerOpen && !!i.nav && isNavActive(i.nav, pathname)} onPress={() => router.navigate(i.key as any)} />
       ))}
