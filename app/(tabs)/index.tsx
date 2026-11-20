@@ -22,6 +22,8 @@ import { DuePayments } from '../../components/dashboard/DuePayments';
 import { VacantUnits } from '../../components/dashboard/VacantUnits';
 import { RevenueChart } from '../../components/dashboard/RevenueChart';
 import { CityStats } from '../../components/dashboard/CityStats';
+import { DashboardHero } from '../../components/dashboard/DashboardHero';
+import { AttentionList, type AttentionItem } from '../../components/dashboard/AttentionList';
 
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
                        'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -465,6 +467,76 @@ export default function DashboardScreen() {
 
   const visibleAlert = smartAlert && !dismissedAlerts.has(smartAlert.id) ? smartAlert : null;
 
+  // ── يحتاج انتباهك: بنود تتطلب إجراءً، مرتبة بالأولوية ─────────────────────
+  const attentionItems = useMemo((): AttentionItem[] => {
+    const items: AttentionItem[] = [];
+    const overdue = payments.filter(p => p.status === 'overdue');
+    if (overdue.length) {
+      const oldest = overdue.reduce((a, b) => (a.dueDate < b.dueDate ? a : b));
+      items.push({
+        key: 'overdue', tone: 'danger', icon: 'alert-circle-outline',
+        title: `${overdue.length} ${overdue.length === 1 ? 'دفعة متأخرة' : 'دفعات متأخرة'}`,
+        detail: `أقدمها مستحقة منذ ${formatDate(oldest.dueDate)}`,
+        amount: overdue.reduce((s, p) => s + (p.amount || 0), 0),
+        route: '/collections',
+      });
+    }
+    const dueToday = duePaymentsData.today.filter(p => p.status === 'pending');
+    if (dueToday.length) {
+      items.push({
+        key: 'due', tone: 'warning', icon: 'time-outline',
+        title: `${dueToday.length} ${dueToday.length === 1 ? 'دفعة مستحقة اليوم' : 'دفعات مستحقة اليوم'}`,
+        detail: dueToday.slice(0, 2).map(p => p.tenantName).join('، '),
+        amount: dueToday.reduce((s, p) => s + (p.amount || 0), 0),
+        route: '/payments',
+      });
+    }
+    if (expiringContracts.length) {
+      const first = expiringContracts[0];
+      items.push({
+        key: 'expiring', tone: 'warning', icon: 'document-text-outline',
+        title: `${expiringContracts.length} ${expiringContracts.length === 1 ? 'عقد ينتهي' : 'عقود تنتهي'} خلال 30 يوماً`,
+        detail: `أقربها: ${first.tenantName}، بعد ${first.daysLeft} ${first.daysLeft === 1 ? 'يوم' : 'يوماً'}`,
+        count: expiringContracts.length,
+        route: '/renewals',
+      });
+    }
+    const urgent = maintenance.filter(m => (m.priority === 'urgent' || m.priority === 'high') && (m.status === 'new' || m.status === 'in_progress'));
+    if (urgent.length) {
+      items.push({
+        key: 'maint', tone: 'danger', icon: 'construct-outline',
+        title: `${urgent.length} ${urgent.length === 1 ? 'طلب صيانة عاجل' : 'طلبات صيانة عاجلة'}`,
+        detail: urgent[0].title,
+        count: urgent.length,
+        route: '/maintenance',
+      });
+    }
+    const longVacant = vacantUnitsData.filter(u => u.status === 'vacant' && (u.vacantDays ?? 0) >= 60);
+    if (longVacant.length) {
+      items.push({
+        key: 'vacant', tone: 'info', icon: 'home-outline',
+        title: `${longVacant.length} ${longVacant.length === 1 ? 'وحدة شاغرة' : 'وحدات شاغرة'} منذ أكثر من شهرين`,
+        detail: longVacant.slice(0, 2).map(u => `${u.propertyName ?? ''} ${u.number}`).join('، '),
+        count: longVacant.length,
+        route: '/units',
+      });
+    }
+    const today = new Date().toISOString().split('T')[0];
+    const in30 = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+    const docs = attachments.filter(a => a.expiryDate && a.expiryDate <= in30);
+    if (docs.length) {
+      const expired = docs.filter(a => a.expiryDate! < today).length;
+      items.push({
+        key: 'docs', tone: expired ? 'danger' : 'info', icon: 'folder-open-outline',
+        title: `${docs.length} ${docs.length === 1 ? 'وثيقة' : 'وثائق'} ${expired ? 'منتهية أو تنتهي قريباً' : 'تنتهي خلال 30 يوماً'}`,
+        detail: docs.slice(0, 2).map(a => a.name).join('، '),
+        count: docs.length,
+        route: '/attachments',
+      });
+    }
+    return items;
+  }, [payments, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
+
   if (dataLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -478,71 +550,52 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + (isSmallPhone ? 6 : 8), paddingHorizontal: hPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <View style={styles.headerRow}>
-          {Platform.OS === 'web' && !isDesktop ? (
-            <TouchableOpacity style={styles.headerBtn} onPress={toggleSidebar} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="menu-outline" size={26} color={colors.textSecondary} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={() => router.push('/settings')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <View style={[styles.avatarCircle, { backgroundColor: colors.primary }, isSmallPhone && { width: 32, height: 32, borderRadius: 16 }]}>
-                <Text style={[styles.avatarText, { color: colors.textInverse }, isSmallPhone && { fontSize: Theme.fontSize.sm }]}>{currentUser?.name?.[0] ?? '؟'}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.headerCenter}>
-            {!isSmallPhone && (
-              <Text style={[styles.welcomeText, { color: colors.textMuted }]} numberOfLines={1}>مرحباً، {currentUser?.name?.split(' ')[0] ?? ''}</Text>
-            )}
-            <Text style={[styles.appName, { color: colors.text }, (isMobile || isSmallPhone) && { fontSize: Theme.fontSize.base }]}>DTG Rentals</Text>
-          </View>
-
-          <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="notifications-outline" size={isSmallPhone ? 22 : 24} color={colors.textSecondary} />
-            {kpis.overduePayments > 0 && (
-              <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
-                <Text style={[styles.notifBadgeText, { color: '#FFFFFF' }]}>{kpis.overduePayments}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 48 }}
         refreshControl={
-          <RefreshControl refreshing={dataLoading} onRefresh={handleRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+          <RefreshControl refreshing={dataLoading} onRefresh={handleRefresh} tintColor={colors.accent} colors={[colors.accent]} />
         }
       >
-        {/* KPI Cards */}
-        <View style={[styles.kpiGrid, isWide && styles.kpiGridWide, {
-          padding: hPad,
-          gap: isSmallPhone ? 8 : 12,
-          rowGap: isSmallPhone ? 12 : 12,
-        }]}>
-          {isWide ? (
-            <View style={[styles.kpiRow, { gap: 16 }]}>
-              <KPICard label="إجمالي العقارات" value={kpis.totalProperties} icon="business-outline" color={colors.primary} />
-              <KPICard label="الوحدات المؤجرة" value={kpis.rentedUnits} icon="home" color={colors.success} trend={rentedTrend ? 'up' : undefined} trendValue={rentedTrend} />
-              <KPICard label="الإيرادات الشهرية" value={formatCurrency(kpis.monthlyRevenue)} icon="cash-outline" color={colors.purple} />
-              <KPICard label="طلبات مفتوحة" value={kpis.openMaintenanceRequests} icon="construct-outline" color={colors.warning} />
+        <DashboardHero
+          firstName={currentUser?.name?.split(' ')[0] ?? ''}
+          topInset={insets.top}
+          notifCount={kpis.overduePayments}
+          onMenu={Platform.OS === 'web' && !isDesktop ? toggleSidebar : undefined}
+          stats={{
+            properties: kpis.totalProperties,
+            rented: kpis.rentedUnits,
+            totalUnits: units.length,
+            monthlyRevenue: kpis.monthlyRevenue,
+            openMaintenance: kpis.openMaintenanceRequests,
+          }}
+          collection={collectionData}
+        />
+
+        {/* ── يحتاج انتباهك + إجراءات سريعة ── */}
+        <View style={[styles.sectionPad, { marginTop: 20 }, isWide && styles.rowPair]}>
+          <View style={isWide ? { flex: 3 } : undefined}>
+            <AttentionList items={attentionItems} />
+          </View>
+          {isWide && <View style={{ width: 16 }} />}
+          <View style={[isWide ? { flex: 2 } : { marginTop: 16 }]}>
+            <View style={[styles.qaCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.qaTitle, { color: colors.text }]}>إجراءات سريعة</Text>
+              <View style={styles.qaGrid}>
+                {QUICK_ACTIONS.map(action => (
+                  <TouchableOpacity
+                    key={action.label}
+                    style={[styles.qaBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
+                    onPress={() => router.push(action.route as any)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name={action.icon as any} size={20} color={colors.primary} />
+                    <Text style={[styles.qaLabel, { color: colors.text }]} numberOfLines={1}>{action.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          ) : (
-            <>
-              <View style={[styles.kpiRow, { gap: isSmallPhone ? 8 : 12 }]}>
-                <KPICard label="إجمالي العقارات" value={kpis.totalProperties} icon="business-outline" color={colors.primary} />
-                <KPICard label="الوحدات المؤجرة" value={kpis.rentedUnits} icon="home" color={colors.success} trend={rentedTrend ? 'up' : undefined} trendValue={rentedTrend} />
-              </View>
-              <View style={[styles.kpiRow, { gap: isSmallPhone ? 8 : 12 }]}>
-                <KPICard label="الإيرادات الشهرية" value={formatCurrency(kpis.monthlyRevenue)} icon="cash-outline" color={colors.purple} />
-                <KPICard label="طلبات مفتوحة" value={kpis.openMaintenanceRequests} icon="construct-outline" color={colors.warning} />
-              </View>
-            </>
-          )}
+          </View>
         </View>
 
         {/* ── Holiday-Home revenue breakdown (only when nightly units exist) ── */}
@@ -574,42 +627,39 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ── Smart Alert ── */}
-        {visibleAlert && (
+        {/* ── Expiring Contracts + Due Payments ── */}
+        {(expiringContracts.length > 0 || duePaymentsData.today.length > 0 || duePaymentsData.week.length > 0) && (
           <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-            <SmartAlert alert={visibleAlert} onDismiss={id => setDismissedAlerts(prev => new Set([...prev, id]))} />
+            <Text style={[styles.secLabel, { color: colors.text }]}>العقود والدفعات</Text>
+            {isWide ? (
+              <View style={styles.rowPair}>
+                {expiringContracts.length > 0 && <ExpiringContracts contracts={expiringContracts} />}
+                {expiringContracts.length > 0 && <View style={{ width: 16 }} />}
+                <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
+              </View>
+            ) : (
+              <View style={{ gap: 16 }}>
+                {expiringContracts.length > 0 && <ExpiringContracts contracts={expiringContracts} />}
+                <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
+              </View>
+            )}
           </View>
         )}
 
-        {/* ── Collection Progress ── */}
-        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-          <Text style={[styles.secLabel, { color: colors.textMuted }]}>التحصيل</Text>
-          <CollectionProgress collected={collectionData.collected} totalDue={collectionData.totalDue} />
-        </View>
-
-        {/* ── Revenue Comparison + Tenant Stats ── */}
-        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-          <Text style={[styles.secLabel, { color: colors.textMuted }]}>المالية والمستأجرون</Text>
-          {isWide ? (
-            <View style={styles.rowPair}>
-              <RevenueComparison currentMonth={revenueComparison.currentMonth} lastMonth={revenueComparison.lastMonth} />
-              <View style={{ width: 16 }} />
-              <TenantStats activeTenants={tenantStats.activeTenants} avgTenancyMonths={tenantStats.avgTenancyMonths} topTenant={tenantStats.topTenant} />
-            </View>
-          ) : (
-            <View style={{ gap: 16 }}>
-              <RevenueComparison currentMonth={revenueComparison.currentMonth} lastMonth={revenueComparison.lastMonth} />
-              <TenantStats activeTenants={tenantStats.activeTenants} avgTenancyMonths={tenantStats.avgTenancyMonths} topTenant={tenantStats.topTenant} />
-            </View>
-          )}
-        </View>
+        {/* ── Revenue Chart 6-month ── */}
+        {chartData.some(d => d.revenue > 0) && (
+          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+            <Text style={[styles.secLabel, { color: colors.text }]}>اتجاه الإيرادات</Text>
+            <RevenueChart data={chartData} />
+          </View>
+        )}
 
         {/* ── Occupancy Section ── */}
         <View style={styles.sectionPad}>
           <View style={styles.rowBetween}>
             <Text style={[styles.sectionHeading, { color: colors.text }]}>نسبة الإشغال</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/properties' as any)}>
-              <Text style={[styles.seeAll, { color: colors.secondary }]}>تفاصيل</Text>
+              <Text style={[styles.seeAll, { color: colors.accent }]}>تفاصيل</Text>
             </TouchableOpacity>
           </View>
 
@@ -705,83 +755,13 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {/* ── City Stats ── */}
-        {cityStats.length > 0 && (
-          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-            <Text style={[styles.secLabel, { color: colors.textMuted }]}>التوزيع الجغرافي</Text>
-            <CityStats totalRentedProperties={Object.values(kpis.rentedByCity ?? {}).reduce((s, v) => s + v, 0)} />
-          </View>
-        )}
-
-        {/* ── Expiring Contracts + Due Payments ── */}
-        {(expiringContracts.length > 0 || duePaymentsData.today.length > 0 || duePaymentsData.week.length > 0) && (
-          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-            <Text style={[styles.secLabel, { color: colors.textMuted }]}>العقود والدفعات</Text>
-            {isWide ? (
-              <View style={styles.rowPair}>
-                {expiringContracts.length > 0 && <ExpiringContracts contracts={expiringContracts} />}
-                {expiringContracts.length > 0 && <View style={{ width: 16 }} />}
-                <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
-              </View>
-            ) : (
-              <View style={{ gap: 16 }}>
-                {expiringContracts.length > 0 && <ExpiringContracts contracts={expiringContracts} />}
-                <DuePayments todayPayments={duePaymentsData.today} weekPayments={duePaymentsData.week} />
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* ── Vacant Units ── */}
-        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-          <Text style={[styles.secLabel, { color: colors.textMuted }]}>الوحدات الشاغرة</Text>
-          <VacantUnits units={vacantUnitsData} />
-        </View>
-
-        {/* ── Revenue Chart 6-month ── */}
-        {chartData.some(d => d.revenue > 0) && (
-          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
-            <Text style={[styles.secLabel, { color: colors.textMuted }]}>اتجاه الإيرادات</Text>
-            <RevenueChart data={chartData} />
-          </View>
-        )}
-
-        {/* Quick Actions */}
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>إجراءات سريعة</Text>
-          <View style={[
-            styles.actionsGrid,
-            isWide && styles.actionsGridWide,
-            isMobile && styles.actionsGridMobile,
-          ]}>
-            {QUICK_ACTIONS.map((action) => (
-              <TouchableOpacity
-                key={action.label}
-                style={[
-                  styles.actionBtn,
-                  isWide && styles.actionBtnWide,
-                  isMobile && styles.actionBtnMobile,
-                  { backgroundColor: action.tileBg, borderColor: action.borderColor },
-                ]}
-                onPress={() => router.push(action.route as any)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.actionIconWrap, { backgroundColor: action.iconBg }]}>
-                  <Ionicons name={action.icon as any} size={24} color={action.color} />
-                </View>
-                <Text style={[styles.actionLabel, { color: colors.text }]}>{action.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* ── Upcoming Timeline ───────────────────────────────────────────── */}
         {upcomingTimeline.length > 0 && (
           <View style={styles.sectionPad}>
             <View style={styles.rowBetween}>
               <Text style={[styles.sectionHeading, { color: colors.text }]}>المواعيد القادمة</Text>
               <TouchableOpacity onPress={() => router.push('/calendar' as any)}>
-                <Text style={[styles.seeAll, { color: colors.secondary }]}>عرض التقويم</Text>
+                <Text style={[styles.seeAll, { color: colors.accent }]}>عرض التقويم</Text>
               </TouchableOpacity>
             </View>
 
@@ -858,73 +838,26 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Alerts */}
-        {(alerts.overduePayments.length > 0 || alerts.expiringContracts.length > 0) && (
-          <View style={styles.sectionPad}>
-            <Text style={[styles.sectionHeading, { color: colors.text }]}>التنبيهات</Text>
-            {alerts.overduePayments.map(p => (
-              <TouchableOpacity
-                key={p.id}
-                style={[styles.alertCard, { backgroundColor: colors.dangerSubtle, borderColor: colors.danger }]}
-                onPress={() => router.push(`/payment/${p.id}`)}
-              >
-                <View style={styles.alertContent}>
-                  <Text style={[styles.alertTitle, { color: colors.danger }]}>دفعة متأخرة — {p.receiptNumber}</Text>
-                  <Text style={[styles.alertSub, { color: colors.danger }]}>
-                    {formatCurrency(p.amount)} — استحقاق: {formatDate(p.dueDate)}
-                  </Text>
-                </View>
-                <Ionicons name="alert-circle-outline" size={22} color={colors.danger} />
-              </TouchableOpacity>
-            ))}
-            {alerts.expiringContracts.map(c => (
-              <TouchableOpacity
-                key={c.id}
-                style={[styles.alertCard, { backgroundColor: colors.warningSubtle, borderColor: colors.warning }]}
-                onPress={() => router.push(`/contract/${c.id}`)}
-              >
-                <View style={styles.alertContent}>
-                  <Text style={[styles.alertTitle, { color: colors.warning }]}>عقد قارب على الانتهاء — {c.contractNumber}</Text>
-                  <Text style={[styles.alertSub, { color: colors.warning }]}>تاريخ الانتهاء: {formatDate(c.endDate)}</Text>
-                </View>
-                <Ionicons name="time-outline" size={22} color={colors.warning} />
-              </TouchableOpacity>
-            ))}
+        {/* ── Vacant Units ── */}
+        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+          <Text style={[styles.secLabel, { color: colors.text }]}>الوحدات الشاغرة</Text>
+          <VacantUnits units={vacantUnitsData} />
+        </View>
+
+        {/* ── City Stats ── */}
+        {cityStats.length > 0 && (
+          <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+            <Text style={[styles.secLabel, { color: colors.text }]}>التوزيع الجغرافي</Text>
+            <CityStats totalRentedProperties={Object.values(kpis.rentedByCity ?? {}).reduce((s, v) => s + v, 0)} />
           </View>
         )}
-
-        {/* Stats Row */}
-        <View style={styles.sectionPad}>
-          <Text style={[styles.sectionHeading, { color: colors.text }]}>ملخص مالي</Text>
-          <View style={[styles.statsCard, { backgroundColor: colors.card, borderColor: colors.border }, isMobile && styles.statsCardMobile]}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statVal, { color: colors.success }]}>{kpis.activeContracts}</Text>
-              <Text style={[styles.statLbl, { color: colors.textSecondary }]}>عقد نشط</Text>
-            </View>
-            {!isMobile && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
-            <View style={styles.statItem}>
-              <Text style={[styles.statVal, { color: colors.warning }]}>{kpis.pendingPayments}</Text>
-              <Text style={[styles.statLbl, { color: colors.textSecondary }]}>دفعة معلقة</Text>
-            </View>
-            {!isMobile && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
-            <View style={styles.statItem}>
-              <Text style={[styles.statVal, { color: colors.danger }]}>{kpis.overduePayments}</Text>
-              <Text style={[styles.statLbl, { color: colors.textSecondary }]}>دفعة متأخرة</Text>
-            </View>
-            {!isMobile && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
-            <View style={styles.statItem}>
-              <Text style={[styles.statVal, { color: colors.primary }]}>{kpis.collectionRate}%</Text>
-              <Text style={[styles.statLbl, { color: colors.textSecondary }]}>نسبة التحصيل</Text>
-            </View>
-          </View>
-        </View>
 
         {/* Recent Activity */}
         <View style={styles.sectionPad}>
           <View style={styles.rowBetween}>
             <Text style={[styles.sectionHeading, { color: colors.text }]}>آخر العمليات</Text>
             <TouchableOpacity onPress={() => router.push('/audit-log')}>
-              <Text style={[styles.seeAll, { color: colors.secondary }]}>عرض الكل</Text>
+              <Text style={[styles.seeAll, { color: colors.accent }]}>عرض الكل</Text>
             </TouchableOpacity>
           </View>
           {recentActivity.map(log => (
@@ -1033,6 +966,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 4,
   },
+  qaCard: { borderWidth: 1, borderRadius: 14, padding: 16 },
+  qaTitle: { fontSize: 16, fontWeight: '600', textAlign: 'right', marginBottom: 12 },
+  qaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  qaBtn: { flexBasis: '48%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, minHeight: 46 },
+  qaLabel: { fontSize: 14, fontWeight: '500', flexShrink: 1 },
   sectionPad: {
     paddingHorizontal: Theme.spacing.base,
     marginTop: Theme.spacing.xl,
@@ -1053,20 +991,8 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     flexWrap: 'nowrap',
   },
-  sectionHeading: {
-    fontSize: Theme.fontSize.lg,
-    fontWeight: Theme.fontWeight.bold,
-    marginBottom: Theme.spacing.sm,
-    textAlign: 'right',
-  },
-  secLabel: {
-    fontSize: Theme.fontSize.xs,
-    fontWeight: Theme.fontWeight.semibold,
-    textAlign: 'right',
-    marginBottom: 8,
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
+  sectionHeading: { fontSize: 16, fontWeight: '600', textAlign: 'right', marginBottom: 12 },
+  secLabel: { fontSize: 16, fontWeight: '600', textAlign: 'right', marginBottom: 12 },
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',

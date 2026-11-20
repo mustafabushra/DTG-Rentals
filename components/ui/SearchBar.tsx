@@ -15,18 +15,8 @@ export function SearchBar({ value, onChangeText, placeholder = 'بحث...', onFi
   const { colors } = useAppTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-      {onFilterPress && (
-        <TouchableOpacity
-          onPress={onFilterPress}
-          style={styles.filterBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="تصفية النتائج"
-        >
-          <Ionicons name="options-outline" size={18} color={colors.primary} />
-        </TouchableOpacity>
-      )}
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Ionicons name="search-outline" size={18} color={colors.textMuted} accessibilityElementsHidden />
       <TextInput
         style={[styles.input, { color: colors.text }]}
         value={value}
@@ -39,7 +29,17 @@ export function SearchBar({ value, onChangeText, placeholder = 'بحث...', onFi
         accessibilityLabel={placeholder}
         accessibilityRole="search"
       />
-      <Ionicons name="search-outline" size={18} color={colors.textMuted} accessibilityElementsHidden />
+      {onFilterPress && (
+        <TouchableOpacity
+          onPress={onFilterPress}
+          style={styles.filterBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="تصفية النتائج"
+        >
+          <Ionicons name="options-outline" size={18} color={colors.primary} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -48,18 +48,19 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.lg,    // 12 — unified with Input
+    borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: spacing[3],
-    height: 48,                 // same as Input height
+    height: 44,
     marginHorizontal: spacing[4],
     marginVertical: spacing[2],
     gap: spacing[2],
   },
   input: {
     flex: 1,
-    fontSize: fontSize.base,    // 15 — unified
+    fontSize: 14,
     paddingVertical: 0,
+    ...({ outlineStyle: 'none' } as any),
   },
   filterBtn: {
     padding: spacing[1],

@@ -106,8 +106,10 @@ export default function VouchersScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث برقم السند أو الاسم أو البيان..." />
         <FilterBar options={TYPE_OPTIONS} value={type} onChange={setType} />
-        <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
-        <FilterBar options={STATUS_OPTIONS} value={status} onChange={setStatus} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+          <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
+          <FilterBar options={STATUS_OPTIONS} value={status} onChange={setStatus} containerStyle={{ paddingHorizontal: 0 }} />
+        </View>
         <View style={{ paddingHorizontal: hPad, marginTop: Theme.spacing.sm }}>
           <FormSelect label="العقار" value={propertyId} options={propOptions} onSelect={setPropertyId} />
         </View>

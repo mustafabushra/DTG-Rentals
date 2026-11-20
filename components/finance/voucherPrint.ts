@@ -45,14 +45,14 @@ export function buildVoucherHTML(v: Voucher, extra: { propertyName?: string; uni
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'IBM Plex Sans Arabic', Tahoma, sans-serif; background: #F3F4F6; color: #161616; direction: rtl; padding: 24px; }
   .page { position: relative; max-width: 210mm; margin: 0 auto; background: #fff; border: 1px solid #D2D6DB; border-radius: 16px; overflow: hidden; }
-  .bar { height: 8px; background: #1B8354; }
+  .bar { height: 8px; background: #0F2A47; }
   .head { display: flex; align-items: center; justify-content: space-between; padding: 20px 28px 16px; border-bottom: 1px solid #E5E7EB; gap: 16px; }
   .brand { display: flex; align-items: center; gap: 12px; }
   .brand img { height: 52px; width: auto; }
   .brand .name { font-size: 16px; font-weight: 700; }
   .brand .sub { font-size: 11px; color: #6C737F; margin-top: 2px; }
   .title { text-align: center; }
-  .title h1 { font-size: 24px; font-weight: 700; color: ${isReceipt ? '#1B8354' : '#B42318'}; }
+  .title h1 { font-size: 24px; font-weight: 700; color: ${isReceipt ? '#0F2A47' : '#B42318'}; }
   .title .en { font-size: 11px; color: #6C737F; letter-spacing: .5px; }
   .meta { display: grid; gap: 6px; min-width: 170px; }
   .meta .box { border: 1px solid #D2D6DB; border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
@@ -60,10 +60,10 @@ export function buildVoucherHTML(v: Voucher, extra: { propertyName?: string; uni
   .meta .box b { font-weight: 600; direction: ltr; unicode-bidi: plaintext; }
   .body { padding: 18px 28px 8px; display: grid; gap: 12px; }
   .amount { display: flex; align-items: stretch; gap: 12px; }
-  .amount .num { border: 2px solid ${isReceipt ? '#1B8354' : '#B42318'}; border-radius: 8px; padding: 8px 16px; min-width: 190px; text-align: center; }
+  .amount .num { border: 2px solid ${isReceipt ? '#0F2A47' : '#B42318'}; border-radius: 8px; padding: 8px 16px; min-width: 190px; text-align: center; }
   .amount .num .v { font-size: 26px; font-weight: 700; direction: ltr; unicode-bidi: plaintext; }
   .amount .num .c { font-size: 12px; color: #6C737F; }
-  .amount .words { flex: 1; background: ${isReceipt ? '#F3FCF6' : '#FEF3F2'}; border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; }
+  .amount .words { flex: 1; background: ${isReceipt ? '#F3ECDD' : '#FEF3F2'}; border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; }
   .amount .words .l { font-size: 11px; color: #6C737F; margin-bottom: 2px; }
   .amount .words .t { font-size: 15px; font-weight: 600; line-height: 1.7; }
   .row { display: flex; gap: 10px; align-items: baseline; border-bottom: 1px dashed #D2D6DB; padding: 8px 0; font-size: 14px; }
@@ -79,7 +79,7 @@ export function buildVoucherHTML(v: Voucher, extra: { propertyName?: string; uni
   .void-note { margin: 0 28px 12px; background: #FEF3F2; border: 1px solid #FECDCA; color: #B42318; border-radius: 6px; padding: 8px 12px; font-size: 12px; }
   .actions { max-width: 210mm; margin: 0 auto 16px; display: flex; gap: 8px; justify-content: flex-start; }
   .actions button { font-family: inherit; font-size: 14px; border-radius: 4px; padding: 8px 18px; cursor: pointer; border: 1px solid #D2D6DB; background: #fff; }
-  .actions button.primary { background: #1B8354; border-color: #1B8354; color: #fff; }
+  .actions button.primary { background: #0F2A47; border-color: #0F2A47; color: #fff; }
   @media print {
     body { background: #fff; padding: 0; }
     .page { border: none; border-radius: 0; }

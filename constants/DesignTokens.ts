@@ -52,12 +52,13 @@ export const lineHeight = {
 } as const;
 
 // ─── Border Radius ────────────────────────────────────────────────────────────
+// تسلسل الزوايا حسب الأهمية: عناصر التحكم 8، الكروت 14، الواجهة الرئيسية 20
 export const radius = {
   none: 0,
-  sm:   4,
-  md:   8,
+  sm:   8,
+  md:   10,
   lg:   12,
-  xl:   16,
+  xl:   14,
   '2xl':20,
   full: 9999,
 } as const;
@@ -65,21 +66,21 @@ export const radius = {
 // ─── Shadows ──────────────────────────────────────────────────────────────────
 export const shadow = {
   sm: {
-    shadowColor: '#101828',
+    shadowColor: '#071729',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   md: {
-    shadowColor: '#101828',
+    shadowColor: '#071729',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#101828',
+    shadowColor: '#071729',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 20,
@@ -104,88 +105,83 @@ export const duration = {
 } as const;
 
 // ─── Brand Palette ────────────────────────────────────────────────────────────
-// مبني على نظام التصميم الموحّد "منصات" (هيئة الحكومة الرقمية):
-// أخضر أساسي + رماديات محايدة + ألوان حالة واضحة. الهوية (الشعار) تبقى لـ DTG.
-const green = {
-  25:  '#F7FDF9',
-  50:  '#F3FCF6',
-  100: '#DFF6E7',
-  200: '#B8EACB',
-  300: '#88D8AD',
-  400: '#54C08A',
-  500: '#25935F',
-  600: '#1B8354',   // primary
-  700: '#166A45',   // hover
-  800: '#14573A',
-  900: '#104631',
-  950: '#092A1E',
+// هوية DTG: كحلي الشعار + ذهبه، على أرضية رمادية باردة نظيفة.
+// الكحلي للهيكل والإجراءات الأساسية، والذهبي للتوكيد فقط (العنصر النشط، المؤشرات).
+const navy = {
+  50:  '#EEF2F7',
+  100: '#DCE4EE',
+  200: '#B7C6D8',
+  300: '#8AA1BC',
+  400: '#5A7799',
+  500: '#365A80',
+  600: '#214670',
+  700: '#183A60',
+  800: '#0F2A47',   // primary
+  900: '#0A2038',
+  950: '#071729',   // sidebar / hero
+} as const;
+
+const gold = {
+  50:  '#FAF6EE',
+  100: '#F3ECDD',
+  200: '#E7D8B8',
+  300: '#D4BC8A',
+  400: '#C3A56E',
+  500: '#B08D4F',   // accent
+  600: '#946F37',
+  700: '#76572B',
 } as const;
 
 const neutral = {
-  25:  '#FCFCFD',
-  50:  '#F9FAFB',
-  100: '#F3F4F6',
-  200: '#E5E7EB',
-  300: '#D2D6DB',
-  400: '#9DA4AE',
-  500: '#6C737F',
-  600: '#4D5761',
-  700: '#384250',
-  800: '#1F2A37',
-  900: '#111927',
-  950: '#0D121C',
+  25:  '#FBFCFD',
+  50:  '#F3F4F6',   // app background
+  100: '#ECEEF1',
+  200: '#E3E6EA',   // borders
+  300: '#CDD2D9',
+  400: '#9AA4B1',
+  500: '#7A8797',
+  600: '#5B6878',
+  700: '#46566A',
+  800: '#2A3746',
+  900: '#13202F',   // text
 } as const;
 
 const palette = {
-  white:        '#FFFFFF',
-  textDefault:  '#161616',
-
-  success100: '#ECFDF3',
-  success500: '#079455',
-  success700: '#067647',
-
-  warning100: '#FFFAEB',
-  warning500: '#DC6803',
-  warning700: '#B54708',
-
-  danger100:  '#FEF3F2',
-  danger500:  '#D92D20',
-  danger700:  '#B42318',
-
-  info100:    '#EFF8FF',
-  info500:    '#1570EF',
-  info700:    '#1849A9',
-
-  purple100:  '#F4F3FF',
-  purple500:  '#6938EF',
+  white:      '#FFFFFF',
+  success100: '#E6F4EE', success500: '#1A9468', success700: '#12805C',
+  warning100: '#FDF1DE', warning500: '#D98A0B', warning700: '#B26B00',
+  danger100:  '#FCEBE8', danger500:  '#D9432F', danger700:  '#C4321F',
+  info100:    '#E8F0FB', info500:    '#3B7BD8', info700:    '#2763C4',
+  purple100:  '#F0ECFA', purple500:  '#6B4FC8',
 } as const;
 
-/** ألوان النظام الخام — للاستخدام النادر حين لا يكفي الرمز الدلالي */
-export const dga = { green, neutral, ...palette } as const;
+/** ألوان الهوية الخام — للحالات النادرة التي لا يكفيها الرمز الدلالي */
+export const dtg = { navy, gold, neutral, ...palette } as const;
+/** @deprecated توافق مع الكود السابق */
+export const dga = dtg;
 
 // ─── Semantic Color Tokens (Theme-aware) ──────────────────────────────────────
 export type ThemeColors = typeof lightColors;
 
 export const lightColors = {
-  primary:        green[600],
-  primaryLight:   green[500],
-  primarySubtle:  green[50],
-  primaryHover:   green[700],
-  primaryDeep:    green[800],
+  primary:        navy[800],
+  primaryLight:   navy[600],
+  primarySubtle:  navy[50],
+  primaryHover:   navy[700],
+  primaryDeep:    navy[950],
 
-  // التوكيد = الأخضر نفسه (منصات تعتمد لوناً أساسياً واحداً)
-  accent:         green[600],
-  accentHover:    green[700],
-  accentSubtle:   green[100],
-  accentMuted:    green[300],
+  accent:         gold[500],
+  accentHover:    gold[600],
+  accentSubtle:   gold[100],
+  accentMuted:    gold[300],
 
-  secondary:      neutral[700],
+  secondary:      navy[600],
 
   success:        palette.success700,
   successSubtle:  palette.success100,
   warning:        palette.warning700,
   warningSubtle:  palette.warning100,
-  danger:         palette.danger500,
+  danger:         palette.danger700,
   dangerSubtle:   palette.danger100,
   info:           palette.info700,
   infoSubtle:     palette.info100,
@@ -195,76 +191,89 @@ export const lightColors = {
   background:     neutral[50],
   surface:        neutral[100],
   card:           palette.white,
-  overlay:        'rgba(13,18,28,0.5)',
+  overlay:        'rgba(7,23,41,0.55)',
 
   border:         neutral[200],
   borderStrong:   neutral[300],
 
-  text:           palette.textDefault,
+  text:           neutral[900],
   textSecondary:  neutral[700],
   textMuted:      neutral[500],
   textInverse:    palette.white,
 
   inputBg:        palette.white,
-  inputBorder:    neutral[400],
-  inputFocus:     green[600],
+  inputBorder:    neutral[300],
+  inputFocus:     navy[600],
 
   tabBar:         palette.white,
-  tabActive:      green[600],
+  tabActive:      navy[800],
   tabInactive:    neutral[500],
 
-  filterActive:   green[600],
-  filterInactive: neutral[200],
+  filterActive:   navy[800],
+  filterInactive: neutral[100],
+
+  // الهيكل الداكن (القائمة الجانبية والواجهة العلوية للرئيسية)
+  chrome:         navy[950],
+  chromeRaised:   navy[900],
+  chromeBorder:   'rgba(255,255,255,0.08)',
+  chromeText:     'rgba(255,255,255,0.92)',
+  chromeMuted:    'rgba(255,255,255,0.56)',
 } as const;
 
 export const darkColors = {
-  primary:        green[400],
-  primaryLight:   green[300],
-  primarySubtle:  '#0E2A1D',
-  primaryHover:   green[300],
-  primaryDeep:    green[950],
+  primary:        gold[300],
+  primaryLight:   gold[200],
+  primarySubtle:  'rgba(212,188,138,0.12)',
+  primaryHover:   gold[200],
+  primaryDeep:    '#050F1C',
 
-  accent:         green[400],
-  accentHover:    green[300],
-  accentSubtle:   '#0E2A1D',
-  accentMuted:    green[700],
+  accent:         gold[300],
+  accentHover:    gold[200],
+  accentSubtle:   'rgba(212,188,138,0.14)',
+  accentMuted:    gold[600],
 
-  secondary:      neutral[300],
+  secondary:      navy[300],
 
-  success:        '#47CD89',
-  successSubtle:  '#053321',
-  warning:        '#FDB022',
-  warningSubtle:  '#4E1D09',
-  danger:         '#F97066',
-  dangerSubtle:   '#55160C',
-  info:           '#53B1FD',
-  infoSubtle:     '#102A56',
-  purple:         '#9B8AFB',
-  purpleSubtle:   '#27115F',
+  success:        '#4CC796',
+  successSubtle:  'rgba(76,199,150,0.14)',
+  warning:        '#F0B44C',
+  warningSubtle:  'rgba(240,180,76,0.14)',
+  danger:         '#F07A6A',
+  dangerSubtle:   'rgba(240,122,106,0.14)',
+  info:           '#7EAAF0',
+  infoSubtle:     'rgba(126,170,240,0.14)',
+  purple:         '#A894F0',
+  purpleSubtle:   'rgba(168,148,240,0.14)',
 
-  background:     neutral[950],
-  surface:        neutral[900],
-  card:           neutral[800],
+  background:     '#08121F',
+  surface:        '#0E1B2C',
+  card:           '#112035',
   overlay:        'rgba(0,0,0,0.65)',
 
-  border:         neutral[700],
-  borderStrong:   neutral[600],
+  border:         '#1C2D44',
+  borderStrong:   '#29405E',
 
-  text:           neutral[50],
-  textSecondary:  neutral[300],
-  textMuted:      neutral[400],
-  textInverse:    neutral[950],
+  text:           '#EEF2F7',
+  textSecondary:  '#B7C6D8',
+  textMuted:      '#7F92AA',
+  textInverse:    navy[950],
 
-  inputBg:        neutral[900],
-  inputBorder:    neutral[600],
-  inputFocus:     green[400],
+  inputBg:        '#0E1B2C',
+  inputBorder:    '#29405E',
+  inputFocus:     gold[300],
 
-  tabBar:         neutral[900],
-  tabActive:      green[400],
-  tabInactive:    neutral[400],
+  tabBar:         '#0E1B2C',
+  tabActive:      gold[300],
+  tabInactive:    '#7F92AA',
 
-  filterActive:   green[400],
-  filterInactive: neutral[700],
+  filterActive:   gold[300],
+  filterInactive: '#16263C',
+
+  chrome:         '#050F1C',
+  chromeRaised:   '#0A1828',
+  chromeBorder:   'rgba(255,255,255,0.06)',
+  chromeText:     'rgba(255,255,255,0.92)',
+  chromeMuted:    'rgba(255,255,255,0.5)',
 } as const;
 
 export const DesignTokens = {

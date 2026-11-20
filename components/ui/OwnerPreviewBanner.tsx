@@ -37,7 +37,7 @@ export function OwnerPreviewBanner() {
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#1B8354',
+    backgroundColor: '#0F2A47',
     paddingHorizontal: Theme.spacing.base, paddingBottom: 10,
     ...(Platform.OS === 'web' ? { position: 'sticky' as any, top: 0, zIndex: 1000 } : {}),
   },

@@ -13,7 +13,7 @@
  *   • Stateless: receives state, dispatches changes up
  */
 import React, { useRef, useEffect } from 'react';
-import { ScrollView, TouchableOpacity, Text, StyleSheet, ViewStyle, Platform } from 'react-native';
+import { ScrollView, TouchableOpacity, Text, View, StyleSheet, ViewStyle, Platform } from 'react-native';
 import { lightColors, darkColors, spacing, fontSize, fontWeight, radius } from '../../constants/DesignTokens';
 import { useAppTheme } from '../../hooks/useAppTheme';
 export interface FilterOption {
@@ -87,13 +87,14 @@ export const GENERAL_FILTERS: FilterOption[] = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
+// شكل "مقطّع" (segmented): مجموعة واحدة هادئة بدل حبوب داكنة متكررة —
+// الخيار النشط بطاقة بيضاء مرفوعة بنص كحلي، والباقي نص رمادي على أرضية رمادية.
 
 export function FilterBar({ options, value, onChange, containerStyle }: FilterBarProps) {
   const { colors, scheme } = useAppTheme();
   const scrollRef = useRef<ScrollView>(null);
-  // في الـ dark mode الخلفية النشطة ذهبية فاتحة → نص داكن. في light mode الخلفية داكنة → نص أبيض
-  const activeTextColor   = scheme === 'dark' ? '#0F1923' : '#FFFFFF';
-  const inactiveTextColor = scheme === 'dark' ? colors.textSecondary : '#1E3E5F';
+  const activeBg   = scheme === 'dark' ? colors.borderStrong : colors.card;
+  const activeText = scheme === 'dark' ? colors.text : colors.primary;
 
   // على web RTL يبدأ الـ scroll من اليسار (الـ end) — نعيده لليمين (الـ start) بعد mount
   useEffect(() => {
@@ -110,30 +111,31 @@ export function FilterBar({ options, value, onChange, containerStyle }: FilterBa
       style={styles.scroll}
       contentContainerStyle={[styles.content, containerStyle]}
     >
-      {options.map(opt => {
-        const isActive = opt.value === value;
-        return (
-          <TouchableOpacity
-            key={opt.value}
-            onPress={() => onChange(opt.value)}
-            style={[
-              styles.pill,
-              {
-                backgroundColor: isActive ? colors.filterActive : colors.filterInactive,
-                borderColor:     isActive ? colors.filterActive : colors.border,
-              },
-            ]}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[styles.pillText, { color: isActive ? activeTextColor : inactiveTextColor }]}
-              numberOfLines={1}
+      <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {options.map(opt => {
+          const isActive = opt.value === value;
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => onChange(opt.value)}
+              style={[
+                styles.seg,
+                isActive && [styles.segActive, { backgroundColor: activeBg, borderColor: colors.border }],
+              ]}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isActive }}
             >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+              <Text
+                style={[styles.segText, { color: isActive ? activeText : colors.textSecondary }, isActive && { fontWeight: fontWeight.semibold }]}
+                numberOfLines={1}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </ScrollView>
   );
 }
@@ -144,24 +146,38 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   content: {
-    flexDirection: 'row',        // direction:'rtl' from root → flows right-to-left
+    flexDirection: 'row',
     paddingHorizontal: spacing[4],
-    paddingVertical:   spacing[2],
-    gap:               spacing[2],
+    paddingVertical:   6,
     alignItems:        'center',
   },
-  pill: {
-    height:            34,       // fixed — identical on every page
-    paddingHorizontal: spacing[4],
-    borderRadius:      radius.full,
+  group: {
+    flexDirection: 'row',
+    borderRadius:  10,
+    borderWidth:   1,
+    padding:       3,
+    gap:           2,
+  },
+  seg: {
+    height:            32,
+    paddingHorizontal: 14,
+    borderRadius:      8,
     borderWidth:       1,
-    flexShrink:        0,        // never compresses — no overlap, no clipping
+    borderColor:       'transparent',
+    flexShrink:        0,
     justifyContent:    'center',
     alignItems:        'center',
   },
-  pillText: {
-    fontSize:   fontSize.sm,
-    fontWeight: fontWeight.semibold,
+  segActive: {
+    shadowColor: '#071729',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  segText: {
+    fontSize:   13,
+    fontWeight: fontWeight.medium,
     flexShrink: 0,
   },
 });

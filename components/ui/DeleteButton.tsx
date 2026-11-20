@@ -38,7 +38,7 @@ export function DeleteButton({
     return (
       <TouchableOpacity
         onPress={onPress}
-        style={[styles.full, { backgroundColor: colors.dangerSubtle, borderColor: colors.danger }, style]}
+        style={[styles.full, { backgroundColor: colors.card, borderColor: colors.border }, style]}
         activeOpacity={0.75}
       >
         <Ionicons name="trash-outline" size={18} color={colors.danger} />
@@ -50,11 +50,12 @@ export function DeleteButton({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[styles.icon, { backgroundColor: colors.dangerSubtle }, style]}
+      // داخل الكروت: أيقونة هادئة — الأحمر يُحجز للحالات (متأخر/ملغي) لا لكل كرت
+      style={[styles.icon, { backgroundColor: 'transparent' }, style]}
       activeOpacity={0.75}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <Ionicons name="trash-outline" size={16} color={colors.danger} />
+      <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
     </TouchableOpacity>
   );
 }

@@ -19,7 +19,7 @@ const STEPS: Step[] = [
   {
     icon: 'home-outline',
     color: '#FFFFFF',
-    bg: '#1B8354',
+    bg: '#0F2A47',
     title: 'مرحباً بك في DTG Rentals 👋',
     desc: 'نظام إدارة العقارات الذكي — يساعدك على إدارة عقاراتك، مستأجريك، وعقودك من مكان واحد.',
   },
@@ -158,7 +158,7 @@ export function OnboardingTour() {
             <View style={{ flex: 1 }} />
           )}
 
-          <TouchableOpacity style={[styles.nextBtn, { backgroundColor: s.color === '#FFFFFF' ? '#1B8354' : s.color }]} onPress={next}>
+          <TouchableOpacity style={[styles.nextBtn, { backgroundColor: s.color === '#FFFFFF' ? '#0F2A47' : s.color }]} onPress={next}>
             <Text style={styles.nextText}>{isLast ? 'ابدأ الآن 🚀' : 'التالي'}</Text>
             {!isLast && <Ionicons name="chevron-back" size={18} color="#FFF" />}
           </TouchableOpacity>
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   dotActive: {
-    backgroundColor: '#1B8354',
+    backgroundColor: '#0F2A47',
     width: 20,
   },
   actions: {

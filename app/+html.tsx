@@ -25,11 +25,11 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="manifest" href="/manifest.json" />
 
         {/* ── Theme colors ── */}
-        <meta name="theme-color" content="#1B8354" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1B8354" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1B8354" />
-        <meta name="msapplication-navbutton-color" content="#1B8354" />
-        <meta name="msapplication-TileColor" content="#1B8354" />
+        <meta name="theme-color" content="#0F2A47" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F2A47" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#0F2A47" />
+        <meta name="msapplication-navbutton-color" content="#0F2A47" />
+        <meta name="msapplication-TileColor" content="#0F2A47" />
         <meta name="msapplication-TileImage" content={ICON} />
 
         {/* ── iOS PWA ── */}
@@ -183,13 +183,13 @@ export default function Root({ children }: PropsWithChildren) {
         <div id="dtg-static-landing" dangerouslySetInnerHTML={{ __html: `
           <style>
             #dtg-static-landing{font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;background:#F9FAFB;color:#161616;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center;box-sizing:border-box;}
-            #dtg-static-landing h1{color:#1B8354;font-size:2.2em;font-weight:700;margin:0 0 12px;}
+            #dtg-static-landing h1{color:#0F2A47;font-size:2.2em;font-weight:700;margin:0 0 12px;}
             #dtg-static-landing p{font-size:1.05em;max-width:600px;line-height:1.8;margin:0 0 28px;color:#384250;}
             #dtg-static-landing .features{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;max-width:720px;margin-bottom:32px;}
             #dtg-static-landing .feat{background:#FFFFFF;border:1px solid #D2D6DB;border-radius:16px;padding:16px 20px;min-width:180px;max-width:220px;font-size:.9em;line-height:1.6;color:#384250;}
             #dtg-static-landing .feat strong{color:#161616;display:block;margin-bottom:4px;}
-            #dtg-static-landing a.btn{background:#1B8354;color:#FFFFFF;padding:10px 32px;border-radius:4px;text-decoration:none;font-weight:600;font-size:1em;display:inline-block;margin-bottom:24px;}
-            #dtg-static-landing .links a{color:#1B8354;margin:0 10px;font-size:.85em;text-decoration:none;}
+            #dtg-static-landing a.btn{background:#0F2A47;color:#FFFFFF;padding:10px 32px;border-radius:4px;text-decoration:none;font-weight:600;font-size:1em;display:inline-block;margin-bottom:24px;}
+            #dtg-static-landing .links a{color:#0F2A47;margin:0 10px;font-size:.85em;text-decoration:none;}
           </style>
           <h1>DTG Rentals</h1>
           <p>منصة إدارة العقارات والإيجارات الذكية — نظام متكامل يساعد ملاك العقارات وشركات الإدارة على تتبع العقود والمدفوعات والمستأجرين في مكان واحد.</p>

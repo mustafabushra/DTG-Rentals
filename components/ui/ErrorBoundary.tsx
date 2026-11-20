@@ -52,6 +52,6 @@ const s = StyleSheet.create({
   sub:       { fontSize: 14, textAlign: 'center', color: '#6C737F', lineHeight: 22 },
   debugBox:  { maxHeight: 120, backgroundColor: '#FFF5F5', borderRadius: 8, padding: 12, width: '100%' },
   debugText: { fontSize: 11, color: '#C53030', fontFamily: 'monospace' },
-  btn:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1B8354', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+  btn:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#0F2A47', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
   btnText:   { color: '#FFF', fontSize: 15, fontWeight: '600' },
 });

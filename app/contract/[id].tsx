@@ -157,7 +157,7 @@ export default function ContractDetailScreen() {
         <View style={styles.overlay}>
           <View style={[styles.dialog, { backgroundColor: colors.card }]}>
             <View style={[styles.dialogIcon, { backgroundColor: '#EFF8FF' }]}>
-              <Ionicons name="refresh-circle-outline" size={32} color="#1B8354" />
+              <Ionicons name="refresh-circle-outline" size={32} color="#0F2A47" />
             </View>
             <Text style={[styles.dialogTitle, { color: colors.text }]}>تجديد العقد</Text>
             <Text style={[styles.dialogSub, { color: colors.textSecondary }]}>
@@ -171,7 +171,7 @@ export default function ContractDetailScreen() {
                 <Text style={[styles.dialogBtnText, { color: colors.text }]}>إلغاء</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.dialogBtn, { backgroundColor: '#1B8354' }]}
+                style={[styles.dialogBtn, { backgroundColor: '#0F2A47' }]}
                 onPress={handleRenew}
               >
                 <Ionicons name="refresh-outline" size={16} color="#FFF" />
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     minHeight: 44,
     borderRadius: Theme.radius.full,
-    backgroundColor: '#1B8354',
+    backgroundColor: '#0F2A47',
   },
   renewBtnText: { color: '#FFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
 

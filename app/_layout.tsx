@@ -259,7 +259,7 @@ export default function RootLayout() {
               ) : (
                 // شاشة انتظار Auth — تمنع الشاشة البيضاء والـ touch warnings
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
-                  <ActivityIndicator size="large" color="#1B8354" />
+                  <ActivityIndicator size="large" color="#0F2A47" />
                 </View>
               )}
             </SidebarProvider>

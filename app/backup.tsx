@@ -335,7 +335,7 @@ function RecoveryConsole({ colors, currentData, onImport }: {
     <View style={{ gap: 14, paddingTop: 4 }}>
 
       {/* ── Recovery Console header ── */}
-      <View style={[s.consoleHeader, { backgroundColor: '#14573A' }]}>
+      <View style={[s.consoleHeader, { backgroundColor: '#071729' }]}>
         <Ionicons name="terminal-outline" size={18} color="#FFFFFF" />
         <Text style={s.consoleTitle}>وحدة الاستعادة</Text>
         <Animated.View style={[s.statusPill, { backgroundColor: statusColor + '22', borderColor: statusColor, transform: [{ scale: pillScale }] }]}>

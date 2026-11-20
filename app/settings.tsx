@@ -418,7 +418,7 @@ export default function SettingsScreen() {
               {calConnected ? (
                 <>
                   <TouchableOpacity
-                    style={[styles.integrationBtn, { backgroundColor: '#1B8354' }]}
+                    style={[styles.integrationBtn, { backgroundColor: '#0F2A47' }]}
                     onPress={handleSyncCalendar}
                     disabled={calSyncing}
                   >

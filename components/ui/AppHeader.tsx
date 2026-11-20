@@ -29,7 +29,7 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
   const showHamburger = Platform.OS === 'web' && !isDesktop;
 
   // Compact title on small phones
-  const titleSize = isSmallPhone ? fontSize.lg : fontSize.xl;
+  const titleSize = isSmallPhone ? 17 : 19;
 
   return (
     <View style={[
@@ -45,7 +45,7 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
     >
       <View style={styles.row}>
 
-        <View style={[styles.sideStart, showHamburger && showBack && { width: 100, flexDirection: 'row', gap: 4 }]}>
+        <View style={[styles.sideStart, { flexDirection: 'row', gap: 2 }]}>
           {showBack && (
             <TouchableOpacity
               style={styles.backBtn}
@@ -55,10 +55,7 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
               accessibilityLabel="رجوع"
               accessibilityHint="العودة للشاشة السابقة"
             >
-              <Ionicons name="chevron-forward" size={22} color={iconColor} />
-              {!showHamburger && !isSmallPhone && (
-                <Text style={[styles.backText, { color: iconColor }]}>رجوع</Text>
-              )}
+              <Ionicons name="arrow-forward" size={20} color={iconColor} />
             </TouchableOpacity>
           )}
           {showHamburger && (
@@ -87,14 +84,15 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
         <View style={styles.side}>
           {rightAction && (
             <TouchableOpacity
-              style={styles.iconBtn}
+              // "إضافة" هو الإجراء الرئيسي في الصفحة ⇒ زر ممتلئ؛ غيره أيقونة هادئة
+              style={[styles.iconBtn, rightAction.icon === 'add' && !transparent && { backgroundColor: colors.primary }]}
               onPress={rightAction.onPress}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
               accessibilityLabel={rightAction.label ?? title}
               accessibilityHint={rightAction.badge ? `${rightAction.badge} إشعار` : undefined}
             >
-              <Ionicons name={rightAction.icon as any} size={22} color={iconColor} />
+              <Ionicons name={rightAction.icon as any} size={22} color={rightAction.icon === 'add' && !transparent ? colors.textInverse : iconColor} />
               {!!rightAction.badge && rightAction.badge > 0 && (
                 <View style={styles.badge} accessibilityElementsHidden>
                   <Text style={styles.badgeText}>{rightAction.badge > 99 ? '99+' : rightAction.badge}</Text>
@@ -122,15 +120,16 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
 const HEADER_HEIGHT = 44;
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: spacing[3] },
+  container: { paddingBottom: spacing[2] },
   row:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: HEADER_HEIGHT },
-  side:      { width: 72, alignItems: 'flex-end', justifyContent: 'center' },
-  sideStart: { width: 72, alignItems: 'flex-start', justifyContent: 'center' },
-  backBtn:   { flexDirection: 'row', alignItems: 'center', gap: spacing[1], minHeight: 44, paddingVertical: spacing[2] },
+  side:      { minWidth: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
+  sideStart: { alignItems: 'center', justifyContent: 'flex-start' },
+  backBtn:   { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   backText:  { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
-  title:     { flex: 1, fontWeight: fontWeight.semibold, textAlign: 'center' },
+  // العنوان يبدأ من جهة البداية (يمين) كعناوين الصفحات، لا في المنتصف
+  title:     { flex: 1, fontWeight: fontWeight.semibold, textAlign: 'right', paddingHorizontal: spacing[2] },
   actionText:{ fontSize: fontSize.md, fontWeight: fontWeight.semibold },
-  iconBtn:   { padding: spacing[2], minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  iconBtn:   { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   badge: {
     position: 'absolute', top: 4, right: 4,
     backgroundColor: '#D92D20', borderRadius: radius.full,

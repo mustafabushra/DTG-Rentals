@@ -14,8 +14,8 @@ import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 // ─── Colour tokens ────────────────────────────────────────────────────────────
 const C = {
-  navy:       '#14573A',
-  navyLight:  '#166A45',
+  navy:       '#071729',
+  navyLight:  '#183A60',
   gold:       '#FFFFFF',
   goldDim:    'rgba(255,255,255,0.15)',
   white:      '#FFFFFF',

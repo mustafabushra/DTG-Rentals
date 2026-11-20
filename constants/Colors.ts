@@ -19,7 +19,7 @@ export const Colors = {
     tabBarBorder:    lightColors.border,
     headerBg:        lightColors.primary,
     headerText:      lightColors.textInverse,
-    shadow:          '#101828',
+    shadow:          '#071729',
     accent:          lightColors.accentSubtle,
     accentGold:      lightColors.accent,
     accentSecondary: lightColors.accentMuted,

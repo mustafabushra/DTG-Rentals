@@ -60,8 +60,10 @@ export default function MaintenanceScreen() {
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث في الطلبات..." />
 
-      <FilterBar options={statusOptions} value={statusFilter} onChange={v => setStatusFilter(v as StatusFilter)} />
-      <FilterBar options={priorityOptions} value={priorityFilter} onChange={v => setPriorityFilter(v as PriorityFilter)} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+        <FilterBar options={statusOptions} value={statusFilter} onChange={v => setStatusFilter(v as StatusFilter)} />
+        <FilterBar options={priorityOptions} value={priorityFilter} onChange={v => setPriorityFilter(v as PriorityFilter)} containerStyle={{ paddingHorizontal: 0 }} />
+      </View>
 
       {/* Stats */}
       <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>

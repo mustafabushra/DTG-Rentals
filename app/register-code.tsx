@@ -58,7 +58,7 @@ export default function RegisterCodeScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.topBg, { backgroundColor: '#14573A' }]}>
+        <View style={[styles.topBg, { backgroundColor: '#071729' }]}>
           <View style={[styles.circle1, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
           <View style={[styles.circle2, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
         </View>
@@ -134,7 +134,7 @@ export default function RegisterCodeScreen() {
             ) : null}
 
             <TouchableOpacity
-              style={[styles.submitBtn, { backgroundColor: '#1B8354' }, loading && { opacity: 0.7 }]}
+              style={[styles.submitBtn, { backgroundColor: '#0F2A47' }, loading && { opacity: 0.7 }]}
               onPress={handleSubmit}
               disabled={loading}
               activeOpacity={0.85}

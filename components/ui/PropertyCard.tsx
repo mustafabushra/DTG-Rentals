@@ -46,14 +46,15 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 // Placeholder gradients per type (used when no photo)
+// كل الأنواع من عائلة الكحلي — النوع يظهر في الشارة، لا في لون الكرت كله
 const TYPE_COLORS: Record<string, [string, string]> = {
-  apartment: ['#1B8354', '#25935F'],
-  villa:     ['#14573A', '#1B8354'],
-  office:    ['#5925DC', '#6938EF'],
-  shop:      ['#B42318', '#D92D20'],
-  building:  ['#1849A9', '#1570EF'],
-  tower:     ['#194185', '#1849A9'],
-  land:      ['#B54708', '#DC6803'],
+  apartment: ['#0F2A47', '#214670'],
+  villa:     ['#071729', '#0F2A47'],
+  office:    ['#183A60', '#365A80'],
+  shop:      ['#0A2038', '#183A60'],
+  building:  ['#0F2A47', '#183A60'],
+  tower:     ['#071729', '#183A60'],
+  land:      ['#214670', '#365A80'],
 };
 
 export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCount = 0, onDelete }: PropertyCardProps) {
@@ -71,7 +72,7 @@ export function PropertyCard({ property, photos = [], rentedCount = 0, vacantCou
   const occupancy = total > 0 ? Math.round((rentedCount / total) * 100) : 0;
   const typeLabel = TYPE_LABELS[property.type] ?? property.type;
   const typeIcon  = TYPE_ICONS[property.type] ?? 'home-outline';
-  const [bgFrom]  = TYPE_COLORS[property.type] ?? ['#1B8354', '#25935F'];
+  const [bgFrom]  = TYPE_COLORS[property.type] ?? ['#0F2A47', '#214670'];
 
   // Responsive image height: 44% of card width (card = screen - 32px margin)
   // سقف للارتفاع: في الشبكة على الشاشات العريضة كانت الصورة تأخذ ارتفاع عرض الشاشة كاملة

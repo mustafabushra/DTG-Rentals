@@ -104,8 +104,10 @@ export function ExpensesScreen({ scope }: { scope: ExpenseScope }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <SearchBar value={search} onChangeText={setSearch} placeholder="ابحث بالتصنيف أو المورد أو رقم السند..." />
-        <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
-        <FilterBar options={STATUS_OPTIONS} value={status} onChange={setStatus} />
+        <View style={styles.filtersRow}>
+          <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
+          <FilterBar options={STATUS_OPTIONS} value={status} onChange={setStatus} containerStyle={{ paddingHorizontal: 0 }} />
+        </View>
 
         <View style={[styles.selects, { paddingHorizontal: hPad }]}>
           {scope === 'property' && (
@@ -126,7 +128,7 @@ export function ExpensesScreen({ scope }: { scope: ExpenseScope }) {
               {Object.keys(totals).length === 0 ? (
                 <Text style={[styles.summaryValue, { color: colors.text }]}>0</Text>
               ) : Object.entries(totals).map(([cur, amt]) => (
-                <CurrencyText key={cur} amount={amt} currency={cur} size={22} color={colors.danger} />
+                <CurrencyText key={cur} amount={amt} currency={cur} size={24} color={colors.text} />
               ))}
             </View>
             <View style={[styles.countBox, { backgroundColor: colors.surface }]}>
@@ -175,8 +177,8 @@ export function ExpensesScreen({ scope }: { scope: ExpenseScope }) {
                   activeOpacity={0.8}
                   style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}
                 >
-                  <View style={[styles.rowIcon, { backgroundColor: cancelled ? colors.surface : colors.dangerSubtle }]}>
-                    <Ionicons name={scope === 'office' ? 'briefcase-outline' : 'receipt-outline'} size={18} color={cancelled ? colors.textMuted : colors.danger} />
+                  <View style={[styles.rowIcon, { backgroundColor: cancelled ? colors.surface : colors.primarySubtle }]}>
+                    <Ionicons name={scope === 'office' ? 'briefcase-outline' : 'receipt-outline'} size={18} color={cancelled ? colors.textMuted : colors.primary} />
                   </View>
                   <View style={styles.rowMain}>
                     <View style={styles.rowLine}>
@@ -190,7 +192,7 @@ export function ExpensesScreen({ scope }: { scope: ExpenseScope }) {
                       )}
                     </View>
                     <Text style={[styles.rowSub, { color: colors.textMuted }]} numberOfLines={1}>
-                      {[formatDate(e.date), where_, voucherNo(e)].filter(Boolean).join('  ·  ')}
+                      {[formatDate(e.date), where_, voucherNo(e)].filter(Boolean).join('، ')}
                     </Text>
                   </View>
                   <View style={styles.rowAmt}>
@@ -212,6 +214,7 @@ export function ExpensesScreen({ scope }: { scope: ExpenseScope }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  filtersRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   selects: { flexDirection: 'row', gap: Theme.spacing.sm, marginTop: Theme.spacing.sm },
   summary: { marginTop: Theme.spacing.base, borderWidth: 1, borderRadius: Theme.radius.xl, padding: Theme.spacing.base, gap: Theme.spacing.md },
   summaryTop: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.md },

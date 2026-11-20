@@ -71,7 +71,7 @@ function buildReceiptHTML(p: {
   body{font-family:'IBM Plex Sans Arabic',Arial,sans-serif;background:#F3F4F6;display:flex;justify-content:center;padding:20px;color:#161616}
   .page{width:210mm;min-height:148mm;background:#fff;border:1px solid #D2D6DB;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12)}
   /* header */
-  .header{background:#1B8354;padding:28px 36px;display:flex;align-items:center;justify-content:space-between}
+  .header{background:#0F2A47;padding:28px 36px;display:flex;align-items:center;justify-content:space-between}
   .logo-wrap{display:flex;align-items:center;gap:14px}
   .logo{height:54px;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
   .company-name{color:#FFFFFF;font-size:22px;font-weight:700;line-height:1.2}
@@ -88,19 +88,19 @@ function buildReceiptHTML(p: {
   /* body */
   .body{padding:24px 36px;display:grid;grid-template-columns:1fr 1fr;gap:0}
   .section{padding:12px 0}
-  .section-title{font-size:12px;font-weight:600;color:#1B8354;letter-spacing:0;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid #F3F4F6;padding-bottom:6px}
+  .section-title{font-size:12px;font-weight:600;color:#0F2A47;letter-spacing:0;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid #F3F4F6;padding-bottom:6px}
   .row{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
   .row-label{font-size:12px;color:#888;min-width:110px;flex-shrink:0}
   .row-val{font-size:13px;font-weight:600;color:#222;flex:1}
   .divider{width:1px;background:#F3F4F6;margin:0 20px}
   /* installment */
   .installment-bar{margin:0 36px 20px;background:#F3F4F6;border-radius:8px;overflow:hidden;height:8px}
-  .installment-fill{background:#1B8354;height:8px;border-radius:8px}
+  .installment-fill{background:#0F2A47;height:8px;border-radius:8px}
   .installment-label{margin:0 36px 8px;display:flex;justify-content:space-between;font-size:11px;color:#888}
   /* footer */
   .footer{background:#F9FAFB;border-top:1px solid #eee;padding:14px 36px;display:flex;align-items:center;justify-content:space-between}
   .footer-note{font-size:10px;color:#aaa}
-  .seal{display:flex;align-items:center;gap:8px;background:#1B8354;border-radius:4px;padding:6px 14px}
+  .seal{display:flex;align-items:center;gap:8px;background:#0F2A47;border-radius:4px;padding:6px 14px}
   .seal-text{color:#FFFFFF;font-size:11px;font-weight:700}
   /* notes */
   .notes-box{margin:0 36px 16px;background:#fffbf0;border:1px solid #f0e68c;border-radius:8px;padding:12px 16px;font-size:12px;color:#555}

@@ -37,7 +37,7 @@ export default function AboutScreen() {
           </Text>
           <TouchableOpacity style={styles.ctaBtn} onPress={() => router.replace('/login')}>
             <Text style={styles.ctaBtnText}>ابدأ الآن</Text>
-            <Ionicons name="arrow-back-outline" size={18} color="#14573A" style={{ marginRight: 6 }} />
+            <Ionicons name="arrow-back-outline" size={18} color="#071729" style={{ marginRight: 6 }} />
           </TouchableOpacity>
         </View>
 
@@ -78,11 +78,11 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  root:          { flex: 1, backgroundColor: '#14573A' },
+  root:          { flex: 1, backgroundColor: '#071729' },
   topBar:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.2)' },
   brandName:     { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
   loginBtn:      { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
-  loginBtnText:  { color: '#14573A', fontSize: 14, fontWeight: '700' },
+  loginBtnText:  { color: '#071729', fontSize: 14, fontWeight: '700' },
   content:       { paddingBottom: 48 },
   hero:          { alignItems: 'center', paddingHorizontal: 32, paddingTop: 48, paddingBottom: 40 },
   logoWrap:      { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   heroSub:       { color: '#FFFFFF', fontSize: 17, fontWeight: '600', marginBottom: 16, textAlign: 'center' },
   heroDesc:      { color: 'rgba(255,255,255,0.7)', fontSize: 15, lineHeight: 26, textAlign: 'center', marginBottom: 28 },
   ctaBtn:        { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 30 },
-  ctaBtnText:    { color: '#14573A', fontSize: 16, fontWeight: '800' },
+  ctaBtnText:    { color: '#071729', fontSize: 16, fontWeight: '800' },
   featuresSection: { paddingHorizontal: 20, paddingTop: 8 },
   sectionTitle:  { color: '#FFFFFF', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 20 },
   featuresGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },

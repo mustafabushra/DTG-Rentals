@@ -58,14 +58,14 @@ function SideItem({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[styles.item, isActive && { backgroundColor: colors.primarySubtle }]}
+      style={[styles.item, isActive && { backgroundColor: 'rgba(212,188,138,0.12)' }]}
       activeOpacity={0.75}
       accessibilityRole="link"
       accessibilityState={{ selected: isActive }}
     >
-      {isActive && <View style={[styles.activeBar, { backgroundColor: colors.primary }]} />}
+      {isActive && <View style={[styles.activeBar, { backgroundColor: '#D4BC8A' }]} />}
       <View style={styles.iconWrap}>
-        <Ionicons name={activeIcon as any} size={20} color={isActive ? colors.primary : colors.textMuted} />
+        <Ionicons name={activeIcon as any} size={19} color={isActive ? '#D4BC8A' : colors.chromeMuted} />
         {!!badge && badge > 0 && (
           <View style={[styles.badge, { backgroundColor: colors.danger }]}>
             <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
@@ -75,7 +75,7 @@ function SideItem({
       <Text
         style={[
           styles.label,
-          { color: isActive ? colors.primary : colors.textSecondary },
+          { color: isActive ? '#E7D8B8' : colors.chromeText },
           isActive && { fontWeight: fontWeight.semibold },
         ]}
         numberOfLines={1}
@@ -108,19 +108,18 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
     return pathname.startsWith(route.replace('/(tabs)', ''));
   };
 
-  const logo = scheme === 'dark'
-    ? require('../../assets/images/sidebar-logo.png')
-    : require('../../assets/images/sidebar-logo-dark.png');
+  // القائمة داكنة دائماً ⇒ الشعار الأبيض/الذهبي الأصلي
+  const logo = require('../../assets/images/sidebar-logo.png');
 
   return (
-    <View style={[styles.sidebar, { backgroundColor: colors.card, borderLeftColor: colors.border }]}>
+    <View style={[styles.sidebar, { backgroundColor: colors.chrome, borderLeftColor: colors.chromeBorder }]}>
       {/* Logo */}
-      <View style={[styles.logoRow, { borderBottomColor: colors.border }]}>
+      <View style={[styles.logoRow, { borderBottomColor: colors.chromeBorder }]}>
         <Image source={logo} style={styles.logoImage} resizeMode="contain" />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: spacing[2] }}>
-        <Text style={[styles.section, { color: colors.textMuted }]}>الرئيسية</Text>
+        <Text style={[styles.section, { color: colors.chromeMuted }]}>الرئيسية</Text>
         {visibleTab.map(item => (
           <SideItem
             key={item.route}
@@ -135,8 +134,8 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
 
         {visibleFin.length > 0 && (
           <>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <Text style={[styles.section, { color: colors.textMuted }]}>المالية</Text>
+            <View style={[styles.divider, { backgroundColor: colors.chromeBorder }]} />
+            <Text style={[styles.section, { color: colors.chromeMuted }]}>المالية</Text>
             {visibleFin.map(item => (
               <SideItem
                 key={item.route}
@@ -151,8 +150,8 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
           </>
         )}
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <Text style={[styles.section, { color: colors.textMuted }]}>أدوات</Text>
+        <View style={[styles.divider, { backgroundColor: colors.chromeBorder }]} />
+        <Text style={[styles.section, { color: colors.chromeMuted }]}>أدوات</Text>
         {visibleMore.map(item => (
           <SideItem
             key={item.route}
@@ -169,20 +168,20 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
 
       {/* User Footer */}
       <TouchableOpacity
-        style={[styles.userRow, { borderTopColor: colors.border }]}
+        style={[styles.userRow, { borderTopColor: colors.chromeBorder, backgroundColor: colors.chromeRaised }]}
         onPress={() => onNavigate('/settings')}
         activeOpacity={0.8}
       >
-        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.avatarText, { color: colors.textInverse }]}>
+        <View style={[styles.avatar, { backgroundColor: '#D4BC8A' }]}>
+          <Text style={[styles.avatarText, { color: '#071729' }]}>
             {(currentUser.name ?? 'م').split(' ').slice(0, 2).map((n: string) => n[0]).join('')}
           </Text>
         </View>
         <View style={styles.userInfo}>
-          <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>{currentUser.name}</Text>
-          <Text style={[styles.userRole, { color: colors.textMuted }]} numberOfLines={1}>{currentUser.role}</Text>
+          <Text style={[styles.userName, { color: colors.chromeText }]} numberOfLines={1}>{currentUser.name}</Text>
+          <Text style={[styles.userRole, { color: colors.chromeMuted }]} numberOfLines={1}>{currentUser.role}</Text>
         </View>
-        <Ionicons name="settings-outline" size={18} color={colors.textMuted} />
+        <Ionicons name="settings-outline" size={18} color={colors.chromeMuted} />
       </TouchableOpacity>
     </View>
   );
@@ -244,11 +243,11 @@ export function WebDrawer() {
       >
         {/* Close button */}
         <TouchableOpacity
-          style={[styles.closeBtn, { backgroundColor: colors.surface }]}
+          style={[styles.closeBtn, { backgroundColor: colors.chromeRaised }]}
           onPress={close}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="close" size={20} color={colors.text} />
+          <Ionicons name="close" size={20} color={colors.chromeText} />
         </TouchableOpacity>
         <SidebarContent
           colors={colors}
@@ -284,7 +283,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   logoImage: {
-    width: 168, height: 56,
+    width: 176, height: 58,
     alignSelf: 'center',
   },
 
@@ -299,20 +298,20 @@ const styles = StyleSheet.create({
 
   item: {
     flexDirection: 'row', alignItems: 'center', gap: spacing[3],
-    minHeight: 40, paddingVertical: spacing[2], paddingHorizontal: spacing[3],
-    marginHorizontal: spacing[3], marginVertical: 2,
-    borderRadius: radius.sm, position: 'relative', overflow: 'hidden',
+    minHeight: 38, paddingVertical: 7, paddingHorizontal: spacing[3],
+    marginHorizontal: spacing[3], marginVertical: 1,
+    borderRadius: 8, position: 'relative', overflow: 'hidden',
   },
   iconWrap: {
     width: 24, height: 24,
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   label: {
-    flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.medium, textAlign: 'right',
+    flex: 1, fontSize: 14, fontWeight: fontWeight.regular, textAlign: 'right',
   },
   activeBar: {
-    position: 'absolute', right: 0, top: 0, bottom: 0,
-    width: 4,
+    position: 'absolute', right: 0, top: 8, bottom: 8,
+    width: 3, borderRadius: 2,
   },
   badge: {
     position: 'absolute', top: -6, right: -8,

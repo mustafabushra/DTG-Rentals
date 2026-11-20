@@ -67,12 +67,9 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* الخلفية */}
-        <View style={[styles.topBg, { backgroundColor: '#14573A' }]}>
-          <View style={[styles.circle1, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
-          <View style={[styles.circle2, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
-        </View>
+      <View style={[styles.container, { backgroundColor: '#071729' }]}>
+        {/* الخلفية: كحلي الهوية بوهج ذهبي خفيف من الزاوية */}
+        <View style={[styles.topBg, Platform.OS === 'web' ? { backgroundImage: 'radial-gradient(90% 70% at 100% 0%, rgba(176,141,79,0.22) 0%, rgba(176,141,79,0) 60%)' } as any : null]} />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -82,7 +79,7 @@ export default function LoginScreen() {
           {/* الشعار */}
           <View style={styles.logoSection}>
             <Image
-              source={require('../assets/images/icon.png')}
+              source={require('../assets/images/sidebar-logo.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -95,7 +92,7 @@ export default function LoginScreen() {
             {/* Tabs */}
             <View style={[styles.tabs, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TouchableOpacity
-                style={[styles.tab, mode === 'login' && { backgroundColor: '#1B8354' }]}
+                style={[styles.tab, mode === 'login' && { backgroundColor: '#0F2A47' }]}
                 onPress={() => { setMode('login'); setErrors({}); }}
               >
                 <Text style={[styles.tabText, { color: mode === 'login' ? '#FFF' : colors.textSecondary }]}>
@@ -103,7 +100,7 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.tab, mode === 'register' && { backgroundColor: '#1B8354' }]}
+                style={[styles.tab, mode === 'register' && { backgroundColor: '#0F2A47' }]}
                 onPress={() => { setMode('register'); setErrors({}); }}
               >
                 <Text style={[styles.tabText, { color: mode === 'register' ? '#FFF' : colors.textSecondary }]}>
@@ -129,7 +126,7 @@ export default function LoginScreen() {
                 <Text style={[styles.accountTypeLabel, { color: colors.text }]}>نوع الحساب</Text>
                 <View style={[styles.accountTypeToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <TouchableOpacity
-                    style={[styles.accountTypeOption, accountType === 'company' && { backgroundColor: '#1B8354' }]}
+                    style={[styles.accountTypeOption, accountType === 'company' && { backgroundColor: '#0F2A47' }]}
                     onPress={() => setAccountType('company')}
                     activeOpacity={0.85}
                   >
@@ -143,7 +140,7 @@ export default function LoginScreen() {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.accountTypeOption, accountType === 'independent' && { backgroundColor: '#1B8354' }]}
+                    style={[styles.accountTypeOption, accountType === 'independent' && { backgroundColor: '#0F2A47' }]}
                     onPress={() => setAccountType('independent')}
                     activeOpacity={0.85}
                   >
@@ -195,7 +192,7 @@ export default function LoginScreen() {
             ) : null}
 
             <TouchableOpacity
-              style={[styles.submitBtn, { backgroundColor: '#1B8354' }, loading && { opacity: 0.7 }]}
+              style={[styles.submitBtn, { backgroundColor: '#0F2A47' }, loading && { opacity: 0.7 }]}
               onPress={handleSubmit}
               disabled={loading}
               activeOpacity={0.85}
@@ -290,14 +287,14 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  topBg: { position: 'absolute', top: 0, left: 0, right: 0, height: 260, overflow: 'hidden' },
+  topBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   circle1: { position: 'absolute', width: 300, height: 300, borderRadius: 150, top: -100, left: -80 },
   circle2: { position: 'absolute', width: 200, height: 200, borderRadius: 100, top: 100, right: -50 },
-  content: { paddingHorizontal: Theme.spacing.base, paddingBottom: 48 },
+  content: { paddingHorizontal: Theme.spacing.base, paddingBottom: 48, width: '100%', maxWidth: 460, alignSelf: 'center' },
   logoSection: { alignItems: 'center', gap: 10, marginBottom: Theme.spacing.xl },
-  logoImage: { width: 160, height: 160, borderRadius: 16 },
+  logoImage: { width: 240, height: 80 },
   appName: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', letterSpacing: 1, textAlign: 'center' },
-  appSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: Theme.fontSize.md, textAlign: 'center' },
+  appSubtitle: { color: 'rgba(255,255,255,0.6)', fontSize: Theme.fontSize.md, textAlign: 'center' },
   formCard: {
     borderRadius: Theme.radius.xl, padding: Theme.spacing.xl,
     gap: Theme.spacing.lg,

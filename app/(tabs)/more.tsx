@@ -19,13 +19,13 @@ const menuItems: MenuItem[][] = [
     { icon: 'cash-outline', label: 'المدفوعات', route: '/payments', color: '#079455' },
     { icon: 'wallet-outline', label: 'مصاريف العقارات', route: '/expenses', color: '#D92D20' },
     { icon: 'briefcase-outline', label: 'مصاريف المكتب', route: '/office-expenses', color: '#B54708' },
-    { icon: 'documents-outline', label: 'السندات', route: '/vouchers', color: '#1B8354' },
+    { icon: 'documents-outline', label: 'السندات', route: '/vouchers', color: '#0F2A47' },
     { icon: 'person-outline', label: 'المستأجرون', route: '/tenants', color: '#1570EF' },
     { icon: 'home-outline', label: 'الوحدات', route: '/units', color: '#6938EF' },
   ],
   [
     { icon: 'construct-outline', label: 'الصيانة', route: '/maintenance', color: '#DC6803' },
-    { icon: 'bar-chart-outline', label: 'التقارير المالية', route: '/financial-reports', color: '#1B8354' },
+    { icon: 'bar-chart-outline', label: 'التقارير المالية', route: '/financial-reports', color: '#0F2A47' },
     { icon: 'calendar-outline', label: 'التقويم', route: '/calendar', color: '#B54708' },
   ],
   [
