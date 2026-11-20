@@ -21,7 +21,7 @@ import { OwnerPreviewBanner } from '../components/ui/OwnerPreviewBanner';
 import { PWAInstallPrompt } from '../components/ui/PWAInstallPrompt';
 import { OnboardingTour } from '../components/ui/OnboardingTour';
 import { initSessionManager } from '../lib/sessionManager';
-import { shouldEnterApp, signedOutRedirect } from '../lib/authRouting';
+import { shouldEnterApp, signedOutRedirect, AUTH_SCREENS } from '../lib/authRouting';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -206,11 +206,17 @@ function AuthWatcher({ onReady }: { onReady: () => void }) {
   useEffect(() => {
     if (!shouldEnterApp(signedIn, pathname)) return;
     console.log('[AUTH_GUARD] signed-in on', pathname, '→ entering app');
-    // في وضع PWA standalone نحتاج reload كامل عشان يتحدث الـ view بعد تسجيل الدخول
-    const isStandalone = typeof window !== 'undefined' &&
-      (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
-    if (isStandalone) window.location.replace('/');
-    else router.replace('/(tabs)');
+    // انتقال داخلي أولاً (بدون إعادة تحميل): إعادة التحميل الكاملة في وضع
+    // "أُضيف للشاشة الرئيسية" على الآيفون كانت أحياناً تعلق وهي تقرأ الجلسة من
+    // جديد، فيبقى المستخدم على شاشة الدخول حتى يقفل التطبيق ويفتحه.
+    router.replace('/(tabs)');
+    // احتياط: لو بعد ثانيتين ما زلنا على شاشة عامة، نعيد التحميل مرة وحدة
+    const t = setTimeout(() => {
+      if (typeof window === 'undefined') return;
+      const still = AUTH_SCREENS.includes(window.location.pathname);
+      if (still) window.location.replace('/');
+    }, 2000);
+    return () => clearTimeout(t);
   }, [signedIn, pathname]);
 
   return null;
