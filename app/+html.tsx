@@ -118,6 +118,7 @@ export default function Root({ children }: PropsWithChildren) {
           }
           body {
             height: 100%;
+            height: 100dvh;
             /* border-box: الحشوة (النوتش وشريط الآيفون) من ضمن الارتفاع، فما ينقص شي من تحت */
             box-sizing: border-box;
             margin: 0;
@@ -137,6 +138,9 @@ export default function Root({ children }: PropsWithChildren) {
           /* Expo root div */
           #root, [data-reactroot] {
             height: 100%;
+            /* الآيفون من الشاشة الرئيسية: 100% أقصر من الشاشة بارتفاع شريط الساعة،
+               فيبان شريط أبيض تحت. dvh = ارتفاع الشاشة الحقيقي */
+            height: 100dvh;
             display: flex;
             flex-direction: column;
             /* Reset body's safe-area padding — handled by the app itself */

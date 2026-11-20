@@ -13,6 +13,7 @@ import { isAdminRole } from '../utils/roleUtils';
 import { useScreenSize } from '../hooks/useScreenSize';
 import { useSidebar } from '../context/SidebarContext';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { AppHeader } from '../components/ui/AppHeader';
 import {
   connectGoogleCalendar, disconnectCalendar, loadToken,
   syncToGoogleCalendar, buildSyncItems, parseOAuthRedirectHash, saveToken,
@@ -80,50 +81,56 @@ export default function SettingsScreen() {
   };
 
   // ── sub-components ─────────────────────────────────────────────────────────
+  // عنوان قسم: نص صغير هادئ فوق البطاقة، بدون شريط خلفية
   const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={[styles.sectionHeader, { color: colors.textMuted, backgroundColor: colors.surface }]}>
-      {title}
-    </Text>
+    <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{title}</Text>
   );
 
+  // بطاقة مجموعة: تشيل الخط الفاصل من آخر عنصر
+  const Group = ({ children }: { children: React.ReactNode }) => {
+    const kids = React.Children.toArray(children).filter(Boolean);
+    return (
+      <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {kids.map((c, i) => React.isValidElement(c) ? React.cloneElement(c as any, { last: i === kids.length - 1 }) : c)}
+      </View>
+    );
+  };
+
   const Item = ({
-    icon, label, value, onPress, color, danger,
-    isSwitch, switchVal, onSwitch,
+    icon, label, sub, value, onPress, danger,
+    isSwitch, switchVal, onSwitch, last,
   }: {
-    icon: string; label: string; value?: string; onPress?: () => void;
+    icon: string; label: string; sub?: string; value?: string; onPress?: () => void;
     color?: string; danger?: boolean; isSwitch?: boolean;
-    switchVal?: boolean; onSwitch?: (v: boolean) => void;
-  }) => (
-    <TouchableOpacity
-      style={[styles.item, { borderBottomColor: colors.border }]}
-      onPress={isSwitch ? undefined : onPress}
-      activeOpacity={isSwitch ? 1 : 0.7}
-    >
-      <View style={styles.itemRight}>
+    switchVal?: boolean; onSwitch?: (v: boolean) => void; last?: boolean;
+  }) => {
+    const tint = danger ? colors.danger : colors.primary;
+    return (
+      <TouchableOpacity
+        style={[styles.item, !last && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+        onPress={isSwitch ? () => onSwitch?.(!switchVal) : onPress}
+        activeOpacity={0.7}
+        accessibilityRole={isSwitch ? 'switch' : 'button'}
+      >
+        <View style={[styles.itemIcon, { backgroundColor: tint + '1A' }]}>
+          <Ionicons name={icon as any} size={17} color={tint} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.itemLabel, { color: danger ? colors.danger : colors.text }]}>{label}</Text>
+          {!!sub && <Text style={[styles.itemSub, { color: colors.textMuted }]}>{sub}</Text>}
+        </View>
         {isSwitch ? (
-          <Toggle
-            value={switchVal}
-            onValueChange={onSwitch}
-            trackColor={{ false: colors.border, true: color || colors.primary }}
-            thumbColor={colors.textInverse}
-          />
+          <Toggle value={switchVal} onValueChange={onSwitch}
+            trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF" />
         ) : (
           <>
-            {value && (
-              <Text style={[styles.itemValue, { color: colors.textMuted }]}>{value}</Text>
-            )}
-            <Ionicons name="chevron-back-outline" size={16} color={danger ? colors.danger : colors.textMuted} />
+            {!!value && <Text style={[styles.itemValue, { color: colors.textMuted }]}>{value}</Text>}
+            <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
           </>
         )}
-      </View>
-      <View style={styles.itemLeft}>
-        <View style={[styles.itemIcon, { backgroundColor: danger ? colors.dangerSubtle : colors.surface }]}>
-          <Ionicons name={icon as any} size={18} color={danger ? colors.danger : colors.primary} />
-        </View>
-        <Text style={[styles.itemLabel, { color: danger ? colors.danger : colors.text }]}>{label}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   // ── Google Calendar ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -198,326 +205,184 @@ export default function SettingsScreen() {
 
   const themeLabel = theme === 'dark' ? 'داكن' : theme === 'light' ? 'فاتح' : 'تلقائي';
 
+  const themes: { key: ThemeMode; label: string; icon: string }[] = [
+    { key: 'light', label: 'فاتح', icon: 'sunny-outline' },
+    { key: 'dark', label: 'داكن', icon: 'moon-outline' },
+    { key: 'system', label: 'حسب الجهاز', icon: 'phone-portrait-outline' },
+  ];
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <View style={styles.headerRow}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>الإعدادات</Text>
-          
-        </View>
-      </View>
+      <AppHeader title="الإعدادات" showBack={false} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
-        {/* Desktop: two-column layout */}
-        <View style={isDesktop ? styles.desktopLayout : undefined}>
-
-        {/* ── LEFT COLUMN on desktop (profile + stats + account) ── */}
-        <View style={isDesktop ? styles.desktopLeft : undefined}>
-
-        {/* ── Profile Card ── */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        {/* ── الملف الشخصي ── */}
         <TouchableOpacity
           style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => router.push('/edit-profile')}
           activeOpacity={0.85}
         >
-          <Ionicons name="chevron-back-outline" size={18} color={colors.textMuted} />
-          <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, { color: colors.text }]}>{currentUser.name}</Text>
-            <Text style={[styles.profileRole, { color: colors.textSecondary }]}>{currentUser.role}</Text>
-            <Text style={[styles.profileEmail, { color: colors.textMuted }]}>{currentUser.email}</Text>
-            {currentUser.phone ? (
-              <Text style={[styles.profileEmail, { color: colors.textMuted }]}>{currentUser.phone}</Text>
-            ) : null}
+          <View style={[styles.avatar, { backgroundColor: '#B08D4F' }]}>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.avatarText, { color: colors.textInverse }]}>{initials}</Text>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>{currentUser.name}</Text>
+            <Text style={[styles.profileEmail, { color: colors.textMuted }]} numberOfLines={1}>
+              {currentUser.role}{currentUser.email ? ` · ${currentUser.email}` : ''}
+            </Text>
           </View>
+          <Text style={[styles.editLink, { color: colors.primary }]}>تعديل</Text>
         </TouchableOpacity>
 
-        {/* الإحصائيات موجودة في الرئيسية؛ الإعدادات للإعدادات فقط */}
-
-        </View>{/* end desktopLeft */}
-
-        {/* ── RIGHT COLUMN on desktop (appearance + notifications + account + admin) ── */}
-        <View style={isDesktop ? styles.desktopRight : undefined}>
-
-        {/* ── Appearance ── */}
-        <SectionHeader title="المظهر والعرض" />
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {/* Theme Selector */}
-          <View style={[styles.themeRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.itemLeft}>
-              <View style={[styles.itemIcon, { backgroundColor: `${colors.primary}18` }]}>
-                <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
-              </View>
-              <Text style={[styles.itemLabel, { color: colors.text }]}>المظهر</Text>
-            </View>
-            <View style={styles.themeOptions}>
-              {([
-                { key: 'light', label: 'فاتح', icon: 'sunny-outline' },
-                { key: 'system', label: 'تلقائي', icon: 'phone-portrait-outline' },
-                { key: 'dark', label: 'داكن', icon: 'moon-outline' },
-              ] as { key: ThemeMode; label: string; icon: string }[]).map(opt => (
-                <TouchableOpacity
-                  key={opt.key}
-                  style={[
-                    styles.themeChip,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    theme === opt.key && { borderColor: colors.primary, backgroundColor: colors.primary },
-                  ]}
-                  onPress={() => handleTheme(opt.key)}
-                >
-                  <Ionicons name={opt.icon as any} size={14} color={theme === opt.key ? colors.textInverse : colors.textMuted} />
-                  <Text style={[styles.themeChipText, { color: theme === opt.key ? colors.textInverse : colors.textMuted }]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Theme Preview */}
-          <View style={[styles.themePreview, { borderBottomColor: colors.border }]}>
-            <View style={styles.previewRow}>
-              {/* Light preview */}
-              <View style={[styles.previewBox, theme === 'light' && styles.previewBoxActive, { backgroundColor: '#F9FAFB', borderColor: theme === 'light' ? colors.primary : colors.border }]}>
-                <View style={[styles.previewHeader, { backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }]} />
-                <View style={styles.previewBody}>
-                  <View style={[styles.previewCard, { backgroundColor: '#FFF' }]} />
-                  <View style={[styles.previewCard, { backgroundColor: '#FFF' }]} />
-                </View>
-                <Text style={[styles.previewLabel, { color: theme === 'light' ? colors.primary : colors.textMuted }]}>فاتح</Text>
-              </View>
-              {/* Auto preview */}
-              <View style={[styles.previewBox, theme === 'system' && styles.previewBoxActive, { backgroundColor: '#F3F4F6', borderColor: theme === 'system' ? colors.primary : colors.border }]}>
-                <View style={[styles.previewHeader, { backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#D2D6DB' }]} />
-                <View style={styles.previewBody}>
-                  <View style={[styles.previewCard, { backgroundColor: '#E5E7EB' }]} />
-                  <View style={[styles.previewCard, { backgroundColor: '#E5E7EB' }]} />
-                </View>
-                <Text style={[styles.previewLabel, { color: theme === 'system' ? colors.primary : colors.textMuted }]}>تلقائي</Text>
-              </View>
-              {/* Dark preview */}
-              <View style={[styles.previewBox, theme === 'dark' && styles.previewBoxActive, { backgroundColor: '#0D121C', borderColor: theme === 'dark' ? colors.primary : colors.border }]}>
-                <View style={[styles.previewHeader, { backgroundColor: '#111927' }]} />
-                <View style={styles.previewBody}>
-                  <View style={[styles.previewCard, { backgroundColor: '#1F2A37' }]} />
-                  <View style={[styles.previewCard, { backgroundColor: '#1F2A37' }]} />
-                </View>
-                <Text style={[styles.previewLabel, { color: theme === 'dark' ? colors.primary : colors.textMuted }]}>داكن</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Language */}
-          <View style={[styles.themeRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.itemLeft}>
-              <View style={[styles.itemIcon, { backgroundColor: `${colors.secondary}18` }]}>
-                <Ionicons name="language-outline" size={18} color={colors.secondary} />
-              </View>
-              <Text style={[styles.itemLabel, { color: colors.text }]}>اللغة</Text>
-            </View>
-            <View style={styles.themeOptions}>
-              {[
-                { key: 'ar', label: 'العربية' },
-                { key: 'en', label: 'English' },
-              ].map(opt => (
-                <TouchableOpacity
-                  key={opt.key}
-                  style={[
-                    styles.themeChip,
-                    { borderColor: colors.border, backgroundColor: colors.surface },
-                    opt.key === 'ar' && { borderColor: colors.primary, backgroundColor: colors.primary },
-                  ]}
-                  onPress={() => handleLanguage(opt.key as 'ar' | 'en')}
-                >
-                  <Text style={[styles.themeChipText, { color: opt.key === 'ar' ? colors.textInverse : colors.textMuted }]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+        {/* ── المظهر ── */}
+        <SectionHeader title="المظهر" />
+        <View style={[styles.segment, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {themes.map(opt => {
+            const on = theme === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                style={[styles.segBtn, on && { backgroundColor: colors.primary }]}
+                onPress={() => handleTheme(opt.key)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+              >
+                <Ionicons name={opt.icon as any} size={16} color={on ? colors.textInverse : colors.textSecondary} />
+                <Text style={[styles.segText, { color: on ? colors.textInverse : colors.textSecondary }, on && { fontWeight: '600' }]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* ── Notifications ── */}
-        <SectionHeader title="الإشعارات" />
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Item
-            icon="document-text-outline" label="إشعارات العقود" color={colors.primary}
-            isSwitch switchVal={notificationPrefs.contracts}
-            onSwitch={v => setNotificationPref('contracts', v)}
-          />
-          <Item
-            icon="cash-outline" label="إشعارات الدفعات" color={colors.success}
-            isSwitch switchVal={notificationPrefs.payments}
-            onSwitch={v => setNotificationPref('payments', v)}
-          />
-          <Item
-            icon="attach-outline" label="إشعارات المستندات" color={colors.warning}
-            isSwitch switchVal={notificationPrefs.documents}
-            onSwitch={v => setNotificationPref('documents', v)}
-          />
-          <Item
-            icon="construct-outline" label="إشعارات الصيانة" color={colors.secondary}
-            isSwitch switchVal={notificationPrefs.maintenance}
-            onSwitch={v => setNotificationPref('maintenance', v)}
-          />
-        </View>
+        {/* ── الإشعارات ── */}
+        <SectionHeader title="نبّهني عن" />
+        <Group>
+          <Item icon="document-text-outline" label="العقود" sub="قرب انتهاء العقود والعقود المنتهية"
+            isSwitch switchVal={notificationPrefs.contracts} onSwitch={v => setNotificationPref('contracts', v)} />
+          <Item icon="cash-outline" label="الدفعات" sub="المتأخرة والمستحقة خلال أسبوع"
+            isSwitch switchVal={notificationPrefs.payments} onSwitch={v => setNotificationPref('payments', v)} />
+          <Item icon="attach-outline" label="المستندات" sub="المستندات اللي قرب ينتهي تاريخها"
+            isSwitch switchVal={notificationPrefs.documents} onSwitch={v => setNotificationPref('documents', v)} />
+          <Item icon="construct-outline" label="الصيانة" sub="طلبات الصيانة الجديدة"
+            isSwitch switchVal={notificationPrefs.maintenance} onSwitch={v => setNotificationPref('maintenance', v)} />
+        </Group>
 
-        {/* ── Integrations ── */}
-        <SectionHeader title="التكاملات" />
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.integrationRow, { borderBottomColor: colors.border }]}>
-            {/* Icon + info */}
-            <View style={styles.integrationLeft}>
-              <View style={[styles.integrationIcon, { backgroundColor: '#E8F0FE' }]}>
-                <Ionicons name="calendar-outline" size={22} color="#4285F4" />
-              </View>
-              <View>
-                <Text style={[styles.integrationTitle, { color: colors.text }]}>Google Calendar</Text>
-                <Text style={[styles.integrationSub, { color: calConnected ? colors.success : colors.textMuted }]}>
-                  {calConnected ? 'مرتبط ✓' : 'غير مرتبط'}
-                </Text>
-              </View>
-            </View>
-            {/* Buttons */}
-            <View style={styles.integrationBtns}>
-              {calConnected ? (
-                <>
-                  <TouchableOpacity
-                    style={[styles.integrationBtn, { backgroundColor: '#0F2A47' }]}
-                    onPress={handleSyncCalendar}
-                    disabled={calSyncing}
-                  >
-                    {calSyncing
-                      ? <ActivityIndicator size="small" color={colors.textInverse} />
-                      : <Ionicons name="sync-outline" size={16} color={colors.textInverse} />}
-                    <Text style={[styles.integrationBtnText, { color: colors.textInverse }]}>مزامنة</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.integrationBtn, { backgroundColor: colors.dangerSubtle, borderWidth: 1, borderColor: colors.danger }]}
-                    onPress={handleDisconnectCalendar}
-                  >
-                    <Ionicons name="unlink-outline" size={16} color={colors.danger} />
-                    <Text style={[styles.integrationBtnText, { color: colors.danger }]}>قطع</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.integrationBtn, { backgroundColor: '#4285F4' }]}
-                  onPress={handleConnectCalendar}
-                  disabled={calLoading}
-                >
-                  {calLoading
-                    ? <ActivityIndicator size="small" color={colors.textInverse} />
-                    : <Ionicons name="link-outline" size={16} color={colors.textInverse} />}
-                  <Text style={[styles.integrationBtnText, { color: colors.textInverse }]}>ربط</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+        {/* ── التكاملات ── */}
+        <SectionHeader title="الربط" />
+        <View style={[styles.section, styles.integrationRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.itemIcon, { backgroundColor: colors.primary + '1A' }]}>
+            <Ionicons name="calendar-outline" size={17} color={colors.primary} />
           </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.itemLabel, { color: colors.text }]}>تقويم Google</Text>
+            <Text style={[styles.itemSub, { color: calConnected ? colors.success : colors.textMuted }]}>
+              {calConnected ? 'مربوط — مواعيد الإيجارات والعقود تنزل في تقويمك' : 'غير مربوط'}
+            </Text>
+          </View>
+          {calConnected ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity
+                style={[styles.smallBtn, { borderColor: colors.border }]}
+                onPress={handleSyncCalendar}
+                disabled={calSyncing}
+              >
+                {calSyncing
+                  ? <ActivityIndicator size="small" color={colors.text} />
+                  : <Text style={[styles.smallBtnText, { color: colors.text }]}>مزامنة</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDisconnectCalendar} hitSlop={8}>
+                <Text style={[styles.smallBtnText, { color: colors.danger }]}>فصل</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.smallBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              onPress={handleConnectCalendar}
+              disabled={calLoading}
+            >
+              {calLoading
+                ? <ActivityIndicator size="small" color={colors.textInverse} />
+                : <Text style={[styles.smallBtnText, { color: colors.textInverse }]}>ربط</Text>}
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* ── Tools: الصفحات التي خرجت من القائمة الجانبية ── */}
+        {/* ── الأدوات ── */}
         {!ownerMode && (
           <>
             <SectionHeader title="أدوات" />
-            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Group>
               <Item icon="calendar-outline" label="التقويم" onPress={() => router.push('/calendar')} />
               <Item icon="sparkles-outline" label="المساعد الذكي" onPress={() => router.push('/assistant')} />
               <Item icon="scan-outline" label="قراءة عقد من صورة" onPress={() => router.push('/scan-contract')} />
               <Item icon="folder-open-outline" label="كل المرفقات" onPress={() => router.push('/attachments')} />
               <Item icon="location-outline" label="المدن" onPress={() => router.push('/cities')} />
-              <Item icon="cloud-upload-outline" label="استيراد عقارات من ملف Excel" onPress={() => router.push('/bulk-import-properties')} />
-              <Item icon="list-outline" label="سجل الإجراءات" onPress={() => router.push('/audit-log')} />
-              <Item icon="gift-outline" label="التحديثات الجديدة" onPress={() => router.push('/updates')} />
-            </View>
+              <Item icon="document-attach-outline" label="استيراد عقارات من Excel" onPress={() => router.push('/bulk-import-properties')} />
+              <Item icon="time-outline" label="سجل الإجراءات" sub="مين عدّل إيش ومتى" onPress={() => router.push('/audit-log')} />
+            </Group>
           </>
         )}
 
-        {/* ── Account ── */}
-        <SectionHeader title="الحساب" />
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Item icon="person-outline" label="تعديل الملف الشخصي" color={colors.primary}
-            onPress={() => router.push('/edit-profile')} />
-          <Item icon="lock-closed-outline" label="تغيير كلمة المرور" color={colors.warning}
-            onPress={() => router.push('/change-password')} />
-          <Item icon="shield-outline" label="سياسة الخصوصية" color={colors.textSecondary}
-            onPress={() => router.push('/privacy-policy')} />
-          <Item icon="document-text-outline" label="شروط الخدمة" color={colors.textSecondary}
-            onPress={() => router.push('/terms-of-service')} />
-        </View>
-
-        {/* ── Support ── */}
-        <SectionHeader title="الدعم والمساعدة" />
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Item icon="help-circle-outline" label="مركز المساعدة" color={colors.success}
-            onPress={() => router.push('/help-center')} />
-          <Item icon="chatbubble-outline" label="اتصل بنا" color={colors.secondary}
-            onPress={() => router.push('/contact-us')} />
-          <Item icon="information-circle-outline" label="الإصدار" value="1.0.0" color={colors.textMuted} onPress={() => {}} />
-        </View>
-
-        {/* ── Admin: System Settings ── */}
+        {/* ── إدارة النظام ── */}
         {isAdmin && (
           <>
-            <SectionHeader title="إعدادات النظام (الأدمن)" />
-            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Item icon="people-outline" label="إدارة المستخدمين" color={colors.primary}
-                onPress={() => router.push('/user-management')} />
-              <Item icon="toggle-outline" label="وحدات النظام والصلاحيات" color={colors.accent}
-                onPress={() => router.push('/system-settings')} />
-              <Item icon="sparkles-outline" label="المساعد الذكي" color="#365A80"
-                onPress={() => router.push('/assistant-settings')} />
-              <Item icon="bar-chart-outline" label="تقارير النظام" color="#365A80"
-                onPress={() => router.push('/audit-log')} />
-              <Item icon="cloud-upload-outline" label="نسخ احتياطي" color={colors.success}
-                onPress={() => router.push('/backup')} />
-              <TouchableOpacity
-                style={[styles.resetItem, { borderTopColor: colors.border }]}
-                onPress={() => setShowReset(true)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.itemRight}>
-                  <Ionicons name="chevron-back-outline" size={16} color={colors.danger} />
-                </View>
-                <View style={styles.itemLeft}>
-                  <View style={[styles.itemIcon, { backgroundColor: `${colors.danger}18` }]}>
-                    <Ionicons name="nuclear-outline" size={18} color={colors.danger} />
-                  </View>
-                  <View>
-                    <Text style={[styles.itemLabel, { color: colors.danger }]}>تصفير النظام</Text>
-                    <Text style={[styles.itemSub, { color: colors.danger + '99' }]}>حذف جميع بيانات النظام</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader title="إدارة النظام" />
+            <Group>
+              <Item icon="people-outline" label="المستخدمون" sub="إضافة موظفين وملاك وتحديد صلاحياتهم" onPress={() => router.push('/user-management')} />
+              <Item icon="options-outline" label="أقسام النظام" sub="تشغيل وإيقاف الأقسام" onPress={() => router.push('/system-settings')} />
+              <Item icon="sparkles-outline" label="إعدادات المساعد الذكي" onPress={() => router.push('/assistant-settings')} />
+              <Item icon="cloud-download-outline" label="النسخ الاحتياطي" onPress={() => router.push('/backup')} />
+            </Group>
           </>
         )}
 
-        {/* ── Logout ── */}
+        {/* ── الحساب والدعم ── */}
+        <SectionHeader title="الحساب والمساعدة" />
+        <Group>
+          <Item icon="lock-closed-outline" label="تغيير كلمة المرور" onPress={() => router.push('/change-password')} />
+          <Item icon="help-circle-outline" label="مركز المساعدة" onPress={() => router.push('/help-center')} />
+          <Item icon="chatbubble-ellipses-outline" label="تواصل معنا" onPress={() => router.push('/contact-us')} />
+          {!ownerMode && <Item icon="gift-outline" label="الجديد في التطبيق" onPress={() => router.push('/updates')} />}
+        </Group>
+
+        {/* ── الخروج ── */}
         <TouchableOpacity
-          style={[styles.logoutBtn, { backgroundColor: colors.dangerSubtle, borderColor: colors.danger }]}
+          style={[styles.logoutBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={handleLogout}
-          activeOpacity={0.85}
+          activeOpacity={0.8}
         >
+          <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <Text style={[styles.logoutText, { color: colors.danger }]}>تسجيل الخروج</Text>
-          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
         </TouchableOpacity>
 
-        </View>{/* end desktopRight */}
-        </View>{/* end desktopLayout */}
+        {/* ── منطقة الخطر: بعيدة عن الاستخدام اليومي ── */}
+        {isAdmin && !ownerMode && (
+          <TouchableOpacity style={styles.dangerLink} onPress={() => setShowReset(true)} hitSlop={8}>
+            <Text style={[styles.dangerText, { color: colors.textMuted }]}>
+              تصفير النظام <Text style={{ color: colors.danger }}>(يحذف كل البيانات)</Text>
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: colors.textMuted }]}>DTG Rentals · الإصدار 1.0.0</Text>
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <TouchableOpacity onPress={() => router.push('/privacy-policy')}>
+              <Text style={[styles.footerLink, { color: colors.textMuted }]}>سياسة الخصوصية</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/terms-of-service')}>
+              <Text style={[styles.footerLink, { color: colors.textMuted }]}>شروط الخدمة</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
 
-      {/* ── System Reset Confirm Modal ── */}
       <ConfirmModal
         visible={showReset}
         onClose={() => setShowReset(false)}
         onConfirm={handleResetConfirm}
         title="تصفير النظام"
-        message={`⚠️ تحذير: سيتم حذف جميع بيانات النظام:\n\n• الملاك والعقارات والوحدات\n• المستأجرون والعقود والدفعات\n• الصيانة والمستندات والإشعارات\n\nسيتم الاحتفاظ بـ:\n• حسابات المستخدمين\n• إعدادات النظام\n\nلا يمكن التراجع عن هذا الإجراء.`}
+        message={`سيتم حذف كل بيانات النظام:\n\n• الملاك والعقارات والوحدات\n• المستأجرون والعقود والدفعات\n• الصيانة والمستندات والإشعارات\n\nتبقى حسابات المستخدمين وإعدادات النظام.\n\nلا يمكن التراجع عن هذا الإجراء.`}
         confirmLabel="تصفير النظام"
         variant="danger"
       />
@@ -527,120 +392,39 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingBottom: 14, paddingHorizontal: Theme.spacing.base,
-    alignItems: 'center', minHeight: 60, justifyContent: 'flex-end',
-  },
-  headerRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    width: '100%',
-  },
-  menuBtn: { padding: 4 },
-  headerTitle: { fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold, flex: 1, textAlign: 'center' },
+  scroll: { padding: 16, paddingBottom: 40, width: '100%', maxWidth: 640, alignSelf: 'center' },
 
-  profileCard: {
-    flexDirection: 'row', alignItems: 'center', margin: Theme.spacing.base,
-    padding: Theme.spacing.md, borderRadius: Theme.radius.lg, borderWidth: 1, gap: 12,
-  },
-  avatar:      { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
-  avatarText:  { fontSize: 20, fontWeight: '700' },
-  profileInfo: { flex: 1 },
-  profileName: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold, textAlign: 'right' },
-  profileRole: { fontSize: Theme.fontSize.md, marginTop: 2, textAlign: 'right' },
-  profileEmail:{ fontSize: Theme.fontSize.sm, marginTop: 2, textAlign: 'right' },
+  profileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
+  avatar: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  profileName: { fontSize: 16, fontWeight: '600', textAlign: 'right' },
+  profileEmail: { fontSize: 12, textAlign: 'right' },
+  editLink: { fontSize: 13, fontWeight: '600' },
 
-  // Desktop 2-column layout
-  scrollDesktop: {},
-  desktopLayout: { flexDirection: 'row', alignItems: 'flex-start', gap: 0 },
-  desktopLeft:   { width: 340 },
-  desktopRight:  { flex: 1 },
+  sectionHeader: { fontSize: 13, fontWeight: '600', textAlign: 'right', marginTop: 22, marginBottom: 8, paddingHorizontal: 4 },
+  section: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
 
-  statsCard: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    marginHorizontal: Theme.spacing.base, marginBottom: 4,
-    borderRadius: Theme.radius.lg, borderWidth: 1, overflow: 'hidden',
-  },
-  statItem: {
-    width: '50%', alignItems: 'center', gap: 6,
-    paddingVertical: Theme.spacing.md, paddingHorizontal: 8,
-  },
-  statIconWrap: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  statVal:  { fontSize: Theme.fontSize.xl, fontWeight: Theme.fontWeight.bold },
-  statLbl:  { fontSize: Theme.fontSize.xs, textAlign: 'center' },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, minHeight: 54, paddingVertical: 10 },
+  itemIcon: { width: 32, height: 32, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  itemLabel: { fontSize: 15, textAlign: 'right' },
+  itemSub: { fontSize: 12, marginTop: 2, textAlign: 'right' },
+  itemValue: { fontSize: 13 },
 
-  sectionHeader: {
-    fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold,
-    paddingHorizontal: Theme.spacing.base, paddingVertical: 8, textAlign: 'right',
-  },
-  section: {
-    marginHorizontal: Theme.spacing.base, borderRadius: Theme.radius.lg,
-    borderWidth: 1, marginBottom: 4, overflow: 'hidden',
-  },
-  item: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Theme.spacing.md, paddingVertical: 14, borderBottomWidth: 1,
-  },
-  itemLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  itemRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  itemIcon:  { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  itemLabel: { fontSize: Theme.fontSize.base, textAlign: 'right' },
-  itemValue: { fontSize: Theme.fontSize.sm, textAlign: 'right' },
-  itemSub:   { fontSize: Theme.fontSize.xs, marginTop: 1, textAlign: 'right' },
+  segment: { flexDirection: 'row', padding: 4, borderRadius: 12, borderWidth: 1, gap: 4 },
+  segBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 40, borderRadius: 9 },
+  segText: { fontSize: 13 },
 
-  // Theme selector row
-  themeRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Theme.spacing.md, paddingVertical: 12, borderBottomWidth: 1,
-  },
-  themeOptions: { flexDirection: 'row', gap: 6 },
-  themeChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 14, paddingVertical: 12,
-    minHeight: 44, borderRadius: Theme.radius.full, borderWidth: 1.5,
-  },
-  themeChipText: { fontSize: Theme.fontSize.xs, fontWeight: Theme.fontWeight.semibold },
+  integrationRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  smallBtn: { height: 34, paddingHorizontal: 14, borderRadius: 9, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  smallBtnText: { fontSize: 13, fontWeight: '600' },
 
-  // Reset item (special layout with sub-label)
-  resetItem: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Theme.spacing.md, paddingVertical: 14, borderTopWidth: 1,
-  },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 14, borderWidth: 1, marginTop: 28 },
+  logoutText: { fontSize: 15, fontWeight: '600' },
 
-  themePreview: {
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.md,
-    borderBottomWidth: 1,
-  },
-  previewRow: { flexDirection: 'row', gap: 10, justifyContent: 'center' },
-  previewBox: {
-    flex: 1, borderRadius: Theme.radius.lg, borderWidth: 2,
-    overflow: 'hidden', alignItems: 'center', paddingBottom: 8,
-  },
-  previewBoxActive: { borderWidth: 2 },
-  previewHeader: { width: '100%', height: 18, marginBottom: 6 },
-  previewBody: { width: '100%', paddingHorizontal: 6, gap: 4 },
-  previewCard: { height: 10, borderRadius: 4, width: '100%' },
-  previewLabel: { fontSize: 10, fontWeight: '600', marginTop: 6 },
+  dangerLink: { alignSelf: 'center', marginTop: 20, padding: 6 },
+  dangerText: { fontSize: 12 },
 
-  integrationRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Theme.spacing.md, paddingVertical: 14,
-  },
-  integrationLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  integrationIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  integrationTitle: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.semibold, textAlign: 'right' },
-  integrationSub:   { fontSize: Theme.fontSize.xs, marginTop: 2, textAlign: 'right' },
-  integrationBtns:  { flexDirection: 'row', gap: 8 },
-  integrationBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: Theme.radius.full, minHeight: 36,
-  },
-  integrationBtnText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
-
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, margin: Theme.spacing.base, marginTop: Theme.spacing.md,
-    padding: Theme.spacing.md, borderRadius: Theme.radius.lg, borderWidth: 1,
-  },
-  logoutText: { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
+  footer: { alignItems: 'center', gap: 8, marginTop: 24 },
+  footerText: { fontSize: 12 },
+  footerLink: { fontSize: 12, textDecorationLine: 'underline' },
 });
