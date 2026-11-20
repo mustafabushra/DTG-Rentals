@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
-import { UpcomingRents } from '../../components/dashboard/UpcomingRents';
+import { UpcomingEvents } from '../../components/dashboard/UpcomingEvents';
 import { OwnerTimeline } from '../../components/owners/OwnerTimeline';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform, Animated, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -662,19 +662,11 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ── الإيجارات القادمة (شهرين) + العقود التي تنتهي ── */}
-        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }, isWide && styles.rowPair]}>
-          <View style={isWide ? { flex: 3 } : undefined}>
-            <UpcomingRents days={60} />
+        {/* ── الأحداث القادمة (شهرين): إيجارات، عقود، مستندات، مواعيد ── */}
+        <View style={[styles.sectionPad, { marginTop: isSmallPhone ? 16 : 24 }]}>
+          <View>
+            <UpcomingEvents days={60} />
           </View>
-          {!ownerMode && expiringContracts.length > 0 && (
-            <>
-              {isWide ? <View style={{ width: 16 }} /> : <View style={{ height: 16 }} />}
-              <View style={isWide ? { flex: 2 } : undefined}>
-                <ExpiringContracts contracts={expiringContracts} />
-              </View>
-            </>
-          )}
         </View>
 
         {/* الرسوم والإشغال والتفاصيل انتقلت إلى "التقارير" — الرئيسية لما يحتاج إجراء فقط */}
