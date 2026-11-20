@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.spacing.base,
   },
   headerBtn: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: '#FFF', fontSize: 19, fontWeight: '600' },
+  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600'},
   content: { padding: Theme.spacing.base, gap: Theme.spacing.md, paddingBottom: 20 },
 
   // Form

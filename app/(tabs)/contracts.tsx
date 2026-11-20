@@ -1,3 +1,4 @@
+import { AppHeader } from '../../components/ui/AppHeader';
 import React, { useState, useMemo, useEffect } from 'react';
 import { HubTabs } from '../../components/navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
@@ -69,32 +70,10 @@ export default function ContractsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + (cSmallPhone ? 6 : 8), paddingHorizontal: cHPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <View style={styles.headerRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>العقود والمستأجرون</Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {canWrite && (
-              <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: colors.surface }]}
-                onPress={() => router.push('/scan-contract')}
-                accessibilityLabel="قراءة عقد من صورة"
-              >
-                <Ionicons name="camera-outline" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-            {canWrite && (
-              <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: colors.primary }]}
-                onPress={() => router.push('/add-contract')}
-              >
-                <Ionicons name="add" size={22} color={colors.textInverse} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
+      <AppHeader title="العقود والمستأجرون" showBack={false} actions={[
+        canWrite && { icon: 'camera-outline', label: 'قراءة عقد من صورة', onPress: () => router.push('/scan-contract') },
+        canWrite && { icon: 'add', label: 'إضافة عقد', primary: true, onPress: () => router.push('/add-contract') },
+      ].filter(Boolean) as any} />
       <HubTabs hub="contracts" />
 
       <SearchBar
@@ -175,8 +154,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: Theme.fontSize.xl,
-    fontWeight: Theme.fontWeight.bold,
+    fontSize: 18,
+    fontWeight: '600',
   },
   addBtn: {
     width: 36, height: 36, borderRadius: 18,

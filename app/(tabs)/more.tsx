@@ -84,7 +84,7 @@ export default function MoreScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingBottom: 14, paddingHorizontal: 16, minHeight: 60, justifyContent: 'flex-end', borderBottomWidth: 1 },
-  headerTitle: { fontSize: 19, fontWeight: '600', textAlign: 'right' },
+  headerTitle: { fontSize: 18, fontWeight: '600', textAlign: 'right' },
   content: { padding: 16, paddingBottom: 32, gap: 20, width: '100%', maxWidth: 720, alignSelf: 'center' },
   groupTitle: { fontSize: 13, fontWeight: '500', textAlign: 'right', paddingHorizontal: 4 },
   group: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },

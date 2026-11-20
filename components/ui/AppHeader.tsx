@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { lightColors, darkColors, spacing, fontSize, fontWeight, radius, shadow } from '../../constants/DesignTokens';
+import { lightColors, darkColors, spacing, fontSize, fontWeight, radius, shadow, PAGE_TITLE_SIZE } from '../../constants/DesignTokens';
 import { useScreenSize } from '../../hooks/useScreenSize';
 import { useSidebar } from '../../context/SidebarContext';
 import { useAppTheme } from '../../hooks/useAppTheme';
@@ -14,12 +14,14 @@ interface AppHeaderProps {
   rightAction?: { icon: string; onPress: () => void; badge?: number; label?: string };
   rightText?: { label: string; onPress: () => void };
   transparent?: boolean;
+  /** أزرار إضافية في الهيدر (مثل الكاميرا وإضافة). primary = زر ممتلئ */
+  actions?: { icon: string; onPress: () => void; label: string; primary?: boolean }[];
 }
 
 import { usePathname } from 'expo-router';
 import { shouldShowBottomBar } from '../navigation/WebBottomBar';
 
-export function AppHeader({ title, showBack = true, rightAction, rightText, transparent }: AppHeaderProps) {
+export function AppHeader({ title, showBack = true, rightAction, rightText, transparent, actions }: AppHeaderProps) {
   const insets  = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { isDesktop, isSmallPhone, hPad } = useScreenSize();
@@ -34,14 +36,14 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
   // على الجوال صفحات الأقسام فيها شريط سفلي بزر "المزيد"، فما نكرر ☰
   const showHamburger = Platform.OS === 'web' && !isDesktop && !showBack && !shouldShowBottomBar(pathname);
 
-  // Compact title on small phones
-  const titleSize = isSmallPhone ? 17 : 19;
+  // مقاس ثابت في كل الصفحات (بدون تصغير تلقائي للعناوين الطويلة)
+  const titleSize = PAGE_TITLE_SIZE;
 
   return (
     <View style={[
       styles.container,
       {
-        paddingTop: insets.top + (isSmallPhone ? spacing[1] : spacing[2]),
+        paddingTop: insets.top + spacing[2],
         paddingHorizontal: hPad,
         backgroundColor: bgColor,
       },
@@ -80,14 +82,24 @@ export function AppHeader({ title, showBack = true, rightAction, rightText, tran
         <Text
           style={[styles.title, { color: textColor, fontSize: titleSize }]}
           numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}
           accessibilityRole="header"
         >
           {title}
         </Text>
 
         <View style={styles.side}>
+          {actions?.map(a => (
+            <TouchableOpacity
+              key={a.label}
+              style={[styles.iconBtn, a.primary && !transparent && { backgroundColor: colors.primary }]}
+              onPress={a.onPress}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel={a.label}
+            >
+              <Ionicons name={a.icon as any} size={a.primary ? 22 : 20} color={a.primary && !transparent ? colors.textInverse : iconColor} />
+            </TouchableOpacity>
+          ))}
           {rightAction && (
             <TouchableOpacity
               // "إضافة" هو الإجراء الرئيسي في الصفحة ⇒ زر ممتلئ؛ غيره أيقونة هادئة

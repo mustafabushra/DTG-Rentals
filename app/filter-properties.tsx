@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingBottom: 14, paddingHorizontal: Theme.spacing.base,
   },
-  headerTitle: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
+  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600'},
   resetText: { color: 'rgba(255,255,255,0.85)', fontSize: Theme.fontSize.md },
   content: { padding: Theme.spacing.base, gap: Theme.spacing.md, paddingBottom: 20 },
   sectionTitle: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },

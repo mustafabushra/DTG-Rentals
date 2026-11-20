@@ -58,6 +58,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0, // بدونه حقل الويب ياخذ عرضه الافتراضي ويطلع النص برا الصندوق
+    width: '100%',
     fontSize: 14,
     paddingVertical: 0,
     ...({ outlineStyle: 'none' } as any),

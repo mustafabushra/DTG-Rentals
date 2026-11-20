@@ -1,3 +1,4 @@
+import { AppHeader } from '../../components/ui/AppHeader';
 import React, { useState, useMemo, useEffect } from 'react';
 import { PageHint } from '../../components/ui/PageHint';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
@@ -44,26 +45,9 @@ export default function OwnersScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + (ownerSmallPhone ? 6 : 8), paddingHorizontal: ownerHPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <View style={styles.headerRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>الملاك</Text>
-            <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.countText, { color: colors.textMuted }]}>{owners.length}</Text>
-          </View>
-          </View>
-          <View style={styles.headerActions}>
-            {canWrite && (
-              <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: colors.primary }]}
-                onPress={() => router.push('/add-owner')}
-              >
-                <Ionicons name="add" size={22} color={colors.textInverse} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
+      <AppHeader title="الملاك" showBack={false} actions={[
+        canWrite && { icon: 'add', label: 'إضافة مالك', primary: true, onPress: () => router.push('/add-owner') },
+      ].filter(Boolean) as any} />
       <PageHint text="أصحاب العقارات. اضغط على المالك تشوف عقاراته ودخله والخط الزمني." />
 
       <SearchBar
@@ -138,8 +122,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: Theme.fontSize.xl,
-    fontWeight: Theme.fontWeight.bold,
+    fontSize: 18,
+    fontWeight: '600',
   },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addBtn: {

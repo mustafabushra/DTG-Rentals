@@ -32,6 +32,9 @@ export const fontSize = {
   '4xl': 34,
 } as const;
 
+/** مقاس موحّد لعناوين الصفحات في كل الشاشات — لا يصغر ولا يكبر بين صفحة وأخرى */
+export const PAGE_TITLE_SIZE = 18;
+
 // خط النظام: IBM Plex Sans Arabic (خط منصات). يُحمَّل في الويب من +html.tsx.
 export const fontFamily = {
   base: "'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif",

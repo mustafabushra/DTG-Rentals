@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
   },
-  headerTitle:      { fontSize: fontSize.xl, fontWeight: fontWeight.bold, textAlign: 'center' },
+  headerTitle:      { fontSize: 18, fontWeight: '600', textAlign: 'center' },
   closeBtn:         { padding: spacing[2] },
   closePlaceholder: { width: 40 },
   grid: {

@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingBottom: 14, paddingHorizontal: Theme.spacing.base,
   },
-  headerTitle: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
+  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600'},
   backBtn: { padding: 4 },
   content: { padding: Theme.spacing.base, gap: Theme.spacing.lg, paddingBottom: 48 },
 

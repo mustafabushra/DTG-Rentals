@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingBottom: 14, paddingHorizontal: Theme.spacing.base,
   },
-  headerTitle: { color: '#FFF', fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.bold },
+  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '600'},
   backBtn: { padding: 4 },
   saveBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: Theme.radius.sm },
   saveText: { color: '#FFF', fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },

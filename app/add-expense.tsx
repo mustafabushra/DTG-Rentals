@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14, paddingHorizontal: Theme.spacing.base },
-  headerTitle: { fontSize: Theme.fontSize.lg, fontWeight: Theme.fontWeight.semibold },
+  headerTitle: { fontSize: 18, fontWeight: '600'},
   backBtn: { padding: 4 },
   saveBtn: { paddingHorizontal: 16, minHeight: 36, minWidth: 64, alignItems: 'center', justifyContent: 'center', borderRadius: Theme.radius.sm },
   saveText: { fontSize: Theme.fontSize.md, fontWeight: Theme.fontWeight.medium },

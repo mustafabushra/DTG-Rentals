@@ -1,3 +1,4 @@
+import { AppHeader } from '../../components/ui/AppHeader';
 import React, { useState, useMemo, useEffect } from 'react';
 import { HubTabs } from '../../components/navigation/HubTabs';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, LayoutAnimation, UIManager } from 'react-native';
@@ -118,23 +119,9 @@ export default function PropertiesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + (isSmallPhone ? 6 : 8), paddingHorizontal: hPad, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <View style={styles.headerRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>{isOwner || previewing ? "عقاراتي" : "العقارات"}</Text>
-            <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.countText, { color: colors.textMuted }]}>{total}</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {canWrite && (
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => router.push('/add-property')}>
-                <Ionicons name="add" size={22} color={colors.textInverse} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
+      <AppHeader title={isOwner || previewing ? "عقاراتي" : "العقارات"} showBack={false} actions={[
+        canWrite && { icon: 'add', label: 'إضافة عقار', primary: true, onPress: () => router.push('/add-property') },
+      ].filter(Boolean) as any} />
       <HubTabs hub="properties" />
 
       <SearchBar
@@ -304,7 +291,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingBottom: 14 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
-  headerTitle: { color: '#FFFFFF', fontSize: 19, fontWeight: '600' },
+  headerTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '600'},
   addBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   countBadge: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: Theme.radius.full },
   countText: { color: '#FFFFFF', fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.bold },
