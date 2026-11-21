@@ -341,24 +341,24 @@ service cloud.firestore {
 
     function validateProperty(data) {
       return validString(data.name, 200) &&
-             validOptionalString(data.location, 500) &&
-             validOptionalString(data.description, 1000);
+             validOptionalString(data.get('location', null), 500) &&
+             validOptionalString(data.get('description', null), 1000);
     }
 
     function validateOwner(data) {
       return validString(data.name, 200) &&
              validString(data.phone, 20) &&
-             validOptionalString(data.email, 254) &&
-             validOptionalString(data.nationalId, 50) &&
-             validOptionalString(data.iban, 50);
+             validOptionalString(data.get('email', null), 254) &&
+             validOptionalString(data.get('nationalId', null), 50) &&
+             validOptionalString(data.get('iban', null), 50);
     }
 
     function validateTenant(data) {
       return validString(data.name, 200) &&
              validString(data.phone, 20) &&
-             validOptionalString(data.email, 254) &&
-             validOptionalString(data.nationalId, 50) &&
-             validOptionalString(data.nationality, 50);
+             validOptionalString(data.get('email', null), 254) &&
+             validOptionalString(data.get('nationalId', null), 50) &&
+             validOptionalString(data.get('nationality', null), 50);
     }
 
     function validateContract(data) {
@@ -383,7 +383,7 @@ service cloud.firestore {
     function validateMaintenance(data) {
       return validString(data.propertyId, 100) &&
              validString(data.title, 200) &&
-             validOptionalString(data.priority, 50);
+             validOptionalString(data.get('priority', null), 50);
     }
   }
 }

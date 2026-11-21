@@ -117,6 +117,12 @@ describe('الموظفين والمدير', () => {
     await assertSucceeds(setDoc(d('manager', 'properties', 'pM'), { name: 'جديد', ownerId: 'oA' }));
     await assertFails(getDoc(d('manager', 'settings', 'assistant')));
   });
+  it('السجل بدون الحقول الاختيارية (وصف، إيميل، هوية) ينحفظ عادي', async () => {
+    await assertSucceeds(setDoc(d('admin', 'properties', 'pMin'), { name: 'بدون وصف' }));
+    await assertSucceeds(setDoc(d('admin', 'tenants', 'tMin'), { name: 'بدون إيميل', phone: '0501234567' }));
+    await assertSucceeds(setDoc(d('admin', 'owners', 'oMin'), { name: 'مالك', phone: '0501234567' }));
+    await assertFails(setDoc(d('admin', 'properties', 'pBad'), { name: 'x', description: 'y'.repeat(1001) }));
+  });
   it('المدير يشوف سجل الأخطاء', async () => {
     await assertSucceeds(getDocs(c('admin', 'errorLogs')));
   });
