@@ -128,8 +128,13 @@ export default function OwnerDetailScreen() {
               onPress={() => { startOwnerPreview(owner.id); router.replace('/(tabs)'); }}
             >
               <Ionicons name="eye-outline" size={16} color={colors.secondary} />
-              <Text style={[styles.previewText, { color: colors.secondary }]}>عرض التطبيق بعين هذا المالك</Text>
+              <Text style={[styles.previewText, { color: colors.secondary }]}>معاينة واجهة المالك (عقاراته بس)</Text>
             </TouchableOpacity>
+          )}
+          {isAdmin && (
+            <Text style={{ fontSize: 11, color: colors.textMuted, textAlign: 'center', marginTop: 6, paddingHorizontal: 12 }}>
+              المعاينة تعرض واجهة حساب "مالك". لو غيّرت صلاحيته إلى "يشوف كل شي" أو "مدير النظام"، يشوف واجهة المدير الكاملة لما يدخل بحسابه.
+            </Text>
           )}
 
           <View style={[styles.contactRow, { borderTopColor: colors.border }]}>
