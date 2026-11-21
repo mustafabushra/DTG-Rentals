@@ -1,10 +1,17 @@
 /**
- * localStorage persistence layer — keyed by user UID.
+ * localStorage persistence layer — keyed by user UID. مشفّرة AES-GCM (lib/secureCache).
  * Used as a fallback when Firestore returns empty data (network issues,
  * cold-start race, etc.) and to survive logout/re-login without data loss.
  */
 
+import { secureGet, secureSet, secureRemove, unlock } from './secureCache';
+
 const PREFIX = 'dtg-cache-v1';
+
+/** لازم يتنادى بعد تسجيل الدخول وقبل قراءة النسخة المحلية: يفك التشفير للذاكرة */
+export function unlockCache(uid: string) {
+  return unlock(uid, [`${PREFIX}:${uid}:`, `dtg-finance-v1:${uid}`, `dtg_read_notifs_${uid}`]);
+}
 
 const COLLECTIONS = [
   'owners', 'properties', 'units', 'tenants',
@@ -21,7 +28,7 @@ function key(uid: string, col: string) {
 
 function safeGet(k: string): any[] {
   try {
-    const raw = localStorage.getItem(k);
+    const raw = secureGet(k);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -31,7 +38,7 @@ function safeGet(k: string): any[] {
 }
 
 function safeSet(k: string, data: any[]) {
-  try { localStorage.setItem(k, JSON.stringify(data)); } catch {}
+  try { secureSet(k, JSON.stringify(data)); } catch {}
 }
 
 /** Save one collection to cache for this user. */
@@ -63,6 +70,6 @@ export function cacheHasData(uid: string): boolean {
 /** Remove all cached data for this user (called on explicit reset, not logout). */
 export function clearCache(uid: string) {
   for (const col of COLLECTIONS) {
-    try { localStorage.removeItem(key(uid, col)); } catch {}
+    secureRemove(key(uid, col));
   }
 }

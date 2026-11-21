@@ -50,7 +50,7 @@ const ROLE_OPTIONS = [
   },
   {
     value: 'viewer',
-    label: 'مشاهد',
+    label: 'يشوف كل شي',
     color: '#079455',
     bg: '#ECFDF3',
     icon: 'eye-outline',
@@ -398,7 +398,8 @@ export default function UserManagementScreen() {
                 <Text style={[styles.roleDescText, { color: colors.textSecondary }]}>
                   {r.value === 'admin'   ? 'صلاحية كاملة: إضافة، تعديل، حذف، وإدارة المستخدمين.'
                   : r.value === 'manager' ? 'يمكنه إضافة وتعديل البيانات دون حذف أو إدارة المستخدمين.'
-                  :                        'مشاهدة البيانات فقط، لا يمكنه إجراء أي تغييرات.'}
+                  : r.value === 'owner'   ? 'يشوف عقاراته ووحداته وحسابه بس.'
+                  :                        'يشوف كل البيانات مثل المدير بالضبط (كل العقارات والملاك والمالية)، بدون ما يقدر يعدّل أو يحذف. مناسب للملاك الشركاء.'}
                 </Text>
               </View>
             </View>
@@ -458,7 +459,7 @@ export default function UserManagementScreen() {
                     {r.value === 'admin'   ? 'صلاحيات كاملة'
                     : r.value === 'manager' ? 'إضافة وتعديل فقط'
                     : r.value === 'owner'   ? 'يرى عقاراته فقط'
-                    : 'مشاهدة فقط'}
+                    : 'يشوف كل شي مثل المدير، بدون تعديل'}
                   </Text>
                 </View>
                 <View style={[styles.radioOuter, { borderColor: selected ? r.color : colors.border }]}>

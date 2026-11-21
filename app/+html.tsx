@@ -159,6 +159,14 @@ export default function Root({ children }: PropsWithChildren) {
           input, select, textarea { font-size: 16px !important; }
         `}} />
 
+        {/* ── إسكات سجلات الكونسول في النسخة المنشورة: ما نطبع بيانات أو تفاصيل داخلية لأي أحد يفتح أدوات المطوّر ── */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){try{
+            var h=location.hostname, dbg=false; try{dbg=localStorage.getItem('dtg_debug')==='1'}catch(e){}
+            if(h!=='localhost'&&h!=='127.0.0.1'&&!dbg){var n=function(){};console.log=n;console.info=n;console.debug=n;console.trace=n;}
+          }catch(e){}})();
+        `}} />
+
         {/* ── Service Worker registration ── */}
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {

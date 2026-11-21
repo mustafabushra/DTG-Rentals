@@ -18,7 +18,8 @@ import { reconcileSnapshot, writeKey, pruneWrites, isLocallyNewer } from '../dom
 import {
   SystemSettings, DEFAULT_SYSTEM_SETTINGS, resolvePermissions,
 } from '../constants/SystemDefaults';
-import { saveCache, loadCache, cacheHasData, clearCache } from '../lib/localCache';
+import { saveCache, loadCache, cacheHasData, clearCache, unlockCache } from '../lib/localCache';
+import { lock as lockSecureCache } from '../lib/secureCache';
 import { FileService } from '../domain/services/FileService';
 import type { FileCategory } from '../domain/models';
 import { toPersistentUri, DOCUMENT_IMAGE } from '../lib/imageUtils';
@@ -322,6 +323,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.log('[AUTH_STATE_CHANGED]', firebaseUser ? `uid=${firebaseUser.uid}` : 'signed-out');
 
       if (!firebaseUser) {
+        lockSecureCache();
         hydrated.current = false;
         loadingRef.current = false;
         setActiveOrgId(null);
@@ -403,6 +405,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // ── Hydrate from cache immediately so the UI never shows empty ──────────
       const uid = firebaseUser.uid;
+      // النسخة المحلية مشفّرة على الجهاز — نفكها للذاكرة قبل القراءة
+      await unlockCache(uid);
+      if (gen !== loadGenRef.current) return;
       if (cacheHasData(uid)) {
         const cached = loadCache(uid);
         if (cached.owners?.length)      setOwners(cached.owners as Owner[]);

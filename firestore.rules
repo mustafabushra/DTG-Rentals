@@ -77,6 +77,12 @@ service cloud.firestore {
              userRole() in ['manager', 'مدير'];
     }
 
+    // مشاهد كامل: يشوف كل بيانات المؤسسة مثل المدير، بدون أي كتابة
+    function isViewer() {
+      return isSignedIn() && isActive() &&
+             userRole() in ['viewer', 'مشاهد'];
+    }
+
     function isManagerOrAdmin() {
       return isAdmin() || isManager();
     }
@@ -173,6 +179,7 @@ service cloud.firestore {
         && !isProtectedCol(collection) && (
         isAdmin() ||
         (isManager() && !isSecretDoc(collection, docId)) ||
+        (isViewer() && !isSecretDoc(collection, docId)) ||
         (collection == 'owners' && docId == ownerLinkedId()) ||
         // resource == null: قراءة مستند غير موجود (معاملة إصدار السند تتحقق أنه لم يصدر بعد) — لا تكشف شيئاً
         (isOwnerScopedCol(collection) && (resource == null || resource.data.ownerId == ownerLinkedId())) ||

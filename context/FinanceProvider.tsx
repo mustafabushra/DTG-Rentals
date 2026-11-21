@@ -18,6 +18,8 @@ import {
   expenseVoucherFieldsChanged, mergeCategories, validateExpense, VOUCHER_LABEL,
 } from '../domain/services/FinanceService';
 import { resolvePaymentCurrency } from '../utils/currency';
+import { secureGet, secureSet } from '../lib/secureCache';
+import { unlockCache } from '../lib/localCache';
 import {
   getAll, getOne, getWhere, where, updateOne, getActiveOrgId,
   runIssueVoucherTransaction, TxError,
@@ -53,12 +55,12 @@ const newId = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toS
 
 function readCache(uid: string): { expenses: Expense[]; vouchers: Voucher[]; settings: FinanceSettings } | null {
   try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CACHE_KEY(uid)) : null;
+    const raw = secureGet(CACHE_KEY(uid));
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
 function writeCache(uid: string, data: { expenses: Expense[]; vouchers: Voucher[]; settings: FinanceSettings }) {
-  try { if (typeof localStorage !== 'undefined') localStorage.setItem(CACHE_KEY(uid), JSON.stringify(data)); } catch {}
+  try { secureSet(CACHE_KEY(uid), JSON.stringify(data)); } catch {}
 }
 
 function txMessage(e: any): string {
@@ -91,14 +93,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     const gen = ++loadGen.current;
-    const cached = readCache(uid);
-    if (cached) {
-      setAllExpenses(cached.expenses ?? []);
-      setAllVouchers(cached.vouchers ?? []);
-      setSettings(cached.settings ?? {});
-    }
-    setFinanceLoading(!cached);
     (async () => {
+      // النسخة المحلية مشفّرة: نفكها أول
+      await unlockCache(uid);
+      if (gen !== loadGen.current) return;
+      const cached = readCache(uid);
+      if (cached) {
+        setAllExpenses(cached.expenses ?? []);
+        setAllVouchers(cached.vouchers ?? []);
+        setSettings(cached.settings ?? {});
+      }
+      setFinanceLoading(!cached);
       try {
         let org: string;
         try { org = getActiveOrgId(); } catch { org = orgId; }

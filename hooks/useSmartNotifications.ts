@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppProvider';
 import { getUserProfile, updateUserProfile } from '../lib/auth';
+import { secureGet, secureSet } from '../lib/secureCache';
 
 // ── حالة "مقروء" محفوظة: على الجهاز فوراً، وفي حساب المستخدم عشان تتبعه بين الأجهزة ──
 let readSet = new Set<string>();
@@ -19,7 +20,7 @@ function loadFor(uid: string) {
   if (!uid || loadedFor === uid) return;
   loadedFor = uid;
   try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS(uid)) : null;
+    const raw = secureGet(LS(uid));
     readSet = new Set(raw ? JSON.parse(raw) : []);
   } catch { readSet = new Set(); }
   emit();
@@ -31,7 +32,7 @@ function loadFor(uid: string) {
 
 function persist(uid: string, remote = true) {
   const arr = [...readSet].slice(-500);
-  try { localStorage.setItem(LS(uid), JSON.stringify(arr)); } catch {}
+  try { secureSet(LS(uid), JSON.stringify(arr)); } catch {}
   if (!remote) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => { updateUserProfile(uid, { readNotifs: arr }).catch(() => {}); }, 1500);
