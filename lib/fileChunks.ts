@@ -19,13 +19,14 @@ export function splitIntoChunks(dataUri: string, size = CHUNK_CHARS): string[] {
 
 const chunkId = (fileId: string, i: number) => `${fileId}_${i}`;
 
-export async function saveChunks(orgId: string, fileId: string, dataUri: string, ownerContext?: string): Promise<number> {
+export async function saveChunks(orgId: string, fileId: string, dataUri: string, ownerContext?: string, ownerId?: string): Promise<number> {
   const parts = splitIntoChunks(dataUri);
   // بالتسلسل: أوضح في الأخطاء وأخف على الاتصال الضعيف
   for (let i = 0; i < parts.length; i++) {
     await setOne(orgId, 'fileChunks', chunkId(fileId, i), {
       fileId, index: i, data: parts[i],
       ...(ownerContext ? { ownerContext } : {}),
+      ...(ownerId ? { ownerId } : {}),
     });
   }
   return parts.length;

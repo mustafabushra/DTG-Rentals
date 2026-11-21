@@ -110,13 +110,26 @@ service cloud.firestore {
 
     // مراجع مشتركة يقرؤها أي عضو نشط في المؤسسة (المالك التابع أيضاً)
     function isSharedReadCol(col) {
-      return col in ['cities', 'settings', 'calendarEvents', 'photos', 'tenants', 'attachments', 'fileChunks', 'counters'];
+      return col in ['cities', 'settings', 'counters'];
     }
 
     // مراجع مشتركة يجوز للمالك التابع الكتابة فيها
     function isOwnerWritableSharedCol(col) {
       // counters: عدّاد ترقيم السندات — المالك التابع يصدر سندات لعقاراته فيحتاج حجز رقم
-      return col in ['calendarEvents', 'photos', 'tenants', 'counters'];
+      return col in ['counters'];
+    }
+
+    // ملفات ومستندات مختومة بمالكها: المالك التابع يشوف اللي له بس
+    // (كانت مشتركة: أي مالك يقدر يسحب صكوك ومرفقات غيره من أدوات المتصفح)
+    function isOwnerStampedCol(col) {
+      return col in ['attachments', 'fileChunks', 'photos', 'calendarEvents'];
+    }
+    function ownerStampMatches(data) {
+      return data.ownerId == ownerLinkedId() || data.ownerContext == ownerLinkedId();
+    }
+    // المستأجر: المالك يشوف مستأجرين وحداته بس (ownerIds تتحدّث مع العقود)
+    function ownerSeesTenant(data) {
+      return data.ownerId == ownerLinkedId() || ownerLinkedId() in data.ownerIds;
     }
 
     function validString(val, maxLen) {
@@ -183,6 +196,8 @@ service cloud.firestore {
         (collection == 'owners' && docId == ownerLinkedId()) ||
         // resource == null: قراءة مستند غير موجود (معاملة إصدار السند تتحقق أنه لم يصدر بعد) — لا تكشف شيئاً
         (isOwnerScopedCol(collection) && (resource == null || resource.data.ownerId == ownerLinkedId())) ||
+        (isOwnerRole() && isOwnerStampedCol(collection) && ownerStampMatches(resource.data)) ||
+        (isOwnerRole() && collection == 'tenants' && ownerSeesTenant(resource.data)) ||
         (isSharedReadCol(collection) && !isSecretDoc(collection, docId))
       ));
 
@@ -196,6 +211,8 @@ service cloud.firestore {
              && request.resource.data.ownerId == ownerLinkedId()) ||
           (isOwnerRole() && collection in ['attachments', 'fileChunks']
              && request.resource.data.ownerContext == ownerLinkedId()) ||
+          (isOwnerRole() && collection in ['tenants', 'photos', 'calendarEvents']
+             && request.resource.data.ownerId == ownerLinkedId()) ||
           (isOwnerRole() && isOwnerWritableSharedCol(collection))
         ));
 
@@ -210,6 +227,11 @@ service cloud.firestore {
              && request.resource.data.ownerId == ownerLinkedId()) ||
           (isOwnerRole() && collection == 'attachments'
              && resource.data.ownerContext == ownerLinkedId()) ||
+          (isOwnerRole() && collection == 'tenants' && ownerSeesTenant(resource.data)
+             && request.resource.data.get('ownerId', '') == resource.data.get('ownerId', '')) ||
+          (isOwnerRole() && collection in ['photos', 'calendarEvents']
+             && resource.data.ownerId == ownerLinkedId()
+             && request.resource.data.ownerId == ownerLinkedId()) ||
           (isOwnerRole() && isOwnerWritableSharedCol(collection))
         ));
 

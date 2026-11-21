@@ -51,9 +51,27 @@ jobs:
           path: dist
           retention-days: 1
 
+  rules-tests:
+    name: Firestore Rules Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Run rules tests on emulator
+        run: npx -y firebase-tools@14 emulators:exec --only firestore --project demo-dtg-rules "npx vitest run --config vitest.rules.config.ts"
+
   deploy-firestore-rules:
     name: Deploy Firestore Rules
-    needs: build
+    needs: [build, rules-tests]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
     runs-on: ubuntu-latest
     steps:

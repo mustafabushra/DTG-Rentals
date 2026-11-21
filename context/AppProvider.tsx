@@ -26,6 +26,8 @@ import { toPersistentUri, DOCUMENT_IMAGE } from '../lib/imageUtils';
 import { applyFxOverrides } from '../utils/currency';
 import { restoreExtras } from '../lib/backupBuilder';
 import { reportError, setErrorContext } from '../lib/errorReporter';
+import { canWriteRole } from '../utils/roleUtils';
+import { ownerOfEntity, planStamps } from '../domain/services/OwnerStamps';
 import { saveChunks, deleteChunks, CHUNK_CHARS, MAX_FILE_CHARS } from '../lib/fileChunks';
 import { uploadFile, attachmentStoragePath, uploadPhoto, photoStoragePath, deleteFile } from '../lib/storageService';
 
@@ -399,6 +401,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         (scopeOwnerId && OWNER_SCOPED.has(col))
           ? getWhere(resolvedOrgId, col, [where('ownerId', '==', scopeOwnerId)])
           : getAll(resolvedOrgId, col);
+      // المالك التابع: المستأجرين والمرفقات والصور مختومة بمالكها، فنجيب اللي له بس
+      // (القواعد ترفض أي استعلام غير محصور). المستأجر: اللي ضافه أو اللي عنده عقد في وحداته.
+      const fetchStamped = async (col: 'tenants' | 'attachments' | 'photos' | 'calendarEvents') => {
+        if (!scopeOwnerId) return getAll(resolvedOrgId, col);
+        const q = col === 'tenants'
+          ? [[where('ownerId', '==', scopeOwnerId)], [where('ownerIds', 'array-contains', scopeOwnerId)]]
+          : col === 'attachments'
+            ? [[where('ownerId', '==', scopeOwnerId)], [where('ownerContext', '==', scopeOwnerId)]]
+            : [[where('ownerId', '==', scopeOwnerId)]];
+        const res = await Promise.all(q.map(c => getWhere(resolvedOrgId, col, c).catch(() => [] as any[])));
+        const m = new Map<string, any>();
+        res.flat().forEach((r: any) => m.set(r.id, r));
+        return [...m.values()];
+      };
       const fetchOwners = async () => {
         if (!scopeOwnerId) return getAll(resolvedOrgId, 'owners');
         const own = await getOne(resolvedOrgId, 'owners', scopeOwnerId);
@@ -584,14 +600,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // لحظة إصدار القراءة: أي تعديل محلي بعدها لا يمكن أن يكون في هذه اللقطة
           const fetchStartedAt = Date.now();
           const [tenantsData, paymentsData, maintenanceData, bookingsData, auditData, calendarData, attachmentsData, allPhotosData] = await Promise.all([
-            getAll(resolvedOrgId, 'tenants'),
+            fetchStamped('tenants'),
             fetchCol('payments'),
             fetchCol('maintenance'),
             fetchCol('bookings'),
             scopeOwnerId ? Promise.resolve([] as any[]) : getAll(resolvedOrgId, 'auditLogs'),
-            getAll(resolvedOrgId, 'calendarEvents'),
-            getAll(resolvedOrgId, 'attachments'),
-            getAll(resolvedOrgId, 'photos'),
+            fetchStamped('calendarEvents'),
+            fetchStamped('attachments'),
+            fetchStamped('photos'),
           ]);
           if (gen !== loadGenRef.current) return;
           const resolvedTenants     = tenantsData     as Tenant[];
@@ -785,6 +801,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const canWrite  = canWriteDuringPreview(previewing, _perms.canAdd || _perms.canEdit);
   const canDelete = canWriteDuringPreview(previewing, _perms.canDelete);
+
+  // ─── ختم المالك تلقائياً: المستأجرين (ownerIds) والمرفقات وأجزاءها والصور ─────
+  // يشتغل عند المدير/الموظف بعد التحميل وبعد أي تغيير في العقود أو الوحدات، ويكتب الفروقات بس.
+  // يغطي كل المسارات (عقد جديد، نقل مستأجر، تغيير المستفيد) والبيانات القديمة بنفس الوقت.
+  const stampTimer = useRef<any>(null);
+  useEffect(() => {
+    if (!userId || isOwner || previewing || !canWriteRole(currentUser.role) || dataLoading || secondaryLoading) return;
+    clearTimeout(stampTimer.current);
+    stampTimer.current = setTimeout(async () => {
+      const photos = [...Object.values(propertyPhotos).flat(), ...Object.values(unitPhotos).flat()] as any[];
+      const plan = planStamps({ units, properties, contracts, payments, maintenance, tenants, attachments, photos } as any);
+      const org = getActiveOrgId();
+      if (!plan.tenants.length && !plan.attachments.length && !plan.photos.length) return;
+      console.log('[STAMPS]', plan.tenants.length, plan.attachments.length, plan.photos.length);
+      for (const t of plan.tenants) await updateOne(org, 'tenants', t.id, { ownerIds: t.ownerIds }).catch(e => reportError(e, 'ختم المستأجر'));
+      for (const a of plan.attachments) {
+        if (a.chunks) {
+          await Promise.all(Array.from({ length: a.chunks }, (_, i) =>
+            updateOne(org, 'fileChunks', `${a.id}_${i}`, { ownerId: a.ownerId }).catch(() => {})));
+        }
+        await updateOne(org, 'attachments', a.id, { ownerId: a.ownerId, ...(a.chunks ? { chunksOwnerId: a.ownerId } : {}) })
+          .catch(e => reportError(e, 'ختم المرفق'));
+      }
+      for (const ph of plan.photos) await updateOne(org, 'photos', ph.id, { ownerId: ph.ownerId }).catch(() => {});
+      const tMap = new Map(plan.tenants.map(t => [t.id, t.ownerIds]));
+      const aMap = new Map(plan.attachments.map(a => [a.id, a]));
+      if (tMap.size) setTenants(prev => prev.map(t => tMap.has(t.id) ? { ...t, ownerIds: tMap.get(t.id) } as any : t));
+      if (aMap.size) setAttachments(prev => prev.map(x => aMap.has(x.id) ? { ...x, ownerId: aMap.get(x.id)!.ownerId, ...(x.chunks ? { chunksOwnerId: aMap.get(x.id)!.ownerId } : {}) } as any : x));
+    }, 4000);
+    return () => clearTimeout(stampTimer.current);
+  }, [userId, isOwner, previewing, currentUser.role, dataLoading, secondaryLoading, units, properties, contracts, tenants.length, attachments.length]);
+
 
   // كل مسارات الفشل هنا كانت صامتة: الحالة المحلية تتغيّر والمستخدم يظن أن الحفظ تم،
   // بينما لم تصل الكتابة إلى قاعدة البيانات (فتعود البيانات القديمة عند إعادة التحميل).
@@ -2373,7 +2421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Calendar ─────────────────────────────────────────────────────────────
   const addCalendarEvent = (event: Omit<CalendarEvent, 'id'>) => {
-    const newEvent: CalendarEvent = { ...event, id: `ce_${Date.now()}` };
+    const newEvent: CalendarEvent = { ...event, id: `ce_${Date.now()}`, ...(isOwner && currentUser.ownerId ? { ownerId: currentUser.ownerId } : {}) } as any;
     setCalendarEvents(prev => [...prev, newEvent]);
     fs('calendarEvents', newEvent.id, newEvent, 'set');
     addAuditEntry('add', 'حدث', newEvent.id, `تم إضافة حدث: ${newEvent.title}`);
@@ -2421,11 +2469,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // This string is saved directly in Firestore and NEVER expires.
     const uri = await toPersistentUri(rawUri);
 
+    const photoOwner = (isOwner && currentUser.ownerId) || ownerOfEntity({ units, properties, contracts, payments, maintenance } as any, entityType, entityId);
     const photo: PropertyPhoto & { entityType: string; entityId: string } = {
       id: photoId, uri, isMain: false,
       uploadedAt: new Date().toISOString().split('T')[0],
       entityType, entityId,
-    };
+      ...(photoOwner ? { ownerId: photoOwner } : {}),
+    } as any;
 
     // Add to local state instantly (optimistic)
     let isFirstPhoto = false;
@@ -2519,17 +2569,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const ownerCtx = isOwner && currentUser.ownerId ? currentUser.ownerId : undefined;
+    // ختم المالك: قواعد قاعدة البيانات تعطي كل مالك مرفقات وحداته بس
+    const stampOwner = ownerCtx ?? ownerOfEntity({ units, properties, contracts, payments, maintenance } as any, data.entityType, data.entityId);
     const base = FileService.create({
       ...data,
       uri,
       uploadedBy: data.uploadedBy ?? currentUser.name,
       ...(ownerCtx ? { ownerContext: ownerCtx } : {}),
     });
-    let att: Attachment = base;
+    let att: Attachment = stampOwner ? ({ ...base, ownerId: stampOwner } as any) : base;
     // ملف كبير ⇒ أجزاء منفصلة، والسجل نفسه يبقى خفيف
     if (uri.length > CHUNK_CHARS) {
-      const chunks = await saveChunks(org, base.id, uri, ownerCtx);
-      att = { ...base, uri: '', chunks };
+      const chunks = await saveChunks(org, base.id, uri, ownerCtx, stampOwner);
+      att = { ...att, uri: '', chunks, ...(stampOwner ? { chunksOwnerId: stampOwner } : {}) } as any;
     }
 
     // حفظ مؤكَّد (await) قبل العرض — فشل الكتابة يُعرض، ولا يبقى سجل وهمي يختفي عند التحديث
@@ -2539,7 +2591,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addAuditEntry('add', 'وثيقة', att.name,
       `رفع وثيقة "${att.name}" على ${data.entityType} — ${currentUser.name}`);
     return att;
-  }, [userId, currentUser.name, currentUser.ownerId, isOwner]);
+  }, [userId, currentUser.name, currentUser.ownerId, isOwner, units, properties, contracts, payments, maintenance]);
 
   const deleteAttachment = useCallback((id: string) => {
     // ✅ FIX: Also delete the file from Firebase Storage
@@ -2819,6 +2871,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const ownerScoped = new Set(['properties', 'units', 'contracts', 'payments', 'maintenance', 'bookings']);
     const fcol = (col: string) => (sOwner && ownerScoped.has(col)) ? getWhere(org, col, [where('ownerId', '==', sOwner)]) : getAll(org, col);
     const fOwners = async () => { if (!sOwner) return getAll(org, 'owners'); const o = await getOne(org, 'owners', sOwner); return o ? [o] : []; };
+    const fStamped = async (col: string) => {
+      if (!sOwner) return getAll(org, col);
+      const q = col === 'tenants'
+        ? [[where('ownerId', '==', sOwner)], [where('ownerIds', 'array-contains', sOwner)]]
+        : col === 'attachments' ? [[where('ownerId', '==', sOwner)], [where('ownerContext', '==', sOwner)]]
+        : [[where('ownerId', '==', sOwner)]];
+      const res = await Promise.all(q.map(c => getWhere(org, col, c).catch(() => [] as any[])));
+      const m = new Map<string, any>(); res.flat().forEach((r: any) => m.set(r.id, r)); return [...m.values()];
+    };
     setDataLoading(true);
     try {
       const fetchStartedAt = Date.now();
@@ -2830,7 +2891,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         fcol('properties'),
         fcol('units'),
         fcol('contracts'),
-        getAll(org, 'tenants'),
+        fStamped('tenants'),
         fcol('payments'),
         fcol('maintenance'),
         fcol('bookings'),
@@ -2851,8 +2912,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const [auditData, calendarData, attachmentsData] = await Promise.all([
         sOwner ? Promise.resolve([] as any[]) : getAll(org, 'auditLogs'),
-        getAll(org, 'calendarEvents'),
-        getAll(org, 'attachments'),
+        fStamped('calendarEvents'),
+        fStamped('attachments'),
       ]);
       setAuditLogs(prev => reconcileSnapshot('auditLogs', auditData as AuditLog[], prev, fetchStartedAt, localWritesRef.current)
         .sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
