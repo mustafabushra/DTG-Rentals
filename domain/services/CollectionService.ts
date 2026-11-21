@@ -177,6 +177,9 @@ export const CollectionService = {
 
     for (const p of data.payments) {
       if (p.status === 'paid') continue;
+      // عليه شيك في الخزنة أو البنك ⇒ المبلغ مغطّى، ما نذكّر المستأجر (المرتد يرجع للتحصيل)
+      const chq = (p as any).cheque?.status;
+      if (chq === 'held' || chq === 'deposited') continue;
       const days = CollectionService.daysOverdue(p.dueDate, today);
       if (days < -upcomingDays) continue;           // أبعد من النافذة المستقبلية
 

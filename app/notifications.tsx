@@ -26,13 +26,10 @@ const URGENCY_CFG: Record<Urgency, { color: string; bg: string; icon: string; la
 export default function NotificationsScreen() {
   const { colors } = useAppTheme();
 
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
-
-  // ── Build smart notifications from ALL live data ───────────────────────────
-  const { notifications } = useSmartNotifications();
-  const unreadCount  = notifications.filter(n => !readIds.has(n.id)).length;
-  const markAllRead  = () => setReadIds(new Set(notifications.map(n => n.id)));
-  const markRead     = (id: string) => setReadIds(p => new Set([...p, id]));
+  // ── التنبيهات من البيانات الحية، وحالة "مقروء" محفوظة في الحساب ───────────
+  const { notifications, unreadCount, isRead, markRead: markIds } = useSmartNotifications();
+  const markAllRead  = () => markIds(notifications.map(n => n.id));
+  const markRead     = (id: string) => markIds([id]);
 
   // ── Group by urgency ───────────────────────────────────────────────────────
   const grouped = useMemo(() => {
@@ -62,7 +59,7 @@ export default function NotificationsScreen() {
 
         {/* Notifications */}
         <ResponsiveGrid>{items.map(n => {
-          const isRead = readIds.has(n.id);
+          const read = isRead(n.id);
           return (
             <TouchableOpacity
               key={n.id}
@@ -77,15 +74,15 @@ export default function NotificationsScreen() {
               activeOpacity={0.82}
             >
               {/* Icon */}
-              <View style={[styles.notifIcon, { backgroundColor: isRead ? colors.surface : cfg.bg }]}>
-                <Ionicons name={cfg.icon as any} size={22} color={isRead ? colors.textMuted : cfg.color} />
+              <View style={[styles.notifIcon, { backgroundColor: read ? colors.surface : cfg.bg }]}>
+                <Ionicons name={cfg.icon as any} size={22} color={read ? colors.textMuted : cfg.color} />
               </View>
 
               {/* Content */}
               <View style={styles.notifContent}>
                 <Text style={[
                   styles.notifTitle,
-                  { color: colors.text, fontWeight: isRead ? '400' : fontWeight.bold as any },
+                  { color: colors.text, fontWeight: read ? '400' : fontWeight.bold as any },
                 ]}>
                   {n.title}
                 </Text>
@@ -100,7 +97,7 @@ export default function NotificationsScreen() {
               </View>
 
               {/* Unread dot */}
-              {!isRead && <View style={[styles.unreadDot, { backgroundColor: cfg.color }]} />}
+              {!read && <View style={[styles.unreadDot, { backgroundColor: cfg.color }]} />}
 
               {/* Arrow if navigable */}
               {n.route && <Ionicons name="chevron-back" size={14} color={colors.textMuted} style={{ flexShrink: 0 }} />}

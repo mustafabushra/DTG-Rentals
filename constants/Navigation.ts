@@ -22,7 +22,7 @@ export const STAFF_NAV: NavItem[] = [
   { icon: 'business-outline', label: 'العقارات', route: '/(tabs)/properties', matches: ['/properties', '/units', '/property/', '/unit/', '/add-property', '/add-unit', '/edit-property', '/edit-unit', '/edit-deed'], moduleKey: 'properties' },
   { icon: 'people-outline', label: 'الملاك', route: '/(tabs)/owners', matches: ['/owners', '/owner/', '/add-owner', '/edit-owner', '/owner-timeline'], moduleKey: 'owners' },
   { icon: 'document-text-outline', label: 'العقود والمستأجرون', route: '/(tabs)/contracts', matches: ['/contracts', '/contract/', '/tenants', '/tenant/', '/renewals', '/add-contract', '/edit-contract', '/add-tenant', '/edit-tenant', '/scan-contract', '/transfer-tenant'], moduleKey: 'contracts' },
-  { icon: 'cash-outline', label: 'التحصيل', route: '/collections', matches: ['/collections', '/payments', '/payment/', '/ledger', '/record-payment', '/payment-log'], moduleKey: 'payments', badge: 'overdue' },
+  { icon: 'cash-outline', label: 'التحصيل', route: '/collections', matches: ['/collections', '/payments', '/payment/', '/ledger', '/record-payment', '/payment-log', '/cheques'], moduleKey: 'payments', badge: 'overdue' },
   { icon: 'wallet-outline', label: 'المصاريف', route: '/expenses', matches: ['/expenses', '/expense/', '/office-expenses', '/vouchers', '/voucher/', '/add-expense'], moduleKey: 'finance' },
   { icon: 'construct-outline', label: 'الصيانة', route: '/maintenance', matches: ['/maintenance', '/add-maintenance'], moduleKey: 'maintenance' },
   { icon: 'bar-chart-outline', label: 'التقارير', route: '/financial-reports', matches: ['/financial-reports', '/reports'], moduleKey: 'reports' },
@@ -55,8 +55,9 @@ export const HUBS: Record<HubKey, { label: string; route: string; match: string;
     { label: 'التجديد', route: '/renewals', match: '/renewals', hint: 'العقود اللي انتهت أو قربت تنتهي. جدّدها أو ذكّر المستأجر بالواتساب.' },
   ],
   collections: [
-    { label: 'المتأخرات والمتابعة', route: '/collections', match: '/collections', hint: 'الإيجارات المتأخرة والقريبة. ذكّر المستأجر بضغطة، أو سجّل الدفعة إذا وصلت.' },
+    { label: 'المتابعة', route: '/collections', match: '/collections', hint: 'الإيجارات المتأخرة والقريبة. ذكّر المستأجر بضغطة، أو سجّل الدفعة إذا وصلت.' },
     { label: 'كل الدفعات', route: '/payments', match: '/payments', hint: 'كل دفعات الإيجار: المدفوعة والمتأخرة والقادمة.' },
+    { label: 'الشيكات', route: '/cheques', match: '/cheques', hint: 'كل شيك وين وصل: في الخزنة، في البنك، انصرف، أو ارتد. اضغط على البطاقات فوق للتصفية.' },
     { label: 'حسب العقد', route: '/ledger', match: '/ledger', hint: 'دفعات كل عقد مجمّعة: كم انحصّل منه وكم باقي.' },
   ],
   expenses: [

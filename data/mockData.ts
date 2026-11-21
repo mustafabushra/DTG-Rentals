@@ -185,6 +185,8 @@ export interface Payment {
   currency?: string;  // inherited from contract at creation time
   remindedAt?: string;      // آخر تذكير أُرسل للمستأجر بهذه الدفعة (ISO كامل)
   remindersCount?: number;  // عدد التذكيرات المُرسلة — يمنع الإلحاح غير المقصود
+  /** شيك مسلَّم لهذا القسط — القسط ما يصير مدفوع إلا لما الشيك ينصرف */
+  cheque?: import('../domain/services/ChequeService').Cheque;
 }
 
 export interface Maintenance {

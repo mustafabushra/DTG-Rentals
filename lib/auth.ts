@@ -154,6 +154,7 @@ export async function updateUserProfile(uid: string, data: {
   role?: string;
   theme?: string;
   notificationPrefs?: Record<string, boolean>;
+  readNotifs?: string[];
 }) {
   if (!uid || typeof uid !== 'string') throw new Error('invalid-uid');
 
@@ -163,6 +164,7 @@ export async function updateUserProfile(uid: string, data: {
   if (data.role  !== undefined) clean.role  = sanitizeText(data.role);
   if (data.theme !== undefined) clean.theme = data.theme;
   if (data.notificationPrefs !== undefined) clean.notificationPrefs = data.notificationPrefs;
+  if (data.readNotifs !== undefined) clean.readNotifs = data.readNotifs.slice(-500);
 
   const auth = getFirebaseAuth();
   const user = auth?.currentUser ?? null;

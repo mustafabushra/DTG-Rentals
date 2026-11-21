@@ -7,6 +7,9 @@ import { useApp } from '../../context/AppProvider';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { DeleteButton } from '../../components/ui/DeleteButton';
 import { ConfirmModal, AlertModal } from '../../components/ui/Modal';
+import { ContractChequesSheet } from '../../components/cheques/ChequeSheets';
+import { useCheques } from '../../hooks/useCheques';
+import { CHEQUE_STATUS } from '../../domain/services/ChequeService';
 import { RenewalService } from '../../domain/services/RenewalService';
 import { ContractScheduleService } from '../../domain/services/ContractScheduleService';
 import { useDelete } from '../../hooks/useDelete';
@@ -40,6 +43,8 @@ export default function ContractDetailScreen() {
   const { colors } = useAppTheme();
   const { contracts, payments, tenants, units, properties, currentUser, terminateContract, updateContract, renewContract, canWrite, canDelete, closeEndedContract } = useApp();
   const [showCloseConfirm, setShowCloseConfirm] = React.useState(false);
+  const [chequesOpen, setChequesOpen] = React.useState(false);
+  const chequeOps = useCheques();
 
   // ── Terminate modal state ──────────────────────────────────────────────────
   const [showConfirm,       setShowConfirm]       = useState(false);
@@ -408,9 +413,16 @@ export default function ContractDetailScreen() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>جدول الأقساط</Text>
-            <TouchableOpacity onPress={() => router.push('/record-payment')}>
-              <Text style={[styles.cardAction, { color: colors.secondary }]}>تسجيل دفعة</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 14 }}>
+              {canWrite && contractPayments.some(p => p.status !== 'paid' && !p.cheque) && (
+                <TouchableOpacity onPress={() => setChequesOpen(true)}>
+                  <Text style={[styles.cardAction, { color: colors.secondary }]}>تسجيل شيكات العقد</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => router.push(`/record-payment?contractId=${id}` as any)}>
+                <Text style={[styles.cardAction, { color: colors.secondary }]}>تسجيل دفعة</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           {contractPayments.map((p, i) => (
             <TouchableOpacity
@@ -431,7 +443,9 @@ export default function ContractDetailScreen() {
                 <View style={[styles.installmentNum, { backgroundColor: colors.accent }]}>
                   <Text style={[styles.installmentNumText, { color: colors.primary }]}>{p.installmentNumber}</Text>
                 </View>
-                {p.method && <Text style={[styles.installmentMethod, { color: colors.textMuted }]}>{methodLabels[p.method]}</Text>}
+                {p.cheque && p.status !== 'paid'
+                  ? <Text style={[styles.installmentMethod, { color: colors.textMuted }]}>شيك · {CHEQUE_STATUS[p.cheque.status].label}</Text>
+                  : p.method && <Text style={[styles.installmentMethod, { color: colors.textMuted }]}>{methodLabels[p.method]}</Text>}
               </View>
             </TouchableOpacity>
           ))}
@@ -518,6 +532,13 @@ export default function ContractDetailScreen() {
         </TouchableOpacity>
       </RNModal>
 
+      <ContractChequesSheet
+        visible={chequesOpen}
+        onClose={() => setChequesOpen(false)}
+        installments={contractPayments.filter(p => p.status !== 'paid' && !p.cheque)}
+        currency={contract?.currency}
+        onSave={plan => { chequeOps.saveMany(plan); setChequesOpen(false); }}
+      />
       <ConfirmModal
         visible={showCloseConfirm}
         onClose={() => setShowCloseConfirm(false)}

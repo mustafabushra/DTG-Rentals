@@ -18,6 +18,9 @@ import { formatDate, formatCurrency } from '../../data/mockData';
 import { CurrencyText } from '../../components/ui/CurrencyText';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { resolvePaymentCurrency, formatAmount } from '../../utils/currency';
+import { ChequeSheet } from '../../components/cheques/ChequeSheets';
+import { useCheques } from '../../hooks/useCheques';
+import { CHEQUE_STATUS, ChequeService } from '../../domain/services/ChequeService';
 
 const methodLabels: Record<string, string> = {
   transfer:      'تحويل بنكي',
@@ -215,6 +218,8 @@ export default function PaymentDetailScreen() {
   } = useApp();
 
   const { receiptFor, issueReceiptForPayment, cancelReceiptForPayment } = useFinance();
+  const [chequeOpen, setChequeOpen] = useState(false);
+  const cheques = useCheques();
   const [voucherBusy, setVoucherBusy]   = useState(false);
   const [showConfirm, setShowConfirm]   = useState(false);
   const [showCancel,  setShowCancel]    = useState(false);
@@ -394,6 +399,49 @@ export default function PaymentDetailScreen() {
           ))}
         </View>
 
+        {/* ── الشيك ── */}
+        {(payment.cheque || ((payment.status === 'pending' || payment.status === 'overdue') && canWrite)) && (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>الشيك</Text>
+            {payment.cheque ? (
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'right' }}>
+                      شيك {payment.cheque.number}{payment.cheque.bank ? ` · ${payment.cheque.bank}` : ''}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'right', marginTop: 2 }}>
+                      تاريخه {formatDate(payment.cheque.date)} · {CHEQUE_STATUS[payment.cheque.status].label} — {CHEQUE_STATUS[payment.cheque.status].hint}
+                    </Text>
+                  </View>
+                  {canWrite && payment.cheque.status !== 'cleared' && (
+                    <TouchableOpacity onPress={() => setChequeOpen(true)}>
+                      <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>تعديل</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {canWrite && (
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {ChequeService.nextActions(payment.cheque.status).map(a => (
+                      <TouchableOpacity key={a.key} onPress={() => cheques.advance(id!, a.key)}
+                        style={{ flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+                          ...(a.key === 'bounce' ? { borderWidth: 1, borderColor: colors.danger } : { backgroundColor: colors.primary }) }}>
+                        <Text style={{ fontWeight: '600', color: a.key === 'bounce' ? colors.danger : colors.textInverse }}>{a.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => setChequeOpen(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 }}>
+                <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>استلمت شيك لهذا القسط</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* ── Notes ── */}
         {payment.notes && (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -470,6 +518,15 @@ export default function PaymentDetailScreen() {
       </ScrollView>
 
       {/* ── Modals ── */}
+      <ChequeSheet
+        visible={chequeOpen}
+        onClose={() => setChequeOpen(false)}
+        initial={payment.cheque}
+        dueDate={payment.dueDate}
+        amount={payment.amount}
+        currency={resolvePaymentCurrency(payment, contracts, units, properties)}
+        onSave={c => { cheques.save(id!, c); setChequeOpen(false); }}
+      />
       <ConfirmModal
         visible={showConfirm}
         onClose={() => setShowConfirm(false)}

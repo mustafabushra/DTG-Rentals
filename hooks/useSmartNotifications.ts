@@ -2,8 +2,58 @@
  * مصدر واحد للتنبيهات: صفحة الإشعارات والجرس والقائمة كلها تقرأ من هنا،
  * فيطلع نفس الرقم في كل مكان. الرقم على الجرس = عدد التنبيهات "العاجلة".
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppProvider';
+import { getUserProfile, updateUserProfile } from '../lib/auth';
+
+// ── حالة "مقروء" محفوظة: على الجهاز فوراً، وفي حساب المستخدم عشان تتبعه بين الأجهزة ──
+let readSet = new Set<string>();
+let loadedFor: string | null = null;
+const listeners = new Set<() => void>();
+const LS = (uid: string) => `dtg_read_notifs_${uid}`;
+let syncTimer: any = null;
+
+function emit() { listeners.forEach(l => l()); }
+
+function loadFor(uid: string) {
+  if (!uid || loadedFor === uid) return;
+  loadedFor = uid;
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS(uid)) : null;
+    readSet = new Set(raw ? JSON.parse(raw) : []);
+  } catch { readSet = new Set(); }
+  emit();
+  getUserProfile(uid).then(p => {
+    const remote: string[] = (p as any)?.readNotifs ?? [];
+    if (remote.length) { remote.forEach(id => readSet.add(id)); persist(uid, false); emit(); }
+  }).catch(() => {});
+}
+
+function persist(uid: string, remote = true) {
+  const arr = [...readSet].slice(-500);
+  try { localStorage.setItem(LS(uid), JSON.stringify(arr)); } catch {}
+  if (!remote) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { updateUserProfile(uid, { readNotifs: arr }).catch(() => {}); }, 1500);
+}
+
+export function useReadNotifications() {
+  const { currentUser } = useApp();
+  const userId = currentUser?.id || '';
+  const [, force] = useState(0);
+  useEffect(() => {
+    const l = () => force(x => x + 1);
+    listeners.add(l);
+    if (userId) loadFor(userId);
+    return () => { listeners.delete(l); };
+  }, [userId]);
+  const markRead = (ids: string[]) => {
+    ids.forEach(id => readSet.add(id));
+    if (userId) persist(userId);
+    emit();
+  };
+  return { isRead: (id: string) => readSet.has(id), markRead };
+}
 
 export type Urgency = 'critical' | 'warning' | 'info' | 'success';
 
@@ -68,6 +118,25 @@ export function useSmartNotifications() {
           route:   `/payment/${p.id}`,
           isRead:  false,
         });
+      });
+
+    // 2b. الشيكات: جاهزة للإيداع، أو مرتدة
+    if (notificationPrefs.payments) installments
+      .filter(p => p.cheque && (p.cheque.status === 'held' || p.cheque.status === 'bounced'))
+      .forEach(p => {
+        const c = p.cheque!;
+        if (c.status === 'bounced') {
+          list.push({ id: `chq_bounce_${p.id}_${c.bouncedAt ?? ''}`, type: 'payment', urgency: 'critical',
+            title: 'شيك مرتد', body: `شيك ${c.number} — ${(p.amount ?? 0).toLocaleString('en-US')}`, date: c.bouncedAt ?? c.date,
+            route: '/cheques', isRead: false });
+          return;
+        }
+        const d = daysFromNow(c.date);
+        if (d > 3) return;
+        list.push({ id: `chq_dep_${p.id}`, type: 'payment', urgency: d < 0 ? 'critical' : 'warning',
+          title: d < 0 ? 'شيك فات موعد إيداعه' : d === 0 ? 'شيك يتودع اليوم' : `شيك يتودع بعد ${d} أيام`,
+          body: `شيك ${c.number}${c.bank ? ` (${c.bank})` : ''} — ${(p.amount ?? 0).toLocaleString('en-US')}`, date: c.date,
+          route: '/cheques', isRead: false });
       });
 
     // 3. Expiring contracts (≤ 90 days)
@@ -147,6 +216,9 @@ export function useSmartNotifications() {
     });
   }, [contracts, installments, maintenance, attachments, notificationPrefs]);
 
-  const urgentCount = notifications.filter(n => n.urgency === 'critical').length;
-  return { notifications, urgentCount };
+  const { isRead, markRead } = useReadNotifications();
+  // الرقم على الجرس = العاجل اللي ما انقرى بعد
+  const urgentCount = notifications.filter(n => n.urgency === 'critical' && !isRead(n.id)).length;
+  const unreadCount = notifications.filter(n => !isRead(n.id)).length;
+  return { notifications, urgentCount, unreadCount, isRead, markRead };
 }
