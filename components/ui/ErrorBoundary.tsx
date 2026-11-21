@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { trackError } from '../../lib/analytics';
 import { logger } from '../../lib/logger';
+import { reportError } from '../../lib/errorReporter';
 
 interface Props { children: React.ReactNode; fallbackLabel?: string; }
 interface State { hasError: boolean; error: Error | null; }
@@ -17,6 +18,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     logger.error('ErrorBoundary', error.message, { stack: info.componentStack?.slice(0, 300) });
     trackError(error, 'ErrorBoundary');
+    reportError(error, 'شاشة توقفت (ErrorBoundary)', { component: (info.componentStack ?? '').split('\n').filter(Boolean)[0]?.trim().slice(0, 80) ?? '' });
   }
 
   reset = () => this.setState({ hasError: false, error: null });
@@ -29,9 +31,9 @@ export class ErrorBoundary extends Component<Props, State> {
         <Ionicons name="alert-circle-outline" size={56} color="#D92D20" />
         <Text style={s.title}>حدث خطأ غير متوقع</Text>
         <Text style={s.sub}>
-          {this.props.fallbackLabel ?? 'نعتذر عن الإزعاج. يرجى المحاولة مجدداً.'}
+          {this.props.fallbackLabel ?? 'انرسل تقرير بالخطأ للمدير تلقائياً. جرّب مرة ثانية.'}
         </Text>
-        {this.state.error && (
+        {__DEV__ && this.state.error && (
           <ScrollView style={s.debugBox}>
             <Text style={s.debugText}>{this.state.error.message}</Text>
             <Text style={[s.debugText, { marginTop: 8, opacity: 0.7 }]}>{this.state.error.stack?.slice(0, 400)}</Text>

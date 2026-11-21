@@ -27,6 +27,7 @@ import { CityStats } from '../../components/dashboard/CityStats';
 import { DashboardHero } from '../../components/dashboard/DashboardHero';
 import { useSmartNotifications } from '../../hooks/useSmartNotifications';
 import { useRequests } from '../../context/RequestsProvider';
+import { useErrorLogs } from '../../hooks/useErrorLogs';
 import { AttentionList, type AttentionItem } from '../../components/dashboard/AttentionList';
 
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
@@ -146,6 +147,7 @@ export default function DashboardScreen() {
   const { colors } = useAppTheme();
   const { urgentCount } = useSmartNotifications();
   const { pendingCount: pendingRequests, canApprove } = useRequests();
+  const { recent: recentErrors } = useErrorLogs();
   const { kpis, payments, contracts, maintenance, auditLogs, currentUser, systemSettings,
           owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData, isOwner, previewing, previewOwnerId } = useApp();
   const ownerMode = isOwner || previewing;
@@ -517,6 +519,15 @@ export default function DashboardScreen() {
         });
       }
     }
+    if (canApprove && recentErrors.length > 0) {
+      items.push({
+        key: 'errors', tone: 'danger', icon: 'bug-outline',
+        title: `${recentErrors.length} ${recentErrors.length === 1 ? 'خطأ صار' : 'أخطاء صارت'} عند المستخدمين آخر 24 ساعة`,
+        detail: recentErrors[0].message.slice(0, 60),
+        count: recentErrors.reduce((s, g) => s + g.count, 0),
+        route: '/error-log',
+      });
+    }
     if (canApprove && pendingRequests > 0) {
       items.push({
         key: 'requests', tone: 'warning', icon: 'hand-left-outline',
@@ -581,7 +592,7 @@ export default function DashboardScreen() {
       });
     }
     return items;
-  }, [payments, contracts, pendingRequests, canApprove, systemSettings.lastBackupAt, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
+  }, [payments, contracts, pendingRequests, canApprove, recentErrors, systemSettings.lastBackupAt, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
 
   if (dataLoading) {
     return (

@@ -96,7 +96,7 @@ service cloud.firestore {
     // سجل التدقيق — فتُبطل قاعدته الخاصة التي تقصر التعديل على المدير الأعلى.
     // وسجل تدقيق قابل للتعديل = لا سجل تدقيق.
     function isProtectedCol(col) {
-      return col in ['auditLogs', 'managedUsers'];
+      return col in ['auditLogs', 'managedUsers', 'errorLogs'];
     }
 
     function isSecretDoc(col, docId) {
@@ -227,6 +227,16 @@ service cloud.firestore {
       allow read:         if isSuperAdmin() || (isAdmin() && isSameOrg(orgId));
       allow create:       if isSuperAdmin() || (canRead() && isSameOrg(orgId));
       allow update,delete: if isSuperAdmin();
+    }
+
+    // ── سجل الأخطاء: أي عضو يكتب تقرير (بحجم محدود)، والمدير بس يقرا ويحذف ─────
+    match /orgs/{orgId}/errorLogs/{id} {
+      allow read, delete: if isSuperAdmin() || (isAdmin() && isSameOrg(orgId));
+      allow create: if canRead() && isSameOrg(orgId)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.message is string && request.resource.data.message.size() <= 600
+        && request.resource.data.keys().size() <= 16;
+      allow update: if false;
     }
 
     // ── managedUsers sub-collection ───────────────────────────────────────────

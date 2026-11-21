@@ -333,6 +333,7 @@ export default function SettingsScreen() {
               <Item icon="options-outline" label="أقسام النظام" sub="تشغيل وإيقاف الأقسام" onPress={() => router.push('/system-settings')} />
               <Item icon="sparkles-outline" label="إعدادات المساعد الذكي" onPress={() => router.push('/assistant-settings')} />
               <Item icon="cloud-download-outline" label="النسخ الاحتياطي" onPress={() => router.push('/backup')} />
+              <Item icon="bug-outline" label="سجل الأخطاء" sub="الأخطاء اللي صارت عند المستخدمين" onPress={() => router.push('/error-log' as any)} />
             </Group>
           </>
         )}

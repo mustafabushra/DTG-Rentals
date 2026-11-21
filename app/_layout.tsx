@@ -7,6 +7,8 @@ import { SidebarProvider } from '../context/SidebarContext';
 import { FinanceProvider } from '../context/FinanceProvider';
 import { RequestsProvider } from '../context/RequestsProvider';
 import { UpdateBanner } from '../components/ui/UpdateBanner';
+import { installGlobalErrorHandlers } from '../lib/errorReporter';
+installGlobalErrorHandlers();
 import { useColorScheme, Platform, View, ActivityIndicator, I18nManager } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useEffect, useRef, useState } from 'react';

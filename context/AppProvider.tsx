@@ -25,6 +25,7 @@ import type { FileCategory } from '../domain/models';
 import { toPersistentUri, DOCUMENT_IMAGE } from '../lib/imageUtils';
 import { applyFxOverrides } from '../utils/currency';
 import { restoreExtras } from '../lib/backupBuilder';
+import { reportError, setErrorContext } from '../lib/errorReporter';
 import { saveChunks, deleteChunks, CHUNK_CHARS, MAX_FILE_CHARS } from '../lib/fileChunks';
 import { uploadFile, attachmentStoragePath, uploadPhoto, photoStoragePath, deleteFile } from '../lib/storageService';
 
@@ -755,6 +756,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     console.error(`[Firestore] ${op} failed:`, e);
+    if (e?.code !== 'unavailable' && e?.code !== 'preview-readonly') reportError(e, `حفظ: ${op}`);
 
     if (Platform.OS === 'web') {
       window.alert(`${title}\n\n${message}`);
@@ -769,6 +771,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const _perms  = resolvePermissions(currentUser.role, systemSettings);
   const isAdmin   = _perms.canManageUsers;
   const isOwner   = currentUser.role === 'owner' || currentUser.role === 'مالك';
+  useEffect(() => { setErrorContext({ uid: userId ?? undefined, name: currentUser.name, role: currentUser.role }); }, [userId, currentUser.name, currentUser.role]);
 
   // المعاينة متاحة لمن يملك إدارة المستخدمين فقط، وهي **قراءة فقط**:
   // الكتابة باسم المالك تُفسد سجل التدقيق في نظام مالي (من نفّذ فعلاً؟)،
