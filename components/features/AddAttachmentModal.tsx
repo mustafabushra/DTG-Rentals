@@ -189,7 +189,8 @@ export function AddAttachmentModal({
 
     setSaving(true);
     try {
-      await addAttachment({
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('الاتصال بطيء أو مقطوع، فما اكتمل الحفظ. تأكد من الإنترنت وجرّب مرة ثانية.')), 45000));
+      await Promise.race([timeout, addAttachment({
         entityType: entityType!,
         entityId: entityId!,
         name: formData.name,
@@ -199,7 +200,7 @@ export function AddAttachmentModal({
         category: formData.category,
         expiryDate: formData.expiryDate,
         notes: formData.notes
-      });
+      })]);
 
       onSave();
       onClose();

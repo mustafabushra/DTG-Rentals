@@ -6,6 +6,7 @@ import { AppProvider, useApp } from '../context/AppProvider';
 import { SidebarProvider } from '../context/SidebarContext';
 import { FinanceProvider } from '../context/FinanceProvider';
 import { RequestsProvider } from '../context/RequestsProvider';
+import { UpdateBanner } from '../components/ui/UpdateBanner';
 import { useColorScheme, Platform, View, ActivityIndicator, I18nManager } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useEffect, useRef, useState } from 'react';
@@ -264,6 +265,7 @@ export default function RootLayout() {
                   <OwnerPreviewBanner />
                   <ThemedApp />
                   <OfflineBanner />
+                  <UpdateBanner />
                   <PWAInstallPrompt />
                   <OnboardingTour />
                 </>
