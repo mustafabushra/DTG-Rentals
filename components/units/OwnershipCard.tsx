@@ -78,6 +78,11 @@ export function OwnershipCard({ unitId, deed, canWrite }: { unitId: string; deed
             <Text style={{ color: colors.textInverse, fontSize: 14, fontWeight: '500' }}>إضافة بيانات الملكية</Text>
           </TouchableOpacity>
         )}
+        {canWrite && (
+          <TouchableOpacity onPress={() => router.push('/import-deeds' as any)}>
+            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600', textAlign: 'right' }}>عندك سندات لأكثر من وحدة؟ ارفعها كلها مرة وحدة</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }

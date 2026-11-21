@@ -317,6 +317,7 @@ export default function SettingsScreen() {
               <Item icon="scan-outline" label="قراءة عقد من صورة" onPress={() => router.push('/scan-contract')} />
               <Item icon="folder-open-outline" label="كل المرفقات" onPress={() => router.push('/attachments')} />
               <Item icon="location-outline" label="المدن" onPress={() => router.push('/cities')} />
+              <Item icon="documents-outline" label="رفع مستندات الوحدات" sub="سندات ومخططات دفعة وحدة — تتعبّى الملكية تلقائياً" onPress={() => router.push('/import-deeds' as any)} />
               <Item icon="document-attach-outline" label="استيراد عقارات من Excel" onPress={() => router.push('/bulk-import-properties')} />
               <Item icon="time-outline" label="سجل الإجراءات" sub="مين عدّل إيش ومتى" onPress={() => router.push('/audit-log')} />
             </Group>
