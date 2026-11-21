@@ -1,7 +1,9 @@
 /**
  * بطاقة "الملكية" في صفحة الوحدة: الملاك بحصصهم كشريط واحد مقسوم، ثم بيانات السند.
  */
-import React from 'react';
+import React, { useState } from 'react';
+import { Modal } from '../ui/Modal';
+import { useApp } from '../../context/AppProvider';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -13,6 +15,51 @@ import { shareLabel } from '../../domain/services/DeedService';
 // درجات كحلي/ذهبي متمايزة لشرائح الحصص
 const SLICES = ['#0F2A47', '#B08D4F', '#365A80', '#D4BC8A', '#5A7799', '#76572B', '#8AA1BC', '#E7D8B8'];
 
+/** المستفيد من الإيجار: مين ياخذ الإيجار ويشوف الوحدة — ممكن يختلف عن اللي باسمه الصك */
+function Beneficiary({ unitId, canWrite }: { unitId: string; canWrite: boolean }) {
+  const { colors } = useAppTheme();
+  const { units, properties, owners, updateUnit } = useApp();
+  const [open, setOpen] = useState(false);
+  const unit = units.find(u => u.id === unitId);
+  const prop = properties.find(p => p.id === unit?.propertyId);
+  const effId = unit?.ownerId || prop?.ownerId;
+  const eff = owners.find(o => o.id === effId);
+  const differs = !!unit?.ownerId && unit.ownerId !== prop?.ownerId;
+  return (
+    <>
+      <TouchableOpacity disabled={!canWrite} onPress={() => setOpen(true)}
+        style={[styles.benef, { backgroundColor: colors.surface }]}>
+        <Ionicons name="wallet-outline" size={18} color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.ownerSub, { color: colors.textMuted, marginTop: 0 }]}>المستفيد من الإيجار</Text>
+          <Text style={[styles.ownerName, { color: colors.text }]}>{eff?.name ?? 'غير محدد'}</Text>
+          {differs && <Text style={[styles.ownerSub, { color: colors.textMuted }]}>مختلف عن مالك العقار ({owners.find(o => o.id === prop?.ownerId)?.name ?? '—'})</Text>}
+        </View>
+        {canWrite && <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>تغيير</Text>}
+      </TouchableOpacity>
+      <Modal visible={open} onClose={() => setOpen(false)} title="مين ياخذ إيجار هذي الوحدة؟" scrollable>
+        <Text style={[styles.empty, { color: colors.textSecondary }]}>
+          الإيجار والعقود والدفعات تنحسب له وتظهر عنده. الصك وحصص الملكية ما تتغير.
+        </Text>
+        {owners.map(o => {
+          const on = o.id === effId;
+          const isPropOwner = o.id === prop?.ownerId;
+          return (
+            <TouchableOpacity key={o.id} onPress={() => { updateUnit(unitId, { ownerId: isPropOwner ? '' : o.id } as any); setOpen(false); }}
+              style={[styles.pick, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + '0F' : colors.card }]}>
+              <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={20} color={on ? colors.primary : colors.textMuted} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.ownerName, { color: colors.text }]}>{o.name}</Text>
+                {isPropOwner && <Text style={[styles.ownerSub, { color: colors.textMuted }]}>مالك العقار</Text>}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </Modal>
+    </>
+  );
+}
+
 export function OwnershipCard({ unitId, deed, canWrite }: { unitId: string; deed?: TitleDeed; canWrite: boolean }) {
   const { colors } = useAppTheme();
   const edit = () => router.push(`/edit-deed/${unitId}` as any);
@@ -21,6 +68,7 @@ export function OwnershipCard({ unitId, deed, canWrite }: { unitId: string; deed
     return (
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.text }]}>الملكية</Text>
+        <Beneficiary unitId={unitId} canWrite={canWrite} />
         <Text style={[styles.empty, { color: colors.textSecondary }]}>
           لم تُسجَّل بيانات سند الملكية لهذه الوحدة بعد. سجّلها لتظهر حصص الملاك وبيانات الصك هنا.
         </Text>
@@ -72,6 +120,9 @@ export function OwnershipCard({ unitId, deed, canWrite }: { unitId: string; deed
         </View>
       </View>
 
+      <Beneficiary unitId={unitId} canWrite={canWrite} />
+      <Text style={[styles.ownerSub, { color: colors.textMuted, marginTop: 0 }]}>باسم (حسب الصك)</Text>
+
       {/* شريط الحصص */}
       <View style={styles.bar}>
         {deed.owners.map((o, i) => (
@@ -121,6 +172,8 @@ const styles = StyleSheet.create({
   tag: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   bar: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 },
   ownerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  benef: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 10, padding: 12 },
+  pick: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 10, padding: 12 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   ownerName: { fontSize: 14, fontWeight: '500', textAlign: 'right' },
   ownerSub: { fontSize: 12, textAlign: 'right', marginTop: 2 },

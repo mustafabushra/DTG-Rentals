@@ -1,10 +1,11 @@
-﻿import React, { useMemo } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { OwnerTimeline } from '../../components/owners/OwnerTimeline';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../../constants/Theme';
 import { useApp } from '../../context/AppProvider';
+import { BeneficiaryPicker } from '../../components/owners/BeneficiaryPicker';
 import { AppHeader } from '../../components/ui/AppHeader';
 import { PropertyCard } from '../../components/ui/PropertyCard';
 import { UnitCard } from '../../components/ui/UnitCard';
@@ -25,6 +26,7 @@ export default function OwnerDetailScreen() {
   const { pending, pendingMode, blocked, clearBlocked, requestDelete, cancelDelete, confirmDelete } = useDelete();
 
   const owner = owners.find(o => o.id === id);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const ownerProperties = properties.filter(p => p.ownerId === id);
 
   // الوحدات الخارجية: مُسندة لهذا المالك في عقارات غيره
@@ -216,15 +218,22 @@ export default function OwnerDetailScreen() {
           )}
         </View>
 
-        {/* وحدات في عقارات أخرى */}
-        {externalUnits.length > 0 && (
+        {/* الوحدات اللي يستفيد منها (مسجّلة باسم غيره) */}
+        {(externalUnits.length > 0 || canWrite) && (
           <View style={styles.sectionPad}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <Ionicons name="layers-outline" size={16} color="#365A80" />
-              <Text style={[styles.sectionTitle, { color: '#365A80', marginBottom: 0 }]}>
-                وحدات في عقارات أخرى ({externalUnits.length})
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0, flex: 1 }]}>
+                وحدات يستفيد منها{externalUnits.length ? ` (${externalUnits.length})` : ''}
               </Text>
+              {canWrite && (
+                <TouchableOpacity onPress={() => setPickerOpen(true)} style={{ paddingHorizontal: 16 }}>
+                  <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>{externalUnits.length ? 'تعديل' : 'اختيار الوحدات'}</Text>
+                </TouchableOpacity>
+              )}
             </View>
+            <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'right', paddingHorizontal: 16, marginBottom: 8 }}>
+              وحدات مسجّلة باسم شخص ثاني، بس إيجارها له وتظهر عنده.
+            </Text>
             {externalUnits.map(u => (
               <UnitCard key={u.id} unit={u}
                 propertyName={properties.find(p => p.id === u.propertyId)?.name} />
@@ -236,7 +245,7 @@ export default function OwnerDetailScreen() {
         <View style={{ marginHorizontal: 16, marginTop: 12 }}>
           <TouchableOpacity
             onPress={() => router.push(`/owner-statement?ownerId=${id}` as any)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, marginHorizontal: 16, marginBottom: 12 }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, marginBottom: 12 }}
           >
             <Ionicons name="document-text-outline" size={20} color={colors.primary} />
             <View style={{ flex: 1 }}>
@@ -298,6 +307,7 @@ export default function OwnerDetailScreen() {
         )}
       </ScrollView>
 
+      <BeneficiaryPicker ownerId={id!} visible={pickerOpen} onClose={() => setPickerOpen(false)} />
       <ConfirmModal
         visible={!!pending}
         onClose={cancelDelete}

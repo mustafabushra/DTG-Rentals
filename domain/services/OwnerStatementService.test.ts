@@ -30,6 +30,12 @@ describe('كشف المالك', () => {
     expect(s.overdue).toHaveLength(1);
     expect(s.properties.find(p => p.propertyId === 'p1')!.net).toBe(800);
   });
+  it('المستفيد من وحدة في عقار غيره: إيجارها له، ومصروف العقار العام لا', () => {
+    const b = buildOwnerStatement(src, { unitIds: ['u3'], propertyIds: [], from: '2026-10-01', to: '2026-10-31', today: '2026-11-21' });
+    expect(b.income.map(l => l.amount)).toEqual([7777]);
+    expect(b.expenses).toHaveLength(0);
+  });
+
   it('رسالة الواتساب فيها الصافي', () => {
     const m = statementMessage('خالد', 'أكتوبر', s, (n, c) => `${n} ${c}`);
     expect(m).toContain('الصافي لك: 800 SAR');

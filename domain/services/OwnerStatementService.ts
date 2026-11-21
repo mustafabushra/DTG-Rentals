@@ -24,10 +24,13 @@ const inRange = (d: string | undefined, from?: string, to?: string) =>
 
 export function buildOwnerStatement(
   src: { payments: Pay[]; contracts: Con[]; units: Unit[]; properties: Prop[]; tenants: Ten[]; expenses: Exp[] },
-  opts: { propertyIds?: string[]; from?: string; to?: string; today: string },
+  opts: { propertyIds?: string[]; unitIds?: string[]; from?: string; to?: string; today: string },
 ): OwnerStatement {
+  // unitIds: وحدات المستفيد (حتى لو في عقار غيره). propertyIds: عقاراته (للمصاريف العامة على العقار)
+  const allowedUnits = opts.unitIds ? new Set(opts.unitIds) : null;
   const allowed = opts.propertyIds ? new Set(opts.propertyIds) : null;
-  const props = src.properties.filter(p => !allowed || allowed.has(p.id));
+  const unitProps = new Set(src.units.filter(u => allowedUnits?.has(u.id)).map(u => u.propertyId));
+  const props = src.properties.filter(p => !allowed && !allowedUnits || allowed?.has(p.id) || unitProps.has(p.id));
   const propById = new Map(props.map(p => [p.id, p]));
   const unitById = new Map(src.units.map(u => [u.id, u]));
   const conById = new Map(src.contracts.map(c => [c.id, c]));
@@ -44,6 +47,7 @@ export function buildOwnerStatement(
   for (const pay of src.payments) {
     const con = conById.get(pay.contractId); if (!con) continue;
     const unit = unitById.get(con.unitId); if (!unit) continue;
+    if (allowedUnits && !allowedUnits.has(unit.id)) continue;
     const prop = propById.get(unit.propertyId); if (!prop) continue;
     const cur = pay.currency ?? con.currency ?? unit.currency ?? prop.currency ?? 'SAR';
     const who = tenById.get(con.tenantId)?.name ?? 'مستأجر';
@@ -59,6 +63,10 @@ export function buildOwnerStatement(
     if (e.status !== 'active' || e.scope !== 'property' || !e.propertyId) continue;
     const prop = propById.get(e.propertyId); if (!prop) continue;
     if (!inRange(e.date, opts.from, opts.to)) continue;
+    // مصروف على وحدة ⇒ للمستفيد منها؛ مصروف عام على العقار ⇒ لمالك العقار فقط
+    if (allowedUnits) {
+      if (e.unitId ? !allowedUnits.has(e.unitId) : !(allowed?.has(prop.id))) continue;
+    }
     row(prop).expenses += e.amount || 0;
     const unit = e.unitId ? unitById.get(e.unitId) : undefined;
     expenses.push({ date: e.date, label: e.category + (e.vendor ? ` — ${e.vendor}` : ''), detail: `${prop.name}${unit?.number ? `، وحدة ${unit.number}` : ''}`, amount: e.amount || 0, currency: e.currency, propertyId: prop.id });

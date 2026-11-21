@@ -34,9 +34,16 @@ export default function OwnerStatementScreen() {
   const { from, to } = periodRange(period);
   const ownerId: string | undefined = staffOwnerId ?? (previewing ? previewOwnerId : currentUser?.ownerId);
   const owner = (owners as any[]).find(o => o.id === ownerId);
+  // وحدات المالك = وحداته في عقاراته + الوحدات اللي يستفيد منها في عقارات غيره
+  const ownedPropIds = useMemo(() => staffOwnerId
+    ? (allProperties as any[]).filter(p => p.ownerId === staffOwnerId || owner?.propertyIds?.includes(p.id)).map(p => p.id) : null,
+  [allProperties, staffOwnerId, owner]);
+  const ownedUnitIds = useMemo(() => staffOwnerId
+    ? (units as any[]).filter(u => (u.ownerId || (allProperties as any[]).find(p => p.id === u.propertyId)?.ownerId) === staffOwnerId).map(u => u.id) : null,
+  [units, allProperties, staffOwnerId]);
   const properties = useMemo(() => staffOwnerId
-    ? (allProperties as any[]).filter(p => p.ownerId === staffOwnerId || owner?.propertyIds?.includes(p.id))
-    : allProperties, [allProperties, staffOwnerId, owner]);
+    ? (allProperties as any[]).filter(p => ownedPropIds!.includes(p.id) || (units as any[]).some(u => u.propertyId === p.id && ownedUnitIds!.includes(u.id)))
+    : allProperties, [allProperties, staffOwnerId, ownedPropIds, ownedUnitIds, units]);
 
   const src = useMemo(() => ({ payments, contracts, units, properties, expenses: expenses.filter(e => e.scope === 'property') }),
     [payments, contracts, units, properties, expenses]);
@@ -44,8 +51,10 @@ export default function OwnerStatementScreen() {
   const periodLabel = PERIOD_OPTIONS.find(o => o.value === period)?.label ?? '';
   const statement = useMemo(() => buildOwnerStatement(
     { payments, contracts, units, properties, tenants, expenses } as any,
-    { propertyIds: (properties as any[]).map(p => p.id), from, to, today: new Date().toISOString().split('T')[0] },
-  ), [payments, contracts, units, properties, tenants, expenses, from, to]);
+    staffOwnerId
+      ? { unitIds: ownedUnitIds!, propertyIds: ownedPropIds!, from, to, today: new Date().toISOString().split('T')[0] }
+      : { propertyIds: (properties as any[]).map(p => p.id), from, to, today: new Date().toISOString().split('T')[0] },
+  ), [payments, contracts, units, properties, tenants, expenses, from, to, ownedUnitIds, ownedPropIds, staffOwnerId]);
   const ownerName = owner?.name ?? currentUser?.name ?? 'المالك';
   const openPdf = () => printStatement(buildStatementHTML(statement, { ownerName, periodLabel, from, to }));
   const sendWhatsApp = () => {
@@ -54,7 +63,10 @@ export default function OwnerStatementScreen() {
     Linking.openURL(phone ? CollectionService.whatsappUrl(phone, msg) : `https://wa.me/?text=${encodeURIComponent(msg)}`);
   };
 
-  const rows = useMemo(() => netByProperty(src as any, from, to), [src, from, to]);
+  // كشف مالك محدد ⇒ من الكشف نفسه (يحسب وحدات المستفيد فقط، مو العمارة كاملة)
+  const rows = useMemo(() => staffOwnerId
+    ? statement.properties.map(p => ({ propertyId: p.propertyId, propertyName: p.name, currency: p.currency, income: p.income, expenses: p.expenses, net: p.net }))
+    : netByProperty(src as any, from, to), [src, from, to, staffOwnerId, statement]);
 
   const totals = useMemo(() => {
     const m: Record<string, { income: number; expenses: number; net: number }> = {};
