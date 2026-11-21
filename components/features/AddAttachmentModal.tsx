@@ -9,7 +9,7 @@ import {
   FlatList,
   Alert,
   ActivityIndicator
-} from 'react-native';
+, Platform} from 'react-native';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -37,6 +37,12 @@ interface SelectedFile {
   uri: string;
   mimeType: string;
   size: number;
+}
+
+// على الويب Alert.alert ما يطلع شي، فالمستخدم يضغط ولا يدري وش صار
+function notify(title: string, msg?: string) {
+  if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert(msg ? `${title}\n${msg}` : title); }
+  else Alert.alert(title, msg);
 }
 
 export function AddAttachmentModal({
@@ -127,7 +133,7 @@ export function AddAttachmentModal({
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!perm.granted) {
-          Alert.alert('تنبيه', 'يُرجى السماح بالوصول إلى الصور');
+          notify('تنبيه', 'يُرجى السماح بالوصول إلى الصور');
           return;
         }
 
@@ -146,8 +152,9 @@ export function AddAttachmentModal({
       // ✅ FIX compatibility (expo changed API)
       if ((result as any).canceled) return;
 
-      const asset =
-        (result as any).assets?.[0] || (result as any).uri ? result : null;
+      // الملف نفسه داخل assets[0] (الإصدارات الجديدة)، أو النتيجة نفسها (القديمة).
+      // كان الشرط مقلوب بسبب أولوية العمليات، فيوصل الغلاف بدل الملف: بدون اسم ولا حجم ولا رابط.
+      const asset = (result as any).assets?.[0] ?? ((result as any).uri ? result : null);
 
       if (!asset) return;
 
@@ -161,7 +168,7 @@ export function AddAttachmentModal({
       const validationError = FileService.validate(fileData);
 
       if (validationError) {
-        Alert.alert('ملف غير مدعوم', validationError);
+        notify('ملف غير مدعوم', validationError);
         return;
       }
 
@@ -170,13 +177,13 @@ export function AddAttachmentModal({
 
     } catch (e) {
       console.error(e);
-      Alert.alert('خطأ', 'حدث خطأ أثناء اختيار الملف');
+      notify('خطأ', 'حدث خطأ أثناء اختيار الملف');
     }
   };
 
   const handleSave = async () => {
     if (!entityId || !selectedFile || !formData.name) {
-      Alert.alert('بيانات ناقصة');
+      notify('بيانات ناقصة');
       return;
     }
 
@@ -199,7 +206,8 @@ export function AddAttachmentModal({
       reset();
     } catch (e) {
       console.error('Save attachment failed:', e);
-      Alert.alert('خطأ في الحفظ', 'تعذر حفظ المرفق، يرجى المحاولة مرة أخرى.');
+      const msg = (e as any)?.message || 'تعذر حفظ المرفق، يرجى المحاولة مرة أخرى.';
+      notify('خطأ في الحفظ', msg);
     } finally {
       setSaving(false);
     }

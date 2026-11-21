@@ -142,7 +142,7 @@ export const FileService = {
    * والنصوص...) — يُعرض ما يمكن معاينته داخلياً، والباقي يُنزَّل. نحرس الحجم فقط.
    */
   validate(file: { name: string; size?: number; mimeType: string }): string | null {
-    if (file.size && file.size > 50 * 1024 * 1024) return 'حجم الملف يتجاوز الحد الأقصى (50MB)';
+    if (file.size && file.size > 15 * 1024 * 1024) return 'حجم الملف أكبر من 15 ميجا. صغّره أو قسّمه لملفين.';
     return null;
   },
 };
