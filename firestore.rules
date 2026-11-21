@@ -104,7 +104,7 @@ service cloud.firestore {
 
     // مراجع مشتركة يقرؤها أي عضو نشط في المؤسسة (المالك التابع أيضاً)
     function isSharedReadCol(col) {
-      return col in ['cities', 'settings', 'calendarEvents', 'photos', 'tenants', 'attachments', 'counters'];
+      return col in ['cities', 'settings', 'calendarEvents', 'photos', 'tenants', 'attachments', 'fileChunks', 'counters'];
     }
 
     // مراجع مشتركة يجوز للمالك التابع الكتابة فيها
@@ -187,7 +187,7 @@ service cloud.firestore {
           (isManager() && !isSecretDoc(collection, docId)) ||
           (isOwnerRole() && isOwnerScopedCol(collection)
              && request.resource.data.ownerId == ownerLinkedId()) ||
-          (isOwnerRole() && collection == 'attachments'
+          (isOwnerRole() && collection in ['attachments', 'fileChunks']
              && request.resource.data.ownerContext == ownerLinkedId()) ||
           (isOwnerRole() && isOwnerWritableSharedCol(collection))
         ));
@@ -210,7 +210,7 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || (isSameOrg(orgId)
         && !(collection in ['vouchers', 'counters']) && (
         isAdmin() ||
-        (isOwnerRole() && collection == 'attachments'
+        (isOwnerRole() && collection in ['attachments', 'fileChunks']
            && resource.data.ownerContext == ownerLinkedId())
       ));
     }

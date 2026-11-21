@@ -163,6 +163,8 @@ export interface Contract {
   transferredAt?:             string;
   /** سبب اعتماد رصيد يخالف الحساب التلقائي — يوثّق الاتفاق مع المستأجر. */
   transferCreditNote?:        string;
+  /** أُغلق بعد انتهاء مدته وخروج المستأجر (بدون تجديد). يخرجه من قائمة التجديد ويفرّغ الوحدة. */
+  closedAt?: string;
   renewedAt?: string;           // تاريخ آخر تجديد — سجل تاريخي للمدد السابقة
   previousEndDate?: string;     // نهاية الفترة السابقة قبل التجديد
 }

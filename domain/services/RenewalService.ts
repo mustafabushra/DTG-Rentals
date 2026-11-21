@@ -182,6 +182,7 @@ export const RenewalService = {
     for (const c of data.contracts) {
       // الملغى والمُنهى قراراً لا يُجدَّدان — المنتهي بالمدة فقط هو المرشّح
       if (c.status !== 'active' && c.status !== 'expired') continue;
+      if ((c as any).closedAt) continue; // أُغلق وخرج المستأجر — ما يحتاج تجديد
       const daysLeft = RenewalService.daysUntilExpiry(c.endDate, today);
       if (daysLeft > windowDays) continue;
 

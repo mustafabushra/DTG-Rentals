@@ -123,6 +123,11 @@ describe('صفوف التجديد', () => {
     expect(rows[0].urgency).toBe('expired');
   });
 
+  it('يستبعد العقد المُغلق بعد خروج المستأجر', () => {
+    const closed = { ...base, contracts: [contract({ endDate: '2026-08-01', status: 'expired', closedAt: '2026-08-05T10:00:00Z' } as any)] };
+    expect(RenewalService.buildRows(closed, { today: TODAY })).toHaveLength(0);
+  });
+
   it('يستبعد الملغى والمُنهى قراراً — لا يُجدَّدان', () => {
     for (const status of ['cancelled', 'terminated']) {
       const c = { ...base, contracts: [contract({ endDate: '2026-09-20', status })] };

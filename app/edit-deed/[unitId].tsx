@@ -17,7 +17,7 @@ import { FormDatePicker } from '../../components/forms/FormDatePicker';
 import { FormContainer } from '../../components/ui/FormContainer';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useScreenSize } from '../../hooks/useScreenSize';
-import { toPersistentUri } from '../../lib/imageUtils';
+import { toPersistentUri, DOCUMENT_IMAGE } from '../../lib/imageUtils';
 import { scanDeedFile } from '../../lib/deedScanClient';
 import type { DeedOwner, TitleDeed } from '../../domain/models';
 import {
@@ -119,7 +119,7 @@ export default function EditDeedScreen() {
     const a = res.assets[0];
     setScanning(true);
     try {
-      const dataUri = await toPersistentUri(a.uri);
+      const dataUri = await toPersistentUri(a.uri, DOCUMENT_IMAGE);
       const mime = a.mimeType ?? (dataUri.match(/^data:([^;]+);/)?.[1] ?? 'application/pdf');
       setFile({ name: a.name, dataUri, mimeType: mime, size: a.size });
       const base64 = dataUri.split(',')[1] ?? '';

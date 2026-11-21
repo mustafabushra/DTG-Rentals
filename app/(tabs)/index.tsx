@@ -503,6 +503,17 @@ export default function DashboardScreen() {
         route: '/payments',
       });
     }
+    const todayIso = new Date().toISOString().split('T')[0];
+    const staleActive = contracts.filter(c => c.status === 'active' && !c.closedAt && c.endDate < todayIso);
+    if (staleActive.length) {
+      items.push({
+        key: 'stale', tone: 'danger', icon: 'document-text-outline',
+        title: `${staleActive.length} ${staleActive.length === 1 ? 'عقد انتهى وما تجدّد' : 'عقود انتهت وما تجدّدت'}`,
+        detail: 'جدّدها أو سجّل خروج المستأجر عشان تصح الأرقام',
+        count: staleActive.length,
+        route: '/renewals',
+      });
+    }
     if (expiringContracts.length) {
       const first = expiringContracts[0];
       items.push({
@@ -547,7 +558,7 @@ export default function DashboardScreen() {
       });
     }
     return items;
-  }, [payments, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
+  }, [payments, contracts, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
 
   if (dataLoading) {
     return (

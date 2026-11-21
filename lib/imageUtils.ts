@@ -11,7 +11,11 @@ const JPEG_QUALITY  = 0.72;  // 0–1 JPEG quality
  * Now we NO LONGER use this for attachments — instead we upload to Firebase Storage.
  * This is kept for property/unit photos which are small enough for Firestore.
  */
-export async function toPersistentUri(uri: string): Promise<string> {
+export type CompressOpts = { maxDim?: number; quality?: number };
+/** للمستندات (صك، عقد ممسوح): دقة أعلى عشان يبقى النص مقروء */
+export const DOCUMENT_IMAGE: CompressOpts = { maxDim: 2000, quality: 0.8 };
+
+export async function toPersistentUri(uri: string, opts: CompressOpts = {}): Promise<string> {
   if (!uri) return uri;
   if (uri.startsWith('data:')) return uri;
 
@@ -24,7 +28,7 @@ export async function toPersistentUri(uri: string): Promise<string> {
       if (blob.type.startsWith('image/')) {
         try {
           const blobUrl = URL.createObjectURL(blob);
-          const dataUri = await compressViaCanvas(blobUrl);
+          const dataUri = await compressViaCanvas(blobUrl, opts.maxDim ?? MAX_DIMENSION, opts.quality ?? JPEG_QUALITY);
           URL.revokeObjectURL(blobUrl);
           return dataUri;
         } catch (err) {
@@ -123,7 +127,7 @@ async function fetchBlob(uri: string): Promise<Blob> {
 }
 
 /** Resize + compress image using an off-screen Canvas element */
-function compressViaCanvas(blobUrl: string): Promise<string> {
+function compressViaCanvas(blobUrl: string, MAX: number, Q: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new (globalThis as any).Image() as HTMLImageElement;
     img.onload = () => {
@@ -131,9 +135,9 @@ function compressViaCanvas(blobUrl: string): Promise<string> {
       let h = img.naturalHeight || img.height;
 
       // Scale down so longest edge ≤ MAX_DIMENSION
-      if (w > MAX_DIMENSION || h > MAX_DIMENSION) {
-        if (w >= h) { h = Math.round(h * MAX_DIMENSION / w); w = MAX_DIMENSION; }
-        else        { w = Math.round(w * MAX_DIMENSION / h); h = MAX_DIMENSION; }
+      if (w > MAX || h > MAX) {
+        if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
+        else        { w = Math.round(w * MAX / h); h = MAX; }
       }
 
       const canvas  = (globalThis as any).document.createElement('canvas') as HTMLCanvasElement;
@@ -142,7 +146,7 @@ function compressViaCanvas(blobUrl: string): Promise<string> {
       const ctx = canvas.getContext('2d');
       if (!ctx) { reject(new Error('no canvas ctx')); return; }
       ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+      resolve(canvas.toDataURL('image/jpeg', Q));
     };
     img.onerror = () => reject(new Error('Image load failed'));
     img.src = blobUrl;

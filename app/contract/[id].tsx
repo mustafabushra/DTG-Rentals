@@ -38,7 +38,8 @@ const statusBg: Record<string, string> = {
 export default function ContractDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
-  const { contracts, payments, tenants, units, properties, currentUser, terminateContract, updateContract, renewContract, canWrite, canDelete } = useApp();
+  const { contracts, payments, tenants, units, properties, currentUser, terminateContract, updateContract, renewContract, canWrite, canDelete, closeEndedContract } = useApp();
+  const [showCloseConfirm, setShowCloseConfirm] = React.useState(false);
 
   // ── Terminate modal state ──────────────────────────────────────────────────
   const [showConfirm,       setShowConfirm]       = useState(false);
@@ -329,6 +330,15 @@ export default function ContractDetailScreen() {
                 <Ionicons name="refresh-outline" size={16} color="#FFF" />
                 <Text style={styles.renewBtnText}>تجديد العقد</Text>
               </TouchableOpacity>
+              {contract.status === 'active' && RenewalService.daysUntilExpiry(contract.endDate) < 0 && (
+                <TouchableOpacity
+                  style={[styles.renewBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' }]}
+                  onPress={() => setShowCloseConfirm(true)}
+                >
+                  <Ionicons name="exit-outline" size={16} color="#FFF" />
+                  <Text style={styles.renewBtnText}>خرج المستأجر</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
           {/* Termination info badge */}
@@ -508,6 +518,14 @@ export default function ContractDetailScreen() {
         </TouchableOpacity>
       </RNModal>
 
+      <ConfirmModal
+        visible={showCloseConfirm}
+        onClose={() => setShowCloseConfirm(false)}
+        onConfirm={() => { closeEndedContract(id!); setShowCloseConfirm(false); }}
+        title="المستأجر خرج من الوحدة؟"
+        message="بنغلق العقد كـ «منتهي» ونخلي الوحدة شاغرة. الدفعات المتأخرة (إن وجدت) تبقى مسجّلة للتحصيل."
+        confirmLabel="نعم، أغلق العقد"
+      />
       <ConfirmModal
         visible={!!pending}
         onClose={cancelDelete}

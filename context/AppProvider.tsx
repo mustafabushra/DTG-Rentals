@@ -21,7 +21,8 @@ import {
 import { saveCache, loadCache, cacheHasData, clearCache } from '../lib/localCache';
 import { FileService } from '../domain/services/FileService';
 import type { FileCategory } from '../domain/models';
-import { toPersistentUri } from '../lib/imageUtils';
+import { toPersistentUri, DOCUMENT_IMAGE } from '../lib/imageUtils';
+import { saveChunks, deleteChunks, CHUNK_CHARS, MAX_FILE_CHARS } from '../lib/fileChunks';
 import { uploadFile, attachmentStoragePath, uploadPhoto, photoStoragePath, deleteFile } from '../lib/storageService';
 
 export interface PropertyPhoto {
@@ -118,6 +119,8 @@ interface AppContextType extends AppState {
   cancelBooking: (id: string, reason?: string) => void;
   deleteBooking: (id: string) => void;
   cancelContract: (id: string, reason: string) => void;
+  /** إغلاق عقد انتهت مدته وخرج المستأجر: حالة "منتهي" + تفريغ الوحدة. الدفعات تبقى كما هي. */
+  closeEndedContract: (id: string) => void;
   addCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   deleteCalendarEvent: (id: string) => void;
   addAttachment: (data: { entityType: string; entityId: string; name: string; uri: string; mimeType: string; size?: number; category: FileCategory; expiryDate?: string; notes?: string; uploadedBy?: string }) => Promise<Attachment>;
@@ -2181,6 +2184,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   };
 
+  const closeEndedContract = (id: string) => {
+    const contract = contracts.find(c => c.id === id);
+    if (!contract) return;
+    const update = { status: 'expired' as ContractStatus, closedAt: new Date().toISOString() };
+    setContracts(prev => prev.map(c => c.id === id ? { ...c, ...update } : c));
+    fs('contracts', id, update, 'update');
+    _releaseUnit(contract);
+    addAuditEntry('edit', 'عقد', contract.contractNumber || id,
+      `إغلاق عقد منتهي بدون تجديد (انتهى ${contract.endDate}) — الوحدة صارت شاغرة`);
+  };
+
   const cancelContract = (id: string, reason: string) => {
     const contract = contracts.find(c => c.id === id);
     const update = { status: 'cancelled' as ContractStatus };
@@ -2482,25 +2496,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const org   = getActiveOrgId();
     const isImg = (data.mimeType || '').startsWith('image/');
 
-    // رفض مبكر لغير الصور المتجاوزة الحد (الصور تُضغط، فلا تُرفض بحجمها الخام)
-    if (!isImg && data.size && data.size > 650 * 1024) {
-      throw new Error('الملف كبير جداً للحفظ (الحد ~650KB لغير الصور). اختر ملفاً أصغر أو صورة.');
+    // حد أعلى معقول (~15MB). الملفات الكبيرة تنحفظ على أجزاء، فما في حد 1MB
+    if (data.size && data.size > 15 * 1024 * 1024) {
+      throw new Error('الملف أكبر من 15 ميجا. صغّره أو قسّمه لملفين.');
     }
 
-    // تحويل لبيانات دائمة base64 (الصور تُضغط داخل toPersistentUri)
-    const uri = await toPersistentUri(data.uri);
-
-    // حارس نهائي: لا يتجاوز المستند حد Firestore (~1MB)
-    if (uri.length > 950 * 1024) {
-      throw new Error('الملف كبير جداً للحفظ بعد المعالجة (الحد ~1MB). اختر ملفاً أصغر.');
+    // تحويل لبيانات دائمة base64. صور المستندات تنضغط بدقة عالية عشان يبقى النص مقروء
+    let uri = await toPersistentUri(data.uri, DOCUMENT_IMAGE);
+    if (uri.length > MAX_FILE_CHARS) {
+      throw new Error('الملف أكبر من 15 ميجا. صغّره أو قسّمه لملفين.');
     }
 
-    const att = FileService.create({
+    const ownerCtx = isOwner && currentUser.ownerId ? currentUser.ownerId : undefined;
+    const base = FileService.create({
       ...data,
       uri,
       uploadedBy: data.uploadedBy ?? currentUser.name,
-      ...(isOwner && currentUser.ownerId ? { ownerContext: currentUser.ownerId } : {}),
+      ...(ownerCtx ? { ownerContext: ownerCtx } : {}),
     });
+    let att: Attachment = base;
+    // ملف كبير ⇒ أجزاء منفصلة، والسجل نفسه يبقى خفيف
+    if (uri.length > CHUNK_CHARS) {
+      const chunks = await saveChunks(org, base.id, uri, ownerCtx);
+      att = { ...base, uri: '', chunks };
+    }
 
     // حفظ مؤكَّد (await) قبل العرض — فشل الكتابة يُعرض، ولا يبقى سجل وهمي يختفي عند التحديث
     await setOne(org, 'attachments', att.id, att);
@@ -2519,6 +2538,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('[deleteAttachment] Storage delete failed:', err)
       );
     }
+    if (attachment?.chunks) deleteChunks(getActiveOrgId(), id, attachment.chunks).catch(() => {});
     setAttachments(prev => prev.filter(a => a.id !== id));
     fs('attachments', id, {}, 'delete');
   }, [fs, attachments]);
@@ -2885,7 +2905,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       renewContract, markContractsReminded, transferTenant,
       addMaintenance, updateMaintenance, deleteMaintenance,
       addBooking, updateBooking, cancelBooking, deleteBooking,
-      cancelContract, addCalendarEvent, deleteCalendarEvent,
+      cancelContract, closeEndedContract, addCalendarEvent, deleteCalendarEvent,
       addAttachment, deleteAttachment,
       login, logout, updateProfile, importBackup, refreshData,
       cities, cityStats,

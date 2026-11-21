@@ -21,6 +21,21 @@ import * as FileSystem from 'expo-file-system/legacy';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { Attachment } from '../../domain/models';
+import { loadChunks } from '../../lib/fileChunks';
+import { getActiveOrgId } from '../../lib/firestoreService';
+
+/** على الويب: نحوّل data: لرابط blob — المتصفحات تمنع فتح data: مباشرة وتتعثر بالملفات الكبيرة */
+function toObjectUrl(uri: string): string {
+  if (Platform.OS !== 'web' || !uri.startsWith('data:')) return uri;
+  try {
+    const [head, b64] = uri.split(',');
+    const mime = head.match(/data:([^;]+)/)?.[1] ?? 'application/octet-stream';
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  } catch { return uri; }
+}
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -29,7 +44,29 @@ interface Props {
   onClose: () => void;
 }
 
-export function FileViewer({ attachment, onClose }: Props) {
+export function FileViewer({ attachment: rawAttachment, onClose }: Props) {
+  // الملف الكبير محفوظ على أجزاء ⇒ نحمّله أول ما ينفتح
+  const [resolved, setResolved] = useState<string | null>(null);
+  const [loadingFile, setLoadingFile] = useState(false);
+  useEffect(() => {
+    setResolved(null);
+    const a = rawAttachment;
+    if (!a) return;
+    let alive = true;
+    const finish = (u: string) => { if (alive) setResolved(toObjectUrl(u)); };
+    if (a.chunks && !a.uri) {
+      setLoadingFile(true);
+      loadChunks(getActiveOrgId(), a.id, a.chunks)
+        .then(finish)
+        .catch(() => alive && setError(true))
+        .finally(() => alive && setLoadingFile(false));
+    } else if (a.uri) {
+      finish(a.uri);
+    }
+    return () => { alive = false; };
+  }, [rawAttachment?.id]);
+  const attachment = rawAttachment && { ...rawAttachment, uri: resolved ?? rawAttachment.uri };
+
   const [imageLoading, setImageLoading] = useState(false);
   const [error, setError] = useState(false);
 
@@ -97,7 +134,11 @@ export function FileViewer({ attachment, onClose }: Props) {
   const handleDownload = async () => {
     try {
       if (isWeb) {
-        if (typeof window !== 'undefined') window.open(attachment.uri, '_blank');
+        if (typeof document !== 'undefined' && attachment.uri) {
+          const a = document.createElement('a');
+          a.href = attachment.uri; a.download = attachment.name; a.target = '_blank';
+          document.body.appendChild(a); a.click(); a.remove();
+        }
         return;
       }
       if (attachment.uri.startsWith('data:')) {
@@ -172,8 +213,14 @@ export function FileViewer({ attachment, onClose }: Props) {
 
           {/* CONTENT */}
           <View style={{ flex: 1 }}>
+            {loadingFile && (
+              <View style={styles.loader}>
+                <ActivityIndicator color="#fff" />
+                <Text style={{ color: '#fff', marginTop: 10 }}>جاري تحميل الملف...</Text>
+              </View>
+            )}
             {/* IMAGE — display inline like property photos */}
-            {isImage && !error && (
+            {isImage && !error && !!attachment.uri && (
               <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
                 <Image
                   source={{ uri: attachment.uri }}
@@ -194,7 +241,7 @@ export function FileViewer({ attachment, onClose }: Props) {
             )}
 
             {/* PDF / نص — معاينة داخلية على الويب عبر iframe */}
-            {canInlineFrame && !error && (
+            {canInlineFrame && !error && !!attachment.uri && (
               <View style={{ flex: 1, backgroundColor: '#fff' }}>
                 {React.createElement('iframe', {
                   src: attachment.uri,

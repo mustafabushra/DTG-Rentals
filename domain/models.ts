@@ -187,6 +187,8 @@ export interface Attachment {
   uploadedAt:     string;
   uploadedBy?:    string;
   storagePath?:   string;   // مسار الملف في Firebase Storage (للحذف لاحقاً)
+  /** الملف الكبير محفوظ على أجزاء في fileChunks؛ uri يكون فاضي ويُحمَّل عند الفتح */
+  chunks?:        number;
   ownerContext?:  string;   // ownerId المالك (لعزل المرفقات داخل الشركة)
 }
 

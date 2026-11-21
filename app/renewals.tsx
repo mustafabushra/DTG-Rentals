@@ -24,7 +24,8 @@ const WINDOWS = [30, 60, 90] as const;
 
 export default function RenewalsScreen() {
   const { colors } = useAppTheme();
-  const { contracts, tenants, units, properties, renewContract, markContractsReminded, canWrite } = useApp();
+  const { contracts, tenants, units, properties, renewContract, markContractsReminded, canWrite, closeEndedContract } = useApp();
+  const [confirmClose, setConfirmClose] = useState<RenewalRow | null>(null);
   const [windowDays, setWindowDays] = useState<number>(30);
   const [confirmRenew, setConfirmRenew] = useState<RenewalRow | null>(null);
   const [alert, setAlert] = useState<{ title: string; message: string; variant?: 'info' | 'warning' } | null>(null);
@@ -103,6 +104,15 @@ export default function RenewalsScreen() {
         </View>
       </View>
 
+      {summary.expired > 0 && (
+        <View style={[styles.banner, { backgroundColor: colors.dangerSubtle, borderColor: colors.danger + '40' }]}>
+          <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
+          <Text style={[styles.bannerText, { color: colors.text }]}>
+            {summary.expired} {summary.expired === 1 ? 'عقد انتهى' : 'عقود انتهت'} وما {summary.expired === 1 ? 'تجدّد' : 'تجدّدت'}. جدّد العقد إذا المستأجر باقي، أو اضغط "خرج المستأجر" إذا طلع.
+          </Text>
+        </View>
+      )}
+
       <View style={styles.tabs}>
         {WINDOWS.map(w => {
           const active = windowDays === w;
@@ -158,6 +168,15 @@ export default function RenewalsScreen() {
                   <Ionicons name="logo-whatsapp" size={17} color="#25D366" />
                   <Text style={[styles.actionText, { color: '#25D366' }]}>تذكير بالتجديد</Text>
                 </TouchableOpacity>
+                {canWrite && row.daysLeft < 0 && (
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => setConfirmClose(row)}
+                  >
+                    <Ionicons name="exit-outline" size={16} color={colors.textSecondary} />
+                    <Text style={[styles.actionText, { color: colors.textSecondary }]}>خرج المستأجر</Text>
+                  </TouchableOpacity>
+                )}
                 {canWrite && (
                   <TouchableOpacity
                     style={[styles.actionBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}
@@ -183,6 +202,22 @@ export default function RenewalsScreen() {
           : ''}
         confirmLabel="تأكيد التجديد"
       />
+      <ConfirmModal
+        visible={!!confirmClose}
+        onClose={() => setConfirmClose(null)}
+        onConfirm={() => {
+          if (!confirmClose) return;
+          const row = confirmClose;
+          closeEndedContract(row.contractId);
+          setConfirmClose(null);
+          setAlert({ title: 'تم إغلاق العقد', message: `عقد ${row.tenantName} صار "منتهي"، والوحدة ${row.unitNumber ?? ''} صارت شاغرة. أي دفعات متأخرة عليه تبقى في التحصيل.`, variant: 'info' });
+        }}
+        title="المستأجر خرج من الوحدة؟"
+        message={confirmClose
+          ? `عقد ${confirmClose.tenantName} انتهى ${formatDate(confirmClose.endDate)}. بنغلق العقد ونخلي الوحدة شاغرة. الدفعات المتأخرة (إن وجدت) تبقى مسجّلة عليه للتحصيل.`
+          : ''}
+        confirmLabel="نعم، أغلق العقد"
+      />
       <AlertModal
         visible={!!alert}
         onClose={() => setAlert(null)}
@@ -205,6 +240,8 @@ const styles = StyleSheet.create({
   sumVal:  { fontSize: Theme.fontSize.base, fontWeight: Theme.fontWeight.bold },
   sumLbl:  { fontSize: Theme.fontSize.xs, textAlign: 'center' },
   sumDiv:  { width: 1, alignSelf: 'stretch', marginVertical: 4 },
+  banner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: Theme.spacing.base, marginTop: Theme.spacing.sm, padding: 12, borderRadius: Theme.radius.md, borderWidth: 1 },
+  bannerText: { flex: 1, fontSize: 13, lineHeight: 20, textAlign: 'right' },
   tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: Theme.spacing.base, paddingVertical: Theme.spacing.sm },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: Theme.radius.md, borderWidth: 1 },
   tabText: { fontSize: Theme.fontSize.sm, fontWeight: Theme.fontWeight.semibold },
