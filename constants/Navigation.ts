@@ -14,7 +14,7 @@ export type NavItem = {
   /** مسارات تُعتبر داخل هذا القسم (لإبراز العنصر النشط) */
   matches: string[];
   moduleKey?: keyof ModuleFlags | null;
-  badge?: 'overdue' | 'alerts';
+  badge?: 'overdue' | 'alerts' | 'requests';
 };
 
 export const STAFF_NAV: NavItem[] = [
@@ -23,7 +23,7 @@ export const STAFF_NAV: NavItem[] = [
   { icon: 'people-outline', label: 'الملاك', route: '/(tabs)/owners', matches: ['/owners', '/owner/', '/add-owner', '/edit-owner', '/owner-timeline'], moduleKey: 'owners' },
   { icon: 'document-text-outline', label: 'العقود والمستأجرون', route: '/(tabs)/contracts', matches: ['/contracts', '/contract/', '/tenants', '/tenant/', '/renewals', '/add-contract', '/edit-contract', '/add-tenant', '/edit-tenant', '/scan-contract', '/transfer-tenant'], moduleKey: 'contracts' },
   { icon: 'cash-outline', label: 'التحصيل', route: '/collections', matches: ['/collections', '/payments', '/payment/', '/ledger', '/record-payment', '/payment-log', '/cheques'], moduleKey: 'payments', badge: 'overdue' },
-  { icon: 'wallet-outline', label: 'المصاريف', route: '/expenses', matches: ['/expenses', '/expense/', '/office-expenses', '/vouchers', '/voucher/', '/add-expense'], moduleKey: 'finance' },
+  { icon: 'wallet-outline', label: 'المصاريف', route: '/expenses', matches: ['/expenses', '/expense/', '/office-expenses', '/vouchers', '/voucher/', '/add-expense', '/requests'], moduleKey: 'finance', badge: 'requests' },
   { icon: 'construct-outline', label: 'الصيانة', route: '/maintenance', matches: ['/maintenance', '/add-maintenance'], moduleKey: 'maintenance' },
   { icon: 'bar-chart-outline', label: 'التقارير', route: '/financial-reports', matches: ['/financial-reports', '/reports'], moduleKey: 'reports' },
 ];
@@ -63,6 +63,7 @@ export const HUBS: Record<HubKey, { label: string; route: string; match: string;
   expenses: [
     { label: 'مصاريف العقارات', route: '/expenses', match: '/expenses', hint: 'اللي انصرف على العقارات: صيانة، كهرباء، حراسة، نظافة.' },
     { label: 'مصاريف المكتب', route: '/office-expenses', match: '/office-expenses', hint: 'مصاريف تشغيل المكتب نفسه، منفصلة عن العقارات.' },
+    { label: 'طلبات الصرف', route: '/requests', match: '/requests', hint: 'تحتاج تصرف مبلغ؟ ارفع طلب، والمدير يوافق بضغطة ويصدر سند الصرف تلقائي.' },
     { label: 'السندات', route: '/vouchers', match: '/vouchers', hint: 'سندات القبض والصرف. اضغط على أي سند لطباعته.' },
   ],
 };

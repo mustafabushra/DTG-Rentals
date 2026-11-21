@@ -18,7 +18,7 @@ type BarItem = { key: string; icon: string; label: string; nav?: NavItem; badge?
 /** صفحات الأقسام اللي يظهر فيها الشريط */
 const SECTION_PAGES = new Set([
   '/', '/properties', '/units', '/owners', '/contracts', '/tenants', '/renewals',
-  '/collections', '/payments', '/ledger', '/cheques', '/expenses', '/office-expenses', '/vouchers',
+  '/collections', '/payments', '/ledger', '/cheques', '/expenses', '/office-expenses', '/vouchers', '/requests',
   '/maintenance', '/financial-reports', '/reports', '/notifications', '/settings', '/more',
   '/owner-statement', '/owner-timeline', '/attachments', '/calendar',
 ]);

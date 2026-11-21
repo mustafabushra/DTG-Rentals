@@ -26,6 +26,7 @@ import { RevenueChart } from '../../components/dashboard/RevenueChart';
 import { CityStats } from '../../components/dashboard/CityStats';
 import { DashboardHero } from '../../components/dashboard/DashboardHero';
 import { useSmartNotifications } from '../../hooks/useSmartNotifications';
+import { useRequests } from '../../context/RequestsProvider';
 import { AttentionList, type AttentionItem } from '../../components/dashboard/AttentionList';
 
 const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
@@ -144,6 +145,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { urgentCount } = useSmartNotifications();
+  const { pendingCount: pendingRequests, canApprove } = useRequests();
   const { kpis, payments, contracts, maintenance, auditLogs, currentUser,
           owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData, isOwner, previewing, previewOwnerId } = useApp();
   const ownerMode = isOwner || previewing;
@@ -503,6 +505,15 @@ export default function DashboardScreen() {
         route: '/payments',
       });
     }
+    if (canApprove && pendingRequests > 0) {
+      items.push({
+        key: 'requests', tone: 'warning', icon: 'hand-left-outline',
+        title: `${pendingRequests} ${pendingRequests === 1 ? 'طلب صرف ينتظر موافقتك' : 'طلبات صرف تنتظر موافقتك'}`,
+        detail: 'وافق أو ارفض بضغطة',
+        count: pendingRequests,
+        route: '/requests',
+      });
+    }
     const todayIso = new Date().toISOString().split('T')[0];
     const staleActive = contracts.filter(c => c.status === 'active' && !c.closedAt && c.endDate < todayIso);
     if (staleActive.length) {
@@ -558,7 +569,7 @@ export default function DashboardScreen() {
       });
     }
     return items;
-  }, [payments, contracts, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
+  }, [payments, contracts, pendingRequests, canApprove, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
 
   if (dataLoading) {
     return (

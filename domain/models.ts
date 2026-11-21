@@ -353,6 +353,31 @@ export interface Expense {
   updatedAt?:       string;
 }
 
+/** طلب صرف: الموظف يطلب، والمدير يعتمد (فيصير مصروف بسند صرف) أو يرفض */
+export type PaymentRequestStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
+export interface PaymentRequest {
+  id: string;
+  scope: ExpenseScope;
+  propertyId?: string;
+  unitId?: string;
+  ownerId?: string;
+  category: string;
+  amount: number;
+  currency: string;
+  vendor?: string;
+  notes?: string;
+  /** متى يحتاج المبلغ (اختياري) */
+  neededBy?: string;
+  status: PaymentRequestStatus;
+  requestedBy: string;
+  requestedById?: string;
+  requestedAt: string;
+  decidedBy?: string;
+  decidedAt?: string;
+  rejectReason?: string;
+  expenseId?: string;
+}
+
 /** receipt = سند قبض (دفعة إيجار)، payment = سند صرف (مصروف) */
 export type VoucherType   = 'receipt' | 'payment';
 export type VoucherStatus = 'issued' | 'cancelled';

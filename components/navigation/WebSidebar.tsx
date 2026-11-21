@@ -17,6 +17,7 @@ import { ModuleFlags } from '../../constants/SystemDefaults';
 import { useAppTheme } from '../../hooks/useAppTheme';
 
 import { useSmartNotifications } from '../../hooks/useSmartNotifications';
+import { useRequests } from '../../context/RequestsProvider';
 import { STAFF_NAV, OWNER_NAV, FOOTER_NAV, isNavActive, NavItem } from '../../constants/Navigation';
 
 function SideItem({
@@ -59,6 +60,7 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
   const pathname = usePathname();
   const { payments, currentUser, systemSettings, isOwner, previewing, logout } = useApp();
   const { urgentCount } = useSmartNotifications();
+  const { pendingCount, canApprove } = useRequests();
   const insets = useSafeAreaInsets();
   const modules = systemSettings.modules;
   const ownerMode = isOwner || previewing;
@@ -67,7 +69,7 @@ function SidebarContent({ colors, onNavigate }: { colors: any; onNavigate: (rout
   const overdueCount   = payments.filter(p => p.status === 'overdue').length;
   // الإشعارات = عدد "العاجل" في صفحة الإشعارات، نفس رقم الجرس
   const badgeFor = (item: NavItem) =>
-    item.badge === 'overdue' ? overdueCount : item.badge === 'alerts' ? urgentCount : undefined;
+    item.badge === 'overdue' ? overdueCount : item.badge === 'alerts' ? urgentCount : item.badge === 'requests' ? (canApprove ? pendingCount : 0) : undefined;
   const doLogout = () => {
     const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
       ? window.confirm('تبي تسجّل خروج؟') : true;

@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from '../context/AppProvider';
 import { SidebarProvider } from '../context/SidebarContext';
 import { FinanceProvider } from '../context/FinanceProvider';
+import { RequestsProvider } from '../context/RequestsProvider';
 import { useColorScheme, Platform, View, ActivityIndicator, I18nManager } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useEffect, useRef, useState } from 'react';
@@ -255,6 +256,7 @@ export default function RootLayout() {
         <ErrorBoundary>
           <AppProvider>
             <FinanceProvider>
+            <RequestsProvider>
             <SidebarProvider>
               <AuthWatcher onReady={() => setAuthReady(true)} />
               {authReady ? (
@@ -272,6 +274,7 @@ export default function RootLayout() {
                 </View>
               )}
             </SidebarProvider>
+            </RequestsProvider>
             </FinanceProvider>
           </AppProvider>
         </ErrorBoundary>

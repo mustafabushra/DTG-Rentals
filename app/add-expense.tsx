@@ -12,6 +12,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
 import { useApp } from '../context/AppProvider';
 import { useFinance } from '../context/FinanceProvider';
+import { useRequests } from '../context/RequestsProvider';
 import { FormInput } from '../components/forms/FormInput';
 import { FormSelect } from '../components/forms/FormSelect';
 import { FormDatePicker } from '../components/forms/FormDatePicker';
@@ -33,8 +34,10 @@ export default function AddExpenseScreen() {
   const { colors } = useAppTheme();
   const params = useLocalSearchParams<{
     id?: string; scope?: string; propertyId?: string; unitId?: string;
-    amount?: string; category?: string; vendor?: string; maintenanceId?: string; notes?: string;
+    amount?: string; category?: string; vendor?: string; maintenanceId?: string; notes?: string; request?: string;
   }>();
+  const isRequest = params.request === '1';
+  const { addRequest } = useRequests();
   const { properties, units, systemSettings, canWrite } = useApp();
   const { expenses, categories, addCategory, addExpense, updateExpense } = useFinance();
 
@@ -112,6 +115,17 @@ export default function AddExpenseScreen() {
 
     setSaving(true);
     if (form.category === NEW_CAT) await addCategory(scope, category);
+    if (isRequest) {
+      const r = await addRequest({
+        scope, propertyId: payload.propertyId, unitId: payload.unitId, category, amount,
+        currency: form.currency, vendor: payload.vendor, notes: payload.notes,
+        neededBy: form.date || undefined,
+      });
+      setSaving(false);
+      if (!r.ok) { setSaveError(r.error); return; }
+      router.replace('/requests' as any);
+      return;
+    }
     const res = editing
       ? await updateExpense(editing.id, payload)
       : await addExpense(payload);
@@ -129,7 +143,7 @@ export default function AddExpenseScreen() {
     );
   }
 
-  const title = editing ? 'تعديل المصروف' : scope === 'office' ? 'مصروف مكتب جديد' : 'مصروف عقار جديد';
+  const title = isRequest ? 'طلب صرف جديد' : editing ? 'تعديل المصروف' : scope === 'office' ? 'مصروف مكتب جديد' : 'مصروف عقار جديد';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -141,7 +155,7 @@ export default function AddExpenseScreen() {
         <TouchableOpacity onPress={handleSave} disabled={saving} style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 }]}>
           {saving
             ? <ActivityIndicator size="small" color={colors.textInverse} />
-            : <Text style={[styles.saveText, { color: colors.textInverse }]}>حفظ</Text>}
+            : <Text style={[styles.saveText, { color: colors.textInverse }]}>{isRequest ? 'إرسال' : 'حفظ'}</Text>}
         </TouchableOpacity>
       </View>
 
@@ -149,7 +163,9 @@ export default function AddExpenseScreen() {
         <View style={[styles.note, { backgroundColor: colors.infoSubtle, borderColor: `${colors.info}40` }]}>
           <Ionicons name="information-circle-outline" size={18} color={colors.info} />
           <Text style={[styles.noteText, { color: colors.info }]}>
-            {editing
+            {isRequest
+              ? 'طلبك يروح للمدير. إذا وافق، يتسجّل مصروف ويصدر سند صرف تلقائي. وتقدر تتابع حالته من «طلبات الصرف».'
+              : editing
               ? 'تعديل المبلغ أو التاريخ أو الجهة يلغي سند الصرف الحالي ويصدر سنداً بديلاً برقم جديد.'
               : 'يصدر سند صرف برقم تسلسلي تلقائياً عند الحفظ.'}
           </Text>
@@ -178,11 +194,11 @@ export default function AddExpenseScreen() {
           </View>
         </View>
 
-        <FormDatePicker label="تاريخ الصرف" value={form.date} onChange={set('date')} required error={errors.date} />
-        <FormInput label="المورد / الجهة المستفيدة" value={form.vendor} onChangeText={set('vendor')} placeholder="مثال: شركة الكهرباء، فني الصيانة..." icon="storefront-outline" />
-        <FormSelect label="طريقة الدفع" value={form.paymentMethod} options={METHOD_OPTIONS} onSelect={set('paymentMethod')} />
-        <FormInput label="رقم المرجع / الفاتورة / الشيك" value={form.referenceNumber} onChangeText={set('referenceNumber')} placeholder="اختياري" icon="document-text-outline" />
-        <FormInput label="ملاحظات" value={form.notes} onChangeText={set('notes')} placeholder="اختياري" multiline numberOfLines={3} icon="create-outline" />
+        <FormDatePicker label={isRequest ? 'تحتاج المبلغ قبل' : 'تاريخ الصرف'} value={form.date} onChange={set('date')} required error={errors.date} />
+        <FormInput label={isRequest ? 'لمين ينصرف' : 'المورد / الجهة المستفيدة'} value={form.vendor} onChangeText={set('vendor')} placeholder="مثال: شركة الكهرباء، فني الصيانة..." icon="storefront-outline" />
+        {!isRequest && <FormSelect label="طريقة الدفع" value={form.paymentMethod} options={METHOD_OPTIONS} onSelect={set('paymentMethod')} />}
+        {!isRequest && <FormInput label="رقم المرجع / الفاتورة / الشيك" value={form.referenceNumber} onChangeText={set('referenceNumber')} placeholder="اختياري" icon="document-text-outline" />}
+        <FormInput label={isRequest ? 'ليش؟ (سبب الطلب)' : 'ملاحظات'} value={form.notes} onChangeText={set('notes')} placeholder={isRequest ? 'مثال: تبديل مكيف الشقة 4 — عطل كامل' : 'اختياري'} multiline numberOfLines={3} icon="create-outline" />
 
         {!!saveError && (
           <View style={[styles.note, { backgroundColor: colors.dangerSubtle, borderColor: `${colors.danger}40` }]}>
