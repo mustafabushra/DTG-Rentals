@@ -125,7 +125,7 @@ export function validateBackup(raw: string): ValidationResult {
   // Version
   if (!parsed.version) {
     result.warnings.push('حقل version غير موجود — سيتم المتابعة');
-  } else if (parsed.version !== '1.0') {
+  } else if (parsed.version !== '1.0' && parsed.version !== '2.0') {
     result.warnings.push(`إصدار الملف: ${parsed.version} — قد تكون هناك اختلافات طفيفة في البنية`);
   }
 

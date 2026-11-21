@@ -24,6 +24,7 @@ import { FileService } from '../domain/services/FileService';
 import type { FileCategory } from '../domain/models';
 import { toPersistentUri, DOCUMENT_IMAGE } from '../lib/imageUtils';
 import { applyFxOverrides } from '../utils/currency';
+import { restoreExtras } from '../lib/backupBuilder';
 import { saveChunks, deleteChunks, CHUNK_CHARS, MAX_FILE_CHARS } from '../lib/fileChunks';
 import { uploadFile, attachmentStoragePath, uploadPhoto, photoStoragePath, deleteFile } from '../lib/storageService';
 
@@ -2734,6 +2735,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       payments: newData.payments.length,
       maintenance: newData.maintenance.length,
     });
+    // ── ⑤ الباقي: المرفقات والملفات الكبيرة وطلبات الصرف والحجوزات والتقويم والمدن
+    //    والصور (كتابة فوق)، والمصاريف والسندات (الناقص بس)، وعدّاد السندات والإعدادات.
+    //    نسخ 1.0 القديمة ما فيها هذي فما يتغيّر شي.
+    const extras = await restoreExtras(org, payload as any);
+    if (extras.errors.length) {
+      console.error('[RESTORE] extras errors:', extras.errors);
+    }
+
     setOwners(newData.owners as Owner[]);
     setProperties(newData.properties as Property[]);
     setTenants(newData.tenants as Tenant[]);
@@ -2758,6 +2767,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs(prev => [log, ...prev]);
     setOne(getActiveOrgId(), 'auditLogs', log.id, log)
       .catch(e => console.error('[AUDIT_LOST] نقص في سجل التدقيق — لم يُحفظ', log.id, e));
+
+    if (extras.errors.length) {
+      throw new Error(
+        `استُعيدت البيانات الأساسية كاملة، بس ${extras.errors.length} من الملفات أو الإعدادات ما انكتبت:\n` +
+        `${extras.errors.slice(0, 5).join('\n')}\nأعد الاستعادة بنفس الملف عشان تكمل الناقص (ما يتكرر شي).`,
+      );
+    }
   }, [userId, currentUser.name, currentUser.email]);
 
   // ─── System Settings ──────────────────────────────────────────────────────

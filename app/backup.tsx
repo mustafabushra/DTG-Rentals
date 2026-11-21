@@ -14,6 +14,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Theme } from '../constants/Theme';
 import { AppHeader } from '../components/ui/AppHeader';
 import { useApp } from '../context/AppProvider';
+import { buildFullBackup } from '../lib/backupBuilder';
+import { getActiveOrgId } from '../lib/firestoreService';
 import { FormContainer } from '../components/ui/FormContainer';
 import {
   BackupPayload, DiffSummary, ValidationResult, ValidationStatus,
@@ -76,11 +78,16 @@ export default function BackupScreen() {
     data: { owners, properties, units, tenants, contracts, payments, maintenance, expenses, vouchers } as BackupPayload['data'],
   });
 
+  const [exportError, setExportError] = useState<string | null>(null);
   const handleExport = async () => {
     setExporting(true);
+    setExportError(null);
     try {
-      await new Promise(r => setTimeout(r, 400));
-      const json = JSON.stringify(buildBackupJson(), null, 2);
+      // نسخة كاملة من قاعدة البيانات مباشرة (كل المجموعات + الإعدادات)، مو من الشاشة
+      let payload: any;
+      try { payload = await buildFullBackup(getActiveOrgId()); }
+      catch (e: any) { setExportError(e?.message ?? 'تعذّر بناء النسخة'); return; }
+      const json = JSON.stringify(payload);
       const filename = `DTG_Backup_${new Date().toISOString().split('T')[0]}.json`;
 
       if (Platform.OS === 'web') {
@@ -97,6 +104,7 @@ export default function BackupScreen() {
       updSys?.({ lastBackupAt: new Date().toISOString(), lastBackupBy: me?.name }).catch?.(() => {});
     } catch { /* user cancelled */ } finally { setExporting(false); }
   };
+  void buildBackupJson;
 
   const stats = [
     { label: 'الملاك',      value: owners.length,      icon: 'person-outline',        color: '#365A80' },
@@ -107,6 +115,8 @@ export default function BackupScreen() {
     { label: 'الدفعات',     value: payments.length,     icon: 'cash-outline',          color: '#079455' },
     { label: 'الصيانة',     value: maintenance.length,  icon: 'construct-outline',     color: colors.warning },
     { label: 'المرفقات',    value: attachments.length,  icon: 'attach-outline',        color: colors.textSecondary },
+    { label: 'المصاريف',    value: expenses.length,     icon: 'wallet-outline',        color: colors.textSecondary },
+    { label: 'السندات',     value: vouchers.length,     icon: 'receipt-outline',       color: colors.textSecondary },
   ];
 
   const currentData = { owners, properties, units, tenants, contracts, payments, maintenance };
@@ -138,7 +148,7 @@ export default function BackupScreen() {
       <FormContainer>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 56 }}>
           {activeSection === 'export'
-            ? <ExportSection colors={colors} stats={stats} exporting={exporting} lastBackup={lastBackup} onExport={handleExport} />
+            ? <ExportSection colors={colors} stats={stats} exporting={exporting} lastBackup={lastBackup} onExport={handleExport} error={exportError} />
             : <RecoveryConsole colors={colors} currentData={currentData} onImport={importBackup} />
           }
         </ScrollView>
@@ -148,7 +158,7 @@ export default function BackupScreen() {
 }
 
 // ─── Export section (existing, lightly polished) ──────────────────────────────
-function ExportSection({ colors, stats, exporting, lastBackup, onExport }: any) {
+function ExportSection({ colors, stats, exporting, lastBackup, onExport, error }: any) {
   return (
     <>
       <View style={[s.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -169,6 +179,9 @@ function ExportSection({ colors, stats, exporting, lastBackup, onExport }: any) 
 
       <View style={[s.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[s.sectionTitle, { color: colors.text }]}>محتوى النسخة الاحتياطية</Text>
+        <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'right', marginBottom: 8, lineHeight: 18 }}>
+          نسخة كاملة: كل البيانات بالأسفل، ومعها الملفات المرفقة بمحتواها، وطلبات الصرف، والحجوزات، والتقويم، والمدن، والصور، والإعدادات. مفتاح المساعد الذكي ما ينحفظ في الملف.
+        </Text>
         <View style={s.statsGrid}>
           {stats.map((st: any) => (
             <View key={st.label} style={[s.statCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -189,6 +202,9 @@ function ExportSection({ colors, stats, exporting, lastBackup, onExport }: any) 
         <Ionicons name={exporting ? 'hourglass-outline' : 'cloud-upload-outline'} size={22} color="#FFF" />
         <Text style={s.exportBtnText}>{exporting ? 'جارٍ التصدير…' : 'تصدير وتنزيل النسخة الاحتياطية'}</Text>
       </TouchableOpacity>
+      {!!error && (
+        <Text style={{ color: colors.danger, fontSize: 13, textAlign: 'center', marginHorizontal: 16, lineHeight: 20 }}>{error}</Text>
+      )}
     </>
   );
 }
