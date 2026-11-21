@@ -10,6 +10,10 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import { CURRENCIES, getCurrency, convertToSAR, formatAmount, type CurrencyCode } from '../utils/currency';
 import { BookingService } from '../domain/services/BookingService';
 import { NetIncomeReport } from '../components/finance/NetIncomeReport';
+import { Modal } from '../components/ui/Modal';
+import { FormInput } from '../components/forms/FormInput';
+import { EXCHANGE_RATES_TO_SAR } from '../utils/currency';
+import { isAdminRole } from '../utils/roleUtils';
 
 type Period     = '1m' | '3m' | '6m' | '1y';
 type ActiveTab  = 'overview' | 'net' | 'owners' | 'overdue' | 'countries';
@@ -46,7 +50,10 @@ export default function FinancialReportsScreen() {
   const { width } = useWindowDimensions();
   const isMobile  = width < 768;
   const isDesktop = width >= 1024;
-  const { payments, contracts, properties, units, owners, tenants, bookings, systemSettings } = useApp();
+  const { payments, contracts, properties, units, owners, tenants, bookings, systemSettings, updateSystemSettings, currentUser } = useApp();
+  const canEditFx = isAdminRole(currentUser.role);
+  const [fxOpen, setFxOpen] = useState(false);
+  const [fxDraft, setFxDraft] = useState<Record<string, string>>({});
 
   const [period,        setPeriod]        = useState<Period>('6m');
   const [activeTab,     setActiveTab]     = useState<ActiveTab>('overview');
@@ -247,7 +254,7 @@ export default function FinancialReportsScreen() {
     });
     const rate = revenue > 0 ? Math.min(100, Math.round((collected / revenue) * 100)) : 0;
     return { revenue, collected, overdue, rate };
-  }, [byCountry, months]);
+  }, [byCountry, months, systemSettings.fxRates]);
 
   // ── Export ─────────────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -442,7 +449,15 @@ export default function FinancialReportsScreen() {
                   <Text style={[styles.countryStatLbl, { color: colors.textMuted }]}>تحصيل</Text>
                 </View>
               </View>
-              <Text style={[styles.sarNote, { color: colors.textMuted }]}>أسعار صرف تقريبية</Text>
+              <TouchableOpacity
+                disabled={!canEditFx}
+                onPress={() => { setFxDraft(Object.fromEntries(activeCurrencies.filter(c => c !== 'SAR').map(c => [c, String((EXCHANGE_RATES_TO_SAR as any)[c] ?? '')]))); setFxOpen(true); }}
+              >
+                <Text style={[styles.sarNote, { color: colors.textMuted }]}>
+                  {activeCurrencies.filter(c => c !== 'SAR').map(c => `1 ${getCurrency(c).code} = ${(EXCHANGE_RATES_TO_SAR as any)[c]} ر.س`).join(' · ')}
+                  {canEditFx ? '  ·  ' : ''}{canEditFx && <Text style={{ color: colors.primary, fontWeight: '600' }}>تعديل الأسعار</Text>}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Per-country cards */}
@@ -749,6 +764,28 @@ export default function FinancialReportsScreen() {
         )}
 
       </ScrollView>
+      <Modal visible={fxOpen} onClose={() => setFxOpen(false)} title="أسعار التحويل للريال" scrollable
+        footer={
+          <TouchableOpacity
+            style={{ height: 48, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}
+            onPress={async () => {
+              const rates: Record<string, number> = { ...(systemSettings.fxRates ?? {}) };
+              for (const [k, v] of Object.entries(fxDraft)) { const n = Number(v); if (n > 0) rates[k] = n; }
+              await updateSystemSettings({ fxRates: rates, fxUpdatedAt: new Date().toISOString() });
+              setFxOpen(false);
+            }}>
+            <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 15 }}>حفظ الأسعار</Text>
+          </TouchableOpacity>
+        }>
+        <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'right', lineHeight: 20 }}>
+          نستخدمها بس لجمع الدول في رقم واحد بالريال. كل عقار يبقى بعملته الأصلية.
+          {systemSettings.fxUpdatedAt ? `  آخر تحديث: ${systemSettings.fxUpdatedAt.split('T')[0]}` : ''}
+        </Text>
+        {Object.keys(fxDraft).map(code => (
+          <FormInput key={code} label={`1 ${getCurrency(code).label} (${code}) = كم ريال؟`} value={fxDraft[code]}
+            onChangeText={v => setFxDraft(d => ({ ...d, [code]: v }))} keyboardType="decimal-pad" icon="swap-horizontal-outline" />
+        ))}
+      </Modal>
     </View>
   );
 }

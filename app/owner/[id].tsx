@@ -234,6 +234,17 @@ export default function OwnerDetailScreen() {
 
         {/* الخط الزمني للمالك */}
         <View style={{ marginHorizontal: 16, marginTop: 12 }}>
+          <TouchableOpacity
+            onPress={() => router.push(`/owner-statement?ownerId=${id}` as any)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, marginHorizontal: 16, marginBottom: 12 }}
+          >
+            <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'right' }}>كشف حساب المالك</Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'right', marginTop: 2 }}>PDF للطباعة، أو ملخص يوصله بالواتساب</Text>
+            </View>
+            <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
           <OwnerTimeline ownerId={id} limit={6} showAll={`/owner-timeline?ownerId=${id}`} />
         </View>
 

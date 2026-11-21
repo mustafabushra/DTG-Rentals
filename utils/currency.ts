@@ -63,6 +63,14 @@ export const EXCHANGE_RATES_TO_SAR: Record<CurrencyCode, number> = {
   OMR: 9.74,    // ريال عُماني مرتبط (0.385)
 };
 
+const DEFAULT_RATES_TO_SAR = { ...EXCHANGE_RATES_TO_SAR };
+/** يطبّق أسعار المدير فوق الافتراضية (مثلاً الجنيه المصري يتغير) */
+export function applyFxOverrides(o?: Record<string, number> | null) {
+  Object.assign(EXCHANGE_RATES_TO_SAR, DEFAULT_RATES_TO_SAR);
+  if (!o) return;
+  for (const [k, v] of Object.entries(o)) if (typeof v === 'number' && v > 0) (EXCHANGE_RATES_TO_SAR as any)[k] = v;
+}
+
 /** حوّل مبلغاً من أي عملة إلى ريال سعودي */
 export function convertToSAR(amount: number, currency?: string | null): number {
   const rate = EXCHANGE_RATES_TO_SAR[(currency ?? 'SAR') as CurrencyCode] ?? 1;

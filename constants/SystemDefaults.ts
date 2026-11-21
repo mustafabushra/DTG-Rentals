@@ -31,6 +31,12 @@ export interface SystemSettings {
   permissions:        Record<string, RolePermissions>;
   currency:           string;   // e.g. 'SAR'
   ownerDataIsolation: boolean;  // كل مالك يرى بياناته الخاصة فقط
+  /** أسعار التحويل للريال اللي يعدّلها المدير (تغلب الافتراضية) */
+  fxRates?:           Record<string, number>;
+  fxUpdatedAt?:       string;
+  /** آخر نسخة احتياطية نزّلها أحد (للتذكير الأسبوعي) */
+  lastBackupAt?:      string;
+  lastBackupBy?:      string;
   updatedAt?:         string;
   updatedBy?:         string;
 }

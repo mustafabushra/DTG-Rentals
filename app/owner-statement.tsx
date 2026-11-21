@@ -6,7 +6,12 @@
 import { PageHint } from '../components/ui/PageHint';
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Linking } from 'react-native';
+import { buildOwnerStatement, statementMessage } from '../domain/services/OwnerStatementService';
+import { buildStatementHTML, printStatement } from '../components/finance/statementPrint';
+import { CollectionService } from '../domain/services/CollectionService';
+import { getCurrency } from '../utils/currency';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { AppHeader } from '../components/ui/AppHeader';
 import { FilterBar } from '../components/ui/FilterBar';
@@ -20,14 +25,34 @@ import { PERIOD_OPTIONS, PeriodKey, periodRange } from '../components/finance/pe
 
 export default function OwnerStatementScreen() {
   const { colors } = useAppTheme();
-  const { payments, contracts, units, properties, currentUser, previewing, previewOwnerId } = useApp() as any;
+  const { payments, contracts, units, properties: allProperties, tenants, owners, currentUser, previewing, previewOwnerId } = useApp() as any;
   const { expenses } = useFinance();
-  const [period, setPeriod] = useState<PeriodKey>('year');
+  const params = useLocalSearchParams<{ ownerId?: string }>();
+  // الموظف يفتح كشف مالك محدد (?ownerId=) ؛ المالك يشوف كشفه هو
+  const staffOwnerId = !previewing && !currentUser?.ownerId ? params.ownerId : undefined;
+  const [period, setPeriod] = useState<PeriodKey>(staffOwnerId ? 'last_month' : 'year');
   const { from, to } = periodRange(period);
-  const ownerId: string | undefined = previewing ? previewOwnerId : currentUser?.ownerId;
+  const ownerId: string | undefined = staffOwnerId ?? (previewing ? previewOwnerId : currentUser?.ownerId);
+  const owner = (owners as any[]).find(o => o.id === ownerId);
+  const properties = useMemo(() => staffOwnerId
+    ? (allProperties as any[]).filter(p => p.ownerId === staffOwnerId || owner?.propertyIds?.includes(p.id))
+    : allProperties, [allProperties, staffOwnerId, owner]);
 
   const src = useMemo(() => ({ payments, contracts, units, properties, expenses: expenses.filter(e => e.scope === 'property') }),
     [payments, contracts, units, properties, expenses]);
+
+  const periodLabel = PERIOD_OPTIONS.find(o => o.value === period)?.label ?? '';
+  const statement = useMemo(() => buildOwnerStatement(
+    { payments, contracts, units, properties, tenants, expenses } as any,
+    { propertyIds: (properties as any[]).map(p => p.id), from, to, today: new Date().toISOString().split('T')[0] },
+  ), [payments, contracts, units, properties, tenants, expenses, from, to]);
+  const ownerName = owner?.name ?? currentUser?.name ?? 'المالك';
+  const openPdf = () => printStatement(buildStatementHTML(statement, { ownerName, periodLabel, from, to }));
+  const sendWhatsApp = () => {
+    const msg = statementMessage(ownerName, periodLabel, statement, (n, c) => `${n.toLocaleString('en-US')} ${getCurrency(c).code}`);
+    const phone = owner?.phone ? CollectionService.normalizePhone(owner.phone, statement.totals[0]?.currency) : null;
+    Linking.openURL(phone ? CollectionService.whatsappUrl(phone, msg) : `https://wa.me/?text=${encodeURIComponent(msg)}`);
+  };
 
   const rows = useMemo(() => netByProperty(src as any, from, to), [src, from, to]);
 
@@ -56,11 +81,25 @@ export default function OwnerStatementScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="الدخل والمصاريف" showBack={false} />
-      <PageHint text="كم انحصّل من إيجاراتك، كم انصرف على عقاراتك، وكم بقي لك." />
+      <AppHeader title={staffOwnerId ? `كشف حساب ${ownerName}` : 'الدخل والمصاريف'} showBack={!!staffOwnerId} />
+      <PageHint text={staffOwnerId
+        ? 'اختر الفترة، وبعدها افتح الكشف PDF أو أرسل الملخص للمالك بالواتساب.'
+        : 'كم انحصّل من إيجاراتك، كم انصرف على عقاراتك، وكم بقي لك.'} />
       <FilterBar options={PERIOD_OPTIONS} value={period} onChange={v => setPeriod(v as PeriodKey)} />
 
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity onPress={openPdf} style={[styles.bigBtn, { backgroundColor: colors.primary }]}>
+            <Ionicons name="document-text-outline" size={18} color={colors.textInverse} />
+            <Text style={[styles.bigBtnText, { color: colors.textInverse }]}>الكشف PDF</Text>
+          </TouchableOpacity>
+          {staffOwnerId && (
+            <TouchableOpacity onPress={sendWhatsApp} style={[styles.bigBtn, { backgroundColor: '#25D36614', borderWidth: 1, borderColor: '#25D366' }]}>
+              <Ionicons name="logo-whatsapp" size={18} color="#1DA851" />
+              <Text style={[styles.bigBtnText, { color: '#1DA851' }]}>أرسل للمالك</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         {totals.length === 0 && (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, alignItems: 'center', paddingVertical: 32 }]}>
             <Ionicons name="stats-chart-outline" size={28} color={colors.textMuted} />
@@ -152,4 +191,6 @@ const styles = StyleSheet.create({
   rowName: { fontSize: 14, fontWeight: '500', textAlign: 'right' },
   rowSub: { fontSize: 12, textAlign: 'right' },
   empty: { fontSize: 14, marginTop: 8 },
+  bigBtn: { flex: 1, height: 46, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  bigBtnText: { fontSize: 14, fontWeight: '600' },
 });

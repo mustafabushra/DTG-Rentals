@@ -146,7 +146,7 @@ export default function DashboardScreen() {
   const { colors } = useAppTheme();
   const { urgentCount } = useSmartNotifications();
   const { pendingCount: pendingRequests, canApprove } = useRequests();
-  const { kpis, payments, contracts, maintenance, auditLogs, currentUser,
+  const { kpis, payments, contracts, maintenance, auditLogs, currentUser, systemSettings,
           owners, units, properties, tenants, calendarEvents, attachments, dataLoading, canWrite, refreshData, isOwner, previewing, previewOwnerId } = useApp();
   const ownerMode = isOwner || previewing;
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
@@ -505,6 +505,18 @@ export default function DashboardScreen() {
         route: '/payments',
       });
     }
+    if (canApprove) {
+      const last = systemSettings.lastBackupAt;
+      const days = last ? Math.floor((Date.now() - Date.parse(last)) / 86400000) : null;
+      if (days === null || days >= 7) {
+        items.push({
+          key: 'backup', tone: 'warning', icon: 'cloud-download-outline',
+          title: days === null ? 'ما في نسخة احتياطية للحين' : `آخر نسخة احتياطية قبل ${days} يوم`,
+          detail: 'نزّل نسخة من بياناتك — تاخذ ثواني',
+          route: '/backup',
+        });
+      }
+    }
     if (canApprove && pendingRequests > 0) {
       items.push({
         key: 'requests', tone: 'warning', icon: 'hand-left-outline',
@@ -569,7 +581,7 @@ export default function DashboardScreen() {
       });
     }
     return items;
-  }, [payments, contracts, pendingRequests, canApprove, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
+  }, [payments, contracts, pendingRequests, canApprove, systemSettings.lastBackupAt, duePaymentsData, expiringContracts, maintenance, vacantUnitsData, attachments]);
 
   if (dataLoading) {
     return (

@@ -59,7 +59,9 @@ export default function BackupScreen() {
 
   // Export state
   const [exporting, setExporting] = useState(false);
-  const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const { systemSettings: sysS, updateSystemSettings: updSys, currentUser: me } = useApp() as any;
+  const [lastBackup, setLastBackup] = useState<string | null>(
+    sysS?.lastBackupAt ? `${new Date(sysS.lastBackupAt).toLocaleString('ar-SA')}${sysS.lastBackupBy ? ` — ${sysS.lastBackupBy}` : ''}` : null);
 
   const buildBackupJson = (): BackupPayload => ({
     exportedAt: new Date().toISOString(),
@@ -92,6 +94,7 @@ export default function BackupScreen() {
         await Share.share({ message: json, title: filename });
       }
       setLastBackup(new Date().toLocaleString('ar-SA'));
+      updSys?.({ lastBackupAt: new Date().toISOString(), lastBackupBy: me?.name }).catch?.(() => {});
     } catch { /* user cancelled */ } finally { setExporting(false); }
   };
 

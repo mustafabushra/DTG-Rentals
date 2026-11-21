@@ -22,6 +22,7 @@ import { saveCache, loadCache, cacheHasData, clearCache } from '../lib/localCach
 import { FileService } from '../domain/services/FileService';
 import type { FileCategory } from '../domain/models';
 import { toPersistentUri, DOCUMENT_IMAGE } from '../lib/imageUtils';
+import { applyFxOverrides } from '../utils/currency';
 import { saveChunks, deleteChunks, CHUNK_CHARS, MAX_FILE_CHARS } from '../lib/fileChunks';
 import { uploadFile, attachmentStoragePath, uploadPhoto, photoStoragePath, deleteFile } from '../lib/storageService';
 
@@ -291,6 +292,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const secondaryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [systemSettings, setSystemSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
+  useEffect(() => { applyFxOverrides(systemSettings.fxRates); }, [systemSettings.fxRates]);
   const [theme, setThemeState]            = useState<ThemeMode>('system');
   const systemScheme = useColorScheme();
   const resolvedScheme: 'light' | 'dark' = theme === 'system' ? (systemScheme ?? 'light') : theme;
